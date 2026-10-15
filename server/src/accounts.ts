@@ -166,6 +166,8 @@ export function sharedPeople(viewerId: string, householdId: string): SharedPerso
     });
 }
 
+export const FAMILY_TITLE = "Niet beschikbaar – familiale reden";
+
 /** Afspraken van gedeelde agenda's: alleen afspraken waar de eigenaar zelf aan deelneemt. */
 export function sharedEvents(viewerId: string, householdId: string, from: string, to: string): Occurrence[] {
   const out: Occurrence[] = [];
@@ -175,10 +177,12 @@ export function sharedEvents(viewerId: string, householdId: string, from: string
       for (const row of rowsBetween(link.household_id, from, to)) {
         const ev = toEvent(row);
         if (!ev.members.includes(link.member_id)) continue;
+        // met andere gezinsleden (kind, partner): wel zichtbaar als niet beschikbaar, zonder details over het gezin
+        const withFamily = ev.members.some((m) => m !== link.member_id);
+        const title = p.level === "bezet" ? "Bezet" : withFamily ? FAMILY_TITLE : null;
         for (const o of expand(ev, from, to)) {
-          const busy = p.level === "bezet";
           out.push({
-            ...o, id: `shared:${o.id}`, key: `shared:${o.key}`, title: busy ? "Bezet" : o.title, notes: busy ? "" : o.notes, location: busy ? "" : o.location,
+            ...o, id: `shared:${o.id}`, key: `shared:${o.key}`, title: title ?? o.title, notes: title ? "" : o.notes, location: title ? "" : o.location,
             members: [p.id], source: "shared", readOnly: true, exdates: [],
           });
         }

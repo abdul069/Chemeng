@@ -17,7 +17,7 @@ export function InviteCard({ info }: { info: InviteInfo }) {
       ) : (
         <>
           <b>{info.from} deelt zijn of haar agenda met je</b>
-          <p className="hint">Je ziet {info.level === "bezet" ? "wanneer" : "de afspraken van"} {info.from}{info.level === "bezet" ? " bezet is" : ""}, naast je eigen gezin. {info.from} ziet jouw gezin niet, tenzij je je agenda zelf terugdeelt.</p>
+          <p className="hint">Je ziet {info.level === "bezet" ? "wanneer" : "de afspraken van"} {info.from}{info.level === "bezet" ? " bezet is" : ""}, naast je eigen gezin. Afspraken met de familie van {info.from} zie je enkel als “niet beschikbaar”. {info.from} ziet jouw agenda niet, tenzij je ze zelf terugdeelt.</p>
         </>
       )}
     </div>

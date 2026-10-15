@@ -9,11 +9,10 @@ import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#5b6b7f", "#3d9bd1"];
 const THEME_KEY = "gezinsbord.theme";
 
+/** De app heeft één vaste, lichte stijl, los van licht/donker op het toestel. */
 export function applyTheme() {
-  let t = "auto";
-  try { t = localStorage.getItem(THEME_KEY) ?? "auto"; } catch { /* */ }
-  if (t === "auto") document.documentElement.removeAttribute("data-theme");
-  else document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.removeAttribute("data-theme");
+  try { localStorage.removeItem(THEME_KEY); } catch { /* */ }
 }
 
 export function SettingsScreen({ header }: { header: React.ReactNode }) {
@@ -243,11 +242,10 @@ function Place() {
 function Screen() {
   const { data } = useData();
   const save = useSetting();
-  const [theme, setTheme] = useState(() => { try { return localStorage.getItem(THEME_KEY) ?? "auto"; } catch { return "auto"; } });
   const s = data!.settings;
   return (
     <Section title="Scherm">
-      <div className="row3">
+      <div className="row2">
         <label className="field"><span>Fotolijst na</span>
           <select id="saver" value={s.screensaver_minutes} onChange={(e) => save({ screensaver_minutes: e.target.value })}>
             {["0", "2", "5", "10", "15", "30", "60"].map((v) => <option key={v} value={v}>{v === "0" ? "Nooit" : `${v} minuten`}</option>)}
@@ -256,11 +254,6 @@ function Screen() {
         <label className="field"><span>Week begint op</span>
           <select id="weekstart" value={s.week_start} onChange={(e) => save({ week_start: e.target.value })}>
             <option value="1">Maandag</option><option value="0">Zondag</option>
-          </select>
-        </label>
-        <label className="field"><span>Thema (dit toestel)</span>
-          <select id="theme" value={theme} onChange={(e) => { setTheme(e.target.value); try { localStorage.setItem(THEME_KEY, e.target.value); } catch { /* */ } applyTheme(); }}>
-            <option value="auto">Automatisch</option><option value="light">Licht</option><option value="dark">Donker</option>
           </select>
         </label>
       </div>

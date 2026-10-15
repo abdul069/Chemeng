@@ -179,7 +179,7 @@ export function AgendaSharing() {
 
   return (
     <Section title="Mijn agenda delen">
-      <p className="hint">Laat vrienden of familie buiten je gezin <b>alleen jouw eigen afspraken</b> zien, niet die van je partner of kinderen. Zij kunnen hun agenda op dezelfde manier met jou delen.</p>
+      <p className="hint">Laat vrienden of familie buiten je gezin <b>alleen jouw eigen agenda</b> zien. Afspraken samen met je partner of kinderen zien ze enkel als “Niet beschikbaar – familiale reden”. Je gezin, taken en lijsten zien ze nooit. Wie jij uitnodigt, is alleen voor jou zichtbaar; zij kunnen op hun beurt hun eigen agenda delen.</p>
       {!linked && <p className="error">Je account is nog niet aan een profiel gekoppeld. Koppel het hierboven bij “Toegang tot het gezin”; dan weten we welke afspraken van jou zijn.</p>}
       <div className="addrow" style={{ flexWrap: "wrap" }}>
         <select id="share-level" value={level} onChange={(e) => setLevel(e.target.value as "details" | "bezet")} style={{ width: "auto" }} aria-label="Wat ze zien">

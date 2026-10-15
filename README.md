@@ -26,8 +26,10 @@ Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
   profiel (bv. "Mama") of op *Uitnodigen*. Je krijgt een link (WhatsApp, e-mail of kopiëren). Wie de link opent,
   maakt een account of meldt zich aan, en ziet en beheert daarna alles van het gezin.
 - **Je eigen agenda delen met iemand buiten je gezin** (bv. een vriend): Instellingen → *Mijn agenda delen*.
-  Die persoon ziet enkel de afspraken waaraan jij zelf deelneemt, niet die van je partner of kinderen, en
-  niets van je taken, maaltijden of lijsten. Kies "alleen bezet" om enkel te tonen wanneer je bezet bent.
+  Die persoon ziet enkel de afspraken waaraan jij zelf deelneemt. Afspraken samen met je partner of kinderen
+  ziet die persoon als "Niet beschikbaar – familiale reden"; afspraken van je gezin zonder jou en je taken,
+  maaltijden of lijsten ziet die persoon nooit. Delen is persoonlijk: wie jouw vriend op zijn beurt uitnodigt,
+  is alleen voor je vriend zichtbaar. Kies "alleen bezet" om enkel te tonen wanneer je bezet bent.
   Je kunt het delen altijd stoppen. Hij of zij kan met één tik terugdelen.
 - **Rollen.** Een *beheerder* nodigt mensen uit, koppelt accounts aan profielen en kan toegang intrekken.
   Een *lid* gebruikt alles in het gezin.
