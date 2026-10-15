@@ -1,0 +1,10 @@
+services:
+  gezinsbord:
+    build: .
+    container_name: gezinsbord
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - ./data:/data

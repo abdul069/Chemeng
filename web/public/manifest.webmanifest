@@ -1,0 +1,13 @@
+{
+  "name": "Gezinsbord",
+  "short_name": "Gezinsbord",
+  "description": "Kalender, taken, maaltijden en lijsten voor het hele gezin",
+  "lang": "nl",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#eef2f6",
+  "theme_color": "#2bb3a8",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
