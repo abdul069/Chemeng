@@ -150,16 +150,24 @@ export const deleteRecipe = (id: string) => run("DELETE FROM recipes WHERE id=? 
 export const recipeBySource = (url: string) => listRecipes().find((r) => r.sourceUrl === url);
 
 export const mealsBetween = (from: string, to: string) =>
-  all<{ date: string; slot: string; title: string; recipe_id: string | null }>(
-    "SELECT date, slot, title, recipe_id FROM meals WHERE household_id=? AND date BETWEEN ? AND ? ORDER BY date", hid(), from, to,
-  ).map((m) => ({ date: m.date, slot: m.slot, title: m.title, recipeId: m.recipe_id }));
+  all<{ date: string; slot: string; title: string; recipe_id: string | null; image: string | null; rimage: string | null }>(
+    `SELECT m.date, m.slot, m.title, m.recipe_id, m.image, r.image AS rimage FROM meals m LEFT JOIN recipes r ON r.id = m.recipe_id
+     WHERE m.household_id=? AND m.date BETWEEN ? AND ? ORDER BY m.date`, hid(), from, to,
+  ).map((m) => ({ date: m.date, slot: m.slot, title: m.title, recipeId: m.recipe_id, image: m.rimage || m.image || null }));
+export function setMealImage(date: string, slot: string, image: string | null) {
+  run("UPDATE meals SET image=? WHERE household_id=? AND date=? AND slot=?", image, hid(), date, slot);
+}
+export function setRecipeImage(id: string, image: string | null) {
+  run("UPDATE recipes SET image=? WHERE id=? AND household_id=?", image, id, hid());
+}
 export function setMeal(date: string, slot: string, title: string, recipeId: string | null = null) {
   const h = hid();
   if (recipeId && !get("SELECT 1 FROM recipes WHERE id=? AND household_id=?", recipeId, h)) recipeId = null;
   if (!title.trim()) run("DELETE FROM meals WHERE household_id=? AND date=? AND slot=?", h, date, slot);
   else run(
     `INSERT INTO meals(household_id, date, slot, title, recipe_id) VALUES (?,?,?,?,?)
-     ON CONFLICT(household_id, date, slot) DO UPDATE SET title=excluded.title, recipe_id=excluded.recipe_id`,
+     ON CONFLICT(household_id, date, slot) DO UPDATE SET title=excluded.title, recipe_id=excluded.recipe_id,
+       image=CASE WHEN meals.title=excluded.title THEN meals.image ELSE NULL END`,
     h, date, slot, title.trim(), recipeId,
   );
 }

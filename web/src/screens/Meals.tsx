@@ -5,6 +5,7 @@ import type { Meal, Slot } from "../types";
 import { Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe } from "../components/Recipes";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../dates";
 
 const SLOTS: Slot[] = ["ontbijt", "lunch", "diner"];
@@ -56,10 +57,10 @@ function WeekMenu() {
                   const m = meals.find((x) => x.date === d && x.slot === s);
                   const r = recipe(m?.recipeId ?? null);
                   return (
-                    <button key={s} className={`slot${m ? " filled" : ""}`} onClick={() => (r ? openRecipe(r.id) : setSlot({ date: d, slot: s }))}
+                    <button key={s} className={`slot${m ? " filled" : ""}${m?.image ? " has-img" : ""}`} onClick={() => (r ? openRecipe(r.id) : setSlot({ date: d, slot: s }))}
                       onContextMenu={(e) => { e.preventDefault(); setSlot({ date: d, slot: s }); }}>
-                      {r && <RecipeThumb r={r} size={40} />}
-                      <span style={{ minWidth: 0 }}><small>{s}</small>{m?.title ?? <span className="muted">+ toevoegen</span>}</span>
+                      {m?.image && <img className="slot-img" src={m.image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+                      <span className="slot-txt"><small>{s}{r ? " · recept" : ""}</small>{m?.title ?? <span className="muted">+ toevoegen</span>}</span>
                     </button>
                   );
                 })}
@@ -79,12 +80,20 @@ function SlotEditor({ date, slot, current, onClose }: { date: string; slot: Slot
   const act = useAction();
   const [title, setTitle] = useState(current?.title ?? "");
   const [q, setQ] = useState("");
+  const [photo, setPhoto] = useState(false);
   const save = async (t: string, recipeId: string | null = null) => {
     if (await act(() => api.put("/meals", { date, slot, title: t, recipeId }), t ? "Maaltijd gepland" : "Maaltijd gewist")) onClose();
   };
   const recipes = (data?.recipes ?? []).filter((r) => !q || r.title.toLocaleLowerCase("tr").includes(q.toLocaleLowerCase("tr")));
   return (
     <Modal title={`${slot[0].toUpperCase()}${slot.slice(1)} · ${DSHORT[weekday(date)]} ${Number(date.slice(8))} ${MSHORT[Number(date.slice(5, 7)) - 1]}`} onClose={onClose}>
+      {current && (
+        <div className="slot-photo">
+          {current.image ? <img src={current.image} alt="" referrerPolicy="no-referrer" /> : <span className="rthumb ph" style={{ width: 72, height: 72 }}>🍲</span>}
+          <button className="btn ghost small" onClick={() => setPhoto(true)}>📷 {current.image ? "Andere foto" : "Foto kiezen"}</button>
+          {current.recipeId && <button className="btn ghost small" onClick={() => { onClose(); openRecipe(current.recipeId!); }}>Recept openen</button>}
+        </div>
+      )}
       <label className="field"><span>Wat eten we?</span><input id="meal-title" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && title.trim() && save(title.trim())} placeholder="bv. Stoofvlees met frietjes" /></label>
       {!!data?.recipes.length && (
         <div className="field"><span>Of kies uit je receptenbibliotheek</span>
@@ -103,12 +112,16 @@ function SlotEditor({ date, slot, current, onClose }: { date: string; slot: Slot
         <button className="btn ghost" onClick={onClose}>Annuleren</button>
         <button className="btn" onClick={() => save(title.trim())} disabled={!title.trim()}>Bewaren</button>
       </div>
+      {photo && current && <PhotoPicker title={current.title} current={current.image}
+        onPick={(image) => act(() => (current.recipeId ? api.put(`/recipes/${current.recipeId}/image`, { image }) : api.put("/meals/image", { date, slot, image })), image ? "Foto bewaard" : "Foto weggehaald")}
+        onClose={() => setPhoto(false)} />}
     </Modal>
   );
 }
 
 function Library() {
   const { data } = useData();
+  const act = useAction();
   const [q, setQ] = useState("");
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
@@ -123,6 +136,7 @@ function Library() {
         <button className="btn accent" onClick={() => setModal("search")}>🔎 Turkse recepten zoeken</button>
         <button className="btn ghost" onClick={() => setModal("import")}>🔗 Via link toevoegen</button>
         <button className="btn ghost" onClick={() => setModal("new")}>✍️ Eigen recept</button>
+        {recipes.some((r) => !r.image) && <button className="btn ghost" onClick={() => act(() => api.post("/dish-photos/fill"), "Foto's worden gezocht…")}>📷 Ontbrekende foto's zoeken</button>}
       </div>
       <div className="addrow">
         <input id="lib-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Zoek in je ${recipes.length} recepten, ook op ingrediënt`} aria-label="Zoek in de bibliotheek" />

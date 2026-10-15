@@ -8,7 +8,9 @@ import {
   memberByName, recipeBySource, setChoreDone, setMeal, SLOTS,
 } from "./store.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError } from "./recipes.js";
-import { getSettings } from "./db.js";
+import { getSettings, hid } from "./db.js";
+import { fillMissingPhotos } from "./dishphotos.js";
+import { broadcastTo } from "./realtime.js";
 import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
 
@@ -113,6 +115,8 @@ function buildTools(changes: Change[]) {
       inputSchema: z.object({ datum: date, moment: z.enum(SLOTS), gerecht: z.string().min(1), recept_id: z.string().optional().describe("id uit de receptenbibliotheek, als het gerecht daar staat") }),
       run: async ({ datum, moment, gerecht, recept_id }) => {
         setMeal(datum, moment, gerecht, recept_id ?? null);
+        const h = hid();
+        setTimeout(() => fillMissingPhotos(h, (t) => broadcastTo(h, t)).catch(() => {}), 50);
         changes.push({ kind: "meal", date: datum, slot: moment, title: gerecht });
         return `Gepland: ${moment} op ${datum}: ${gerecht}.`;
       },

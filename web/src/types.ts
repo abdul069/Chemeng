@@ -15,7 +15,8 @@ export interface List { id: string; name: string; icon: string; items: ListItem[
 export interface Recipe { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string }
 export interface RecipeHit { title: string; url: string; site: string; image: string | null; minutes: number | null }
 export interface Memo { id: string; title: string; filename: string; seconds: number; createdAt: string; by: string | null }
-export interface Meal { date: string; slot: Slot; title: string; recipeId: string | null }
+export interface Meal { date: string; slot: Slot; title: string; recipeId: string | null; image: string | null }
+export interface DishPhoto { url: string; source: string; title: string }
 export type Slot = "ontbijt" | "lunch" | "diner" | "snack";
 export interface Photo { id: string; filename: string; created_at: string }
 export interface CalendarSub { id: string; name: string; url: string; members: string[]; lastSync: string | null; lastError: string | null }

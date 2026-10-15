@@ -19,6 +19,7 @@ import {
 import * as A from "./accounts.js";
 import { seedDemo } from "./seed.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
+import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
 import { isDate } from "./dates.js";
 
 export const api = express.Router();
@@ -227,6 +228,7 @@ api.post("/household/demo", requireAdmin, (_req, res) => {
   if (get("SELECT 1 FROM events WHERE household_id=? LIMIT 1", hid())) return void res.status(400).json({ error: "Voorbeeldgegevens kunnen alleen in een leeg gezin." });
   seedDemo();
   res.json({ ok: true });
+  autoPhotos();
   broadcast("members", "events", "chores", "meals", "recipes", "lists", "rewards");
 });
 
@@ -306,8 +308,45 @@ api.put("/meals", (req, res) => {
   S.setMeal(b.date, b.slot, b.title, b.recipeId ?? null);
   res.json({ ok: true });
   broadcast("meals");
+  autoPhotos();
 });
-api.post("/recipes", (req, res) => { res.json({ id: S.createRecipe(S.RecipeInput.parse(req.body)) }); broadcast("recipes"); });
+
+// ---------- foto's van gerechten ----------
+/** Zoekt op de achtergrond foto's voor gerechten die er nog geen hebben. */
+function autoPhotos() {
+  const h = hid();
+  setTimeout(() => fillMissingPhotos(h, (t) => broadcastTo(h, t)).catch((e) => console.warn("[gerechtfoto]", e)), 50);
+}
+const ImageUrl = z.string().max(2000).refine((u) => /^https?:\/\//.test(u) || u.startsWith("/api/photos/file/"), "Ongeldige foto").nullable();
+api.post("/dish-photos", async (req, res) => {
+  const q = z.object({ query: z.string().trim().min(2).max(120) }).parse(req.body).query;
+  res.json(await findDishPhotos(q, { withSites: true }));
+});
+const dishUpload = multer({
+  storage: multer.diskStorage({
+    destination: PHOTO_DIR,
+    filename: (_req, file, cb) => cb(null, `dish-${crypto.randomUUID()}${path.extname(file.originalname).toLowerCase() || ".jpg"}`),
+  }),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp|gif|heic|heif)$/.test(file.mimetype)),
+});
+api.post("/dish-photos/upload", dishUpload.single("photo"), (req, res) => {
+  if (!req.file) return void res.status(400).json({ error: "Kies een foto (jpg, png of webp)." });
+  res.json({ image: `/api/photos/file/${req.file.filename}` });
+});
+api.put("/recipes/:id/image", (req, res) => {
+  S.setRecipeImage(p(req), ImageUrl.parse(req.body.image ?? null));
+  res.json({ ok: true });
+  broadcast("recipes", "meals");
+});
+api.put("/meals/image", (req, res) => {
+  const b = z.object({ date: day, slot: z.enum(S.SLOTS), image: ImageUrl }).parse(req.body);
+  S.setMealImage(b.date, b.slot, b.image);
+  res.json({ ok: true });
+  broadcast("meals");
+});
+api.post("/dish-photos/fill", (_req, res) => { autoPhotos(); res.json({ ok: true }); });
+api.post("/recipes", (req, res) => { res.json({ id: S.createRecipe(S.RecipeInput.parse(req.body)) }); broadcast("recipes"); autoPhotos(); });
 api.put("/recipes/:id", (req, res) => { S.updateRecipe(p(req), S.RecipeInput.parse(req.body)); res.json({ ok: true }); broadcast("recipes"); });
 api.delete("/recipes/:id", (req, res) => { S.deleteRecipe(p(req)); res.json({ ok: true }); broadcast("recipes", "meals"); });
 api.post("/recipes/:id/to-list", (req, res) => {
@@ -335,6 +374,7 @@ api.post("/recipes/import", async (req, res) => {
     const id = S.createRecipe(r);
     res.json({ id, existing: false });
     broadcast("recipes");
+    if (!r.image) autoPhotos();
   } catch (e) {
     if (e instanceof RecipeError) return void res.status(400).json({ error: e.message });
     throw e;

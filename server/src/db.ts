@@ -203,6 +203,8 @@ addColumn("recipes", "image", "TEXT");
 addColumn("recipes", "source_url", "TEXT");
 addColumn("recipes", "servings", "TEXT NOT NULL DEFAULT ''");
 addColumn("recipes", "cuisine", "TEXT NOT NULL DEFAULT ''");
+addColumn("meals", "image", "TEXT");
+db.exec(`CREATE TABLE IF NOT EXISTS dish_photos (title TEXT PRIMARY KEY, image TEXT, tried_at TEXT NOT NULL DEFAULT (datetime('now')))`);
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_feedback (
   id TEXT PRIMARY KEY,

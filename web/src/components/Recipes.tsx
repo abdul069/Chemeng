@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useAction, useData } from "../store";
 import type { Recipe, RecipeHit, Slot } from "../types";
 import { Confirm, Modal } from "./ui";
+import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 
 /** Een recept openen vanaf eender welk scherm. */
@@ -52,6 +53,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
   const missing = ingredients.filter((_, i) => !have.has(i));
   const toggle = (i: number) => setHave((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
@@ -70,7 +72,10 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   if (edit) return <RecipeEditor recipe={recipe} onClose={() => setEdit(false)} />;
   return (
     <Modal title={recipe.title} onClose={onClose} wide>
-      {recipe.image && <img className="rhero" src={recipe.image} alt="" referrerPolicy="no-referrer" />}
+      <div className="rhero-wrap">
+        {recipe.image ? <img className="rhero" src={recipe.image} alt="" referrerPolicy="no-referrer" /> : <div className="rhero ph" aria-hidden>🍲</div>}
+        <button className="pill rhero-btn" onClick={() => setPhoto(true)}>📷 {recipe.image ? "Foto wijzigen" : "Foto toevoegen"}</button>
+      </div>
       <div className="rmeta">
         {recipe.minutes && <span className="badge">⏱ {recipe.minutes} min</span>}
         {recipe.servings && <span className="badge">🍽 {recipe.servings}</span>}
@@ -104,6 +109,8 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         <button className="btn ghost" onClick={() => setEdit(true)}>Bewerken</button>
       </div>
       {plan && <PlanRecipe recipe={recipe} onClose={() => setPlan(false)} />}
+      {photo && <PhotoPicker title={recipe.title.replace(/\s*(tarifi|\(.*\))\s*/gi, " ").trim()} current={recipe.image}
+        onPick={(image) => act(() => api.put(`/recipes/${recipe.id}/image`, { image }), image ? "Foto bewaard" : "Foto weggehaald")} onClose={() => setPhoto(false)} />}
       {confirm && <Confirm title="Recept verwijderen?" onClose={() => setConfirm(false)}
         actions={[{ label: "Verwijderen", run: async () => { if (await act(() => api.del(`/recipes/${recipe.id}`), "Recept verwijderd")) onClose(); } }]} />}
     </Modal>

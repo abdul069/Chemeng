@@ -69,13 +69,13 @@ export function TodayScreen({ openEditor, openAssistant, goto, header }: {
               const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
               if (r) return (
                 <button className="meal-row link" key={slot} onClick={() => openRecipe(r.id)}>
-                  <RecipeThumb r={r} size={34} />
+                  <RecipeThumb r={{ image: m!.image, title: r.title }} size={52} />
                   <span><small>{slot} · recept</small>{m!.title}</span>
                 </button>
               );
               return (
                 <div className="meal-row" key={slot}>
-                  <span className="ic" aria-hidden>{SLOT_ICON[slot]}</span>
+                  {m?.image ? <RecipeThumb r={{ image: m.image, title: m.title }} size={52} /> : <span className="ic" aria-hidden>{SLOT_ICON[slot]}</span>}
                   <span><small>{slot}</small>{m?.title ?? <span className="muted">Nog niets gepland</span>}</span>
                 </div>
               );
