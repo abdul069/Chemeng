@@ -35,11 +35,15 @@ export function PeopleBar({ count }: { count?: string }) {
   return (
     <div className="people">
       {count && <span className="count-chip">{count}</span>}
-      {data.members.map((m) => (
-        <button key={m.id} className="person" aria-pressed={!hidden.has(m.id)} onClick={() => toggleHidden(m.id)} title={hidden.has(m.id) ? `${m.name} tonen` : `${m.name} verbergen`}>
-          <Avatar m={m} />
-          <span className="pname">{m.name}</span>
-        </button>
+      {[...data.members, ...data.shared].map((m, i) => (
+        <span key={m.id} style={{ display: "contents" }}>
+          {m.shared && i === data.members.length && <span className="people-sep" aria-hidden><span>Gedeeld</span></span>}
+          <button className={`person${m.shared ? " shared" : ""}`} aria-pressed={!hidden.has(m.id)} onClick={() => toggleHidden(m.id)}
+            title={`${m.shared ? "Gedeelde agenda van " : ""}${m.name}: tik om te ${hidden.has(m.id) ? "tonen" : "verbergen"}`}>
+            <Avatar m={m} />
+            <span className="pname">{m.name}</span>
+          </button>
+        </span>
       ))}
     </div>
   );

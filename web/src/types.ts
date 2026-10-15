@@ -1,4 +1,4 @@
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet" }
 export type Repeat = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;
@@ -30,8 +30,19 @@ export interface Bootstrap {
   members: Member[]; chores: Chore[]; rewards: Reward[]; points: Record<string, Points>;
   lists: List[]; recipes: Recipe[]; calendars: CalendarSub[]; photos: Photo[]; settings: Settings;
   assistant: { available: boolean; model: string };
+  /** Mensen buiten het gezin die hun agenda met jou delen */
+  shared: Member[];
+  me: { id: string; name: string; email: string; role: "beheerder" | "lid"; memberId: string | null };
 }
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards";
+export interface Me { user: { id: string; email: string; name: string; color: string }; households: { id: string; name: string; role: "beheerder" | "lid"; memberId: string | null }[]; householdId: string | null }
+export interface HouseholdUser { id: string; name: string; email: string; role: "beheerder" | "lid"; memberId: string | null }
+export interface ShareRow { id: string; name: string; email: string; level: "details" | "bezet"; iShareBack?: boolean }
+export interface Invite { id: string; kind: "household" | "agenda"; memberId: string | null; role: string; label: string; expiresAt: string }
+export type InviteInfo =
+  | { valid: false; reason: string }
+  | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
+  | { valid: true; kind: "agenda"; from: string; level: string };
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }

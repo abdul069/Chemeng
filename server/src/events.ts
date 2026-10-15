@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { all, get, run, newId } from "./db.js";
+import { all, get, run, newId, hid } from "./db.js";
 import { addDays, addMonths, diffDays, isDate } from "./dates.js";
 
 export const REPEATS = ["none", "daily", "weekly", "biweekly", "monthly", "yearly"] as const;
@@ -69,16 +69,16 @@ export function createEvent(input: EventInputT, source = "local", externalUid: s
   const e = normalize(input);
   const id = newId();
   run(
-    `INSERT INTO events(id, title, notes, location, date, end_date, start_time, end_time, all_day, repeat, repeat_until, members, source, external_uid)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-    id, e.title, e.notes, e.location, e.date, e.endDate, e.startTime, e.endTime, e.allDay ? 1 : 0,
+    `INSERT INTO events(id, household_id, title, notes, location, date, end_date, start_time, end_time, all_day, repeat, repeat_until, members, source, external_uid)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    id, hid(), e.title, e.notes, e.location, e.date, e.endDate, e.startTime, e.endTime, e.allDay ? 1 : 0,
     e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), source, externalUid,
   );
   return getEvent(id)!;
 }
 
 export function getEvent(id: string): CalEvent | undefined {
-  const r = get<EventRow>("SELECT * FROM events WHERE id = ?", id);
+  const r = get<EventRow>("SELECT * FROM events WHERE id = ? AND household_id = ?", id, hid());
   return r && toEvent(r);
 }
 
@@ -86,9 +86,9 @@ export function updateEvent(id: string, input: EventInputT): CalEvent | undefine
   const e = normalize(input);
   run(
     `UPDATE events SET title=?, notes=?, location=?, date=?, end_date=?, start_time=?, end_time=?, all_day=?, repeat=?, repeat_until=?, members=?
-     WHERE id=? AND source='local'`,
+     WHERE id=? AND household_id=? AND source='local'`,
     e.title, e.notes, e.location, e.date, e.endDate, e.startTime, e.endTime, e.allDay ? 1 : 0,
-    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), id,
+    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), id, hid(),
   );
   return getEvent(id);
 }
@@ -98,19 +98,19 @@ export function skipOccurrence(id: string, on: string) {
   const ev = getEvent(id);
   if (!ev || ev.readOnly) return;
   const ex = Array.from(new Set([...ev.exdates, on])).sort();
-  run("UPDATE events SET exdates=? WHERE id=?", JSON.stringify(ex), id);
+  run("UPDATE events SET exdates=? WHERE id=? AND household_id=?", JSON.stringify(ex), id, hid());
 }
 
 /** Beëindigt een reeks vóór de gegeven datum ("deze en volgende"). */
 export function endSeriesBefore(id: string, on: string) {
   const ev = getEvent(id);
   if (!ev || ev.readOnly) return;
-  if (on <= ev.date) run("DELETE FROM events WHERE id=?", id);
-  else run("UPDATE events SET repeat_until=? WHERE id=?", addDays(on, -1), id);
+  if (on <= ev.date) run("DELETE FROM events WHERE id=? AND household_id=?", id, hid());
+  else run("UPDATE events SET repeat_until=? WHERE id=? AND household_id=?", addDays(on, -1), id, hid());
 }
 
 export function deleteEvent(id: string) {
-  run("DELETE FROM events WHERE id=? AND source='local'", id);
+  run("DELETE FROM events WHERE id=? AND household_id=? AND source='local'", id, hid());
 }
 
 function* starts(ev: CalEvent, from: string, to: string): Generator<string> {
@@ -148,14 +148,17 @@ export function expand(ev: CalEvent, from: string, to: string): Occurrence[] {
   return out;
 }
 
+const RANGE_SQL = `date <= ? AND (
+  COALESCE(end_date, date) >= ? OR (repeat != 'none' AND (repeat_until IS NULL OR repeat_until >= ?))
+)`;
+
+export function rowsBetween(householdId: string, from: string, to: string) {
+  return all<EventRow>(`SELECT * FROM events WHERE household_id = ? AND ${RANGE_SQL}`, householdId, to, from, from);
+}
+
 export function eventsBetween(from: string, to: string, memberIds?: string[]): Occurrence[] {
   if (!isDate(from) || !isDate(to)) return [];
-  const rows = all<EventRow>(
-    `SELECT * FROM events WHERE date <= ? AND (
-       COALESCE(end_date, date) >= ? OR (repeat != 'none' AND (repeat_until IS NULL OR repeat_until >= ?))
-     )`,
-    to, from, from,
-  );
+  const rows = rowsBetween(hid(), from, to);
   const occ = rows.flatMap((r) => expand(toEvent(r), from, to));
   const filtered = memberIds?.length ? occ.filter((o) => !o.members.length || o.members.some((m) => memberIds.includes(m))) : occ;
   return filtered.sort((a, b) =>

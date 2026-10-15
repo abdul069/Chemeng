@@ -4,36 +4,229 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { z, ZodError } from "zod";
-import { PHOTO_DIR, getSettings, setSettings, run, get, newId } from "./db.js";
+import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all } from "./db.js";
 import {
   EventInput, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
 } from "./events.js";
 import * as S from "./store.js";
-import { broadcast } from "./realtime.js";
+import { broadcast, broadcastTo, notifyUsers } from "./realtime.js";
 import { getWeather, geocode } from "./weather.js";
 import { syncAll, syncCalendar } from "./ics.js";
 import { chat, assistantAvailable, MODEL } from "./assistant.js";
-import { authRequired, requireCode } from "./auth.js";
+import {
+  clearFailures, endSession, isAdmin, noteFailure, requireAdmin, requireHousehold, requireUser, startSession, tooManyAttempts, verifyPassword, hashPassword,
+} from "./auth.js";
+import * as A from "./accounts.js";
+import { seedDemo } from "./seed.js";
 import { isDate } from "./dates.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const p = (req: Request) => req.params.id as string;
+const inviteUrl = (req: Request, token: string) => `${req.protocol}://${req.get("host")}/uitnodiging/${token}`;
 
-api.get("/health", (_req, res) => { res.json({ ok: true, authRequired: authRequired() }); });
-api.use(requireCode);
+api.get("/health", (_req, res) => { res.json({ ok: true }); });
+
+// ---------- aanmelden ----------
+api.post("/auth/register", (req, res) => {
+  const b = A.RegisterInput.parse(req.body);
+  if (get("SELECT 1 FROM users WHERE email=?", b.email)) return void res.status(409).json({ error: "Er bestaat al een account met dit e-mailadres. Meld je aan." });
+  const invite = b.invite ? A.describeInvite(b.invite) : null;
+  if (invite && !invite.valid) return void res.status(400).json({ error: invite.reason });
+  const userId = A.createUser(b);
+  let householdId: string | null = null;
+  // wie in een gezin uitgenodigd wordt, krijgt geen eigen leeg gezin
+  if (invite?.valid && invite.kind === "household") householdId = A.acceptInvite(b.invite!, userId).householdId;
+  else {
+    householdId = A.createHousehold(userId, `Gezin ${b.name}`);
+    if (invite?.valid && invite.kind === "agenda") {
+      const r = A.acceptInvite(b.invite!, userId);
+      if (r.ownerId) notifyUsers([r.ownerId], ["sharing"]);
+    }
+  }
+  startSession(res, req, userId, householdId);
+  res.json({ ok: true });
+});
+
+api.post("/auth/login", (req, res) => {
+  const b = z.object({ email: z.string().trim().toLowerCase(), password: z.string() }).parse(req.body);
+  const key = `${req.ip}|${b.email}`;
+  if (tooManyAttempts(key)) return void res.status(429).json({ error: "Te veel pogingen. Probeer het over een kwartier opnieuw." });
+  const u = get<{ id: string; password_hash: string }>("SELECT id, password_hash FROM users WHERE email=?", b.email);
+  if (!u || !verifyPassword(b.password, u.password_hash)) {
+    noteFailure(key);
+    return void res.status(401).json({ error: "E-mailadres of wachtwoord klopt niet." });
+  }
+  clearFailures(key);
+  startSession(res, req, u.id, A.householdsOf(u.id)[0]?.id ?? null);
+  res.json({ ok: true });
+});
+
+api.post("/auth/logout", (req, res) => { endSession(req, res); res.json({ ok: true }); });
+
+api.get("/invites/:token", (req, res) => { res.json(A.describeInvite(req.params.token as string)); });
+
+api.use(requireUser);
+
+api.get("/auth/me", (req, res) => {
+  const s = req.session!;
+  res.json({ user: s.user, households: A.householdsOf(s.user.id), householdId: s.householdId });
+});
+
+api.post("/invites/:token/accept", (req, res) => {
+  const s = req.session!;
+  const r = A.acceptInvite(req.params.token as string, s.user.id);
+  if (r.householdId) {
+    run("UPDATE sessions SET household_id=? WHERE token_hash=?", r.householdId, s.tokenHash);
+    broadcastTo(r.householdId, ["members", "access"]);
+  }
+  if (r.ownerId) notifyUsers([r.ownerId], ["sharing"]);
+  res.json(r);
+});
+
+// ---------- account ----------
+api.put("/account", (req, res) => {
+  const b = z.object({ name: z.string().trim().min(1).max(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }).parse(req.body);
+  run("UPDATE users SET name=?, color=COALESCE(?, color) WHERE id=?", b.name, b.color ?? null, req.session!.user.id);
+  res.json({ ok: true });
+});
+api.put("/account/password", (req, res) => {
+  const b = z.object({ current: z.string(), next: z.string().min(8, "Kies een wachtwoord van minstens 8 tekens").max(200) }).parse(req.body);
+  const u = get<{ password_hash: string }>("SELECT password_hash FROM users WHERE id=?", req.session!.user.id)!;
+  if (!verifyPassword(b.current, u.password_hash)) return void res.status(400).json({ error: "Je huidige wachtwoord klopt niet." });
+  run("UPDATE users SET password_hash=? WHERE id=?", hashPassword(b.next), req.session!.user.id);
+  run("DELETE FROM sessions WHERE user_id=? AND token_hash<>?", req.session!.user.id, req.session!.tokenHash);
+  res.json({ ok: true });
+});
+
+// ---------- gezinnen ----------
+api.post("/households", (req, res) => {
+  const name = z.object({ name: z.string().trim().min(1).max(80) }).parse(req.body).name;
+  const id = A.createHousehold(req.session!.user.id, name);
+  run("UPDATE sessions SET household_id=? WHERE token_hash=?", id, req.session!.tokenHash);
+  res.json({ id });
+});
+api.post("/households/switch", (req, res) => {
+  const id = z.object({ householdId: z.string() }).parse(req.body).householdId;
+  if (!A.householdsOf(req.session!.user.id).some((h) => h.id === id)) return void res.status(403).json({ error: "Je hoort niet bij dit gezin." });
+  run("UPDATE sessions SET household_id=? WHERE token_hash=?", id, req.session!.tokenHash);
+  res.json({ ok: true });
+});
+
+// ---------- agenda delen ----------
+api.get("/sharing", (req, res) => { res.json(A.sharingOverview(req.session!.user.id)); });
+const Level = z.object({ level: z.enum(["details", "bezet"]) });
+api.put("/sharing/viewers/:id", (req, res) => {
+  run("UPDATE shares SET level=? WHERE owner_id=? AND viewer_id=?", Level.parse(req.body).level, req.session!.user.id, p(req));
+  res.json({ ok: true });
+  notifyUsers([p(req)], ["sharing", "events"]);
+});
+api.delete("/sharing/viewers/:id", (req, res) => {
+  run("DELETE FROM shares WHERE owner_id=? AND viewer_id=?", req.session!.user.id, p(req));
+  res.json({ ok: true });
+  notifyUsers([p(req)], ["sharing", "events"]);
+});
+api.delete("/sharing/following/:id", (req, res) => {
+  run("DELETE FROM shares WHERE owner_id=? AND viewer_id=?", p(req), req.session!.user.id);
+  res.json({ ok: true });
+  notifyUsers([p(req)], ["sharing"]);
+});
+// mijn agenda terug delen met iemand die de zijne al met mij deelt
+api.post("/sharing/share-back/:id", (req, res) => {
+  const me = req.session!.user.id;
+  if (!get("SELECT 1 FROM shares WHERE owner_id=? AND viewer_id=?", p(req), me)) return void res.status(400).json({ error: "Je kunt alleen terugdelen met iemand die zijn agenda met jou deelt. Stuur anders een uitnodiging." });
+  if (!A.linkedMembers(me).length) return void res.status(400).json({ error: "Koppel je account eerst aan je eigen profiel in je gezin." });
+  run("INSERT INTO shares(owner_id, viewer_id, level) VALUES (?,?,?) ON CONFLICT(owner_id, viewer_id) DO UPDATE SET level=excluded.level", me, p(req), Level.parse(req.body).level);
+  res.json({ ok: true });
+  notifyUsers([p(req)], ["sharing", "events"]);
+});
+
+// ---------- foto's bekijken (eigen gezin of profielfoto van wie deelt) ----------
+api.get("/photos/file/:name", (req, res) => {
+  const name = path.basename(req.params.name as string);
+  if (!A.canSeePhoto(req.session!.user.id, name)) return void res.status(404).end();
+  res.sendFile(path.join(PHOTO_DIR, name), { maxAge: "30d" }, (err) => {
+    if (err && !res.headersSent) res.status(404).end();
+  });
+});
+
+// uitnodiging maken: voor je agenda kan dat ook zonder actief gezin
+api.post("/invites", (req, res, next) => {
+  const b = A.InviteInput.parse(req.body);
+  const s = req.session!;
+  if (b.kind === "household") {
+    if (!s.householdId || !isAdmin(s.user.id, s.householdId)) return void res.status(403).json({ error: "Alleen een beheerder kan mensen in het gezin uitnodigen." });
+  }
+  try {
+    const { id, token } = A.createInvite(s.user.id, s.householdId, b);
+    res.json({ id, url: inviteUrl(req, token) });
+  } catch (e) {
+    if (e instanceof A.UserError) return void res.status(400).json({ error: e.message });
+    next(e);
+  }
+});
+api.get("/invites", (req, res) => { res.json(A.pendingInvites(req.session!.user.id, req.session!.householdId)); });
+api.delete("/invites/:id", (req, res) => {
+  run("DELETE FROM invites WHERE id=? AND created_by=? AND used_at IS NULL", p(req), req.session!.user.id);
+  res.json({ ok: true });
+});
+
+api.use(requireHousehold);
 
 function publicSettings() {
   const { settings_pin, ...rest } = getSettings();
   return { ...rest, has_pin: settings_pin.length > 0 };
 }
 
-api.get("/bootstrap", (_req, res) => {
+api.get("/bootstrap", (req, res) => {
+  const { userId, householdId } = ctx();
+  const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
   res.json({
-    members: S.listMembers(), chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
+    members: S.listMembers(), shared: A.sharedPeople(userId, householdId),
+    chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL },
+    me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
   });
+});
+
+// ---------- toegang tot het gezin ----------
+api.get("/household/users", (_req, res) => {
+  res.json(all<{ id: string; name: string; email: string; role: string; member_id: string | null }>(
+    "SELECT u.id, u.name, u.email, hu.role, hu.member_id FROM household_users hu JOIN users u ON u.id = hu.user_id WHERE hu.household_id=? ORDER BY hu.rowid", hid(),
+  ).map((u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, memberId: u.member_id })));
+});
+const adminCount = () => get<{ n: number }>("SELECT COUNT(*) AS n FROM household_users WHERE household_id=? AND role='beheerder'", hid())!.n;
+api.put("/household/users/:id", requireAdmin, (req, res) => {
+  const b = z.object({ role: z.enum(["beheerder", "lid"]), memberId: z.string().nullable() }).parse(req.body);
+  const cur = get<{ role: string }>("SELECT role FROM household_users WHERE household_id=? AND user_id=?", hid(), p(req));
+  if (!cur) return void res.status(404).json({ error: "Deze persoon hoort niet bij het gezin." });
+  if (cur.role === "beheerder" && b.role !== "beheerder" && adminCount() <= 1) return void res.status(400).json({ error: "Er moet minstens één beheerder blijven." });
+  if (b.memberId) {
+    if (!get("SELECT 1 FROM members WHERE id=? AND household_id=?", b.memberId, hid())) return void res.status(400).json({ error: "Onbekend gezinslid." });
+    if (get("SELECT 1 FROM household_users WHERE member_id=? AND user_id<>?", b.memberId, p(req))) return void res.status(400).json({ error: "Dit profiel is al aan iemand anders gekoppeld." });
+  }
+  run("UPDATE household_users SET role=?, member_id=? WHERE household_id=? AND user_id=?", b.role, b.memberId, hid(), p(req));
+  res.json({ ok: true });
+  broadcast("access", "members");
+});
+api.delete("/household/users/:id", (req, res) => {
+  const { userId } = ctx();
+  const self = p(req) === userId;
+  if (!self && !isAdmin(userId, hid())) return void res.status(403).json({ error: "Alleen een beheerder kan iemand verwijderen." });
+  const cur = get<{ role: string }>("SELECT role FROM household_users WHERE household_id=? AND user_id=?", hid(), p(req));
+  if (!cur) return void res.json({ ok: true });
+  if (cur.role === "beheerder" && adminCount() <= 1) return void res.status(400).json({ error: "Er moet minstens één beheerder blijven. Maak eerst iemand anders beheerder." });
+  run("DELETE FROM household_users WHERE household_id=? AND user_id=?", hid(), p(req));
+  res.json({ ok: true });
+  broadcast("access", "members");
+  notifyUsers([p(req)], ["access"]);
+});
+api.post("/household/demo", requireAdmin, (_req, res) => {
+  if (get("SELECT 1 FROM events WHERE household_id=? LIMIT 1", hid())) return void res.status(400).json({ error: "Voorbeeldgegevens kunnen alleen in een leeg gezin." });
+  seedDemo();
+  res.json({ ok: true });
+  broadcast("members", "events", "chores", "meals", "recipes", "lists", "rewards");
 });
 
 // ---------- gezinsleden ----------
@@ -47,7 +240,9 @@ api.get("/events", (req, res) => {
   const { from, to } = req.query;
   if (!isDate(from) || !isDate(to)) return void res.status(400).json({ error: "Geef from en to op als YYYY-MM-DD." });
   const members = typeof req.query.members === "string" && req.query.members ? req.query.members.split(",") : undefined;
-  res.json(eventsBetween(from, to, members));
+  const { userId, householdId } = ctx();
+  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to)];
+  res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });
 api.put("/events/:id", (req, res) => {
@@ -157,7 +352,7 @@ const upload = multer({
 });
 api.post("/photos", upload.array("photos", 50), (req, res) => {
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-  for (const f of files) run("INSERT INTO photos(id, filename) VALUES (?,?)", newId(), f.filename);
+  for (const f of files) run("INSERT INTO photos(id, household_id, filename) VALUES (?,?,?)", newId(), hid(), f.filename);
   res.json({ added: files.length });
   broadcast("photos");
 });
@@ -166,7 +361,7 @@ api.post("/avatar", upload.single("photo"), (req, res) => {
   res.json({ filename: req.file.filename });
 });
 api.delete("/photos/:id", (req, res) => {
-  const ph = get<{ filename: string }>("SELECT filename FROM photos WHERE id=?", p(req));
+  const ph = get<{ filename: string }>("SELECT filename FROM photos WHERE id=? AND household_id=?", p(req), hid());
   if (ph) {
     run("DELETE FROM photos WHERE id=?", p(req));
     fs.rm(path.join(PHOTO_DIR, path.basename(ph.filename)), { force: true }, () => {});
@@ -174,17 +369,12 @@ api.delete("/photos/:id", (req, res) => {
   res.json({ ok: true });
   broadcast("photos");
 });
-api.get("/photos/file/:name", (req, res) => {
-  res.sendFile(path.join(PHOTO_DIR, path.basename(req.params.name as string)), { maxAge: "30d" }, (err) => {
-    if (err && !res.headersSent) res.status(404).end();
-  });
-});
 
 // ---------- gekoppelde agenda's ----------
 api.post("/calendars", async (req, res) => {
   const b = S.CalendarInput.parse(req.body);
   const id = newId();
-  run("INSERT INTO calendars(id, name, url, members) VALUES (?,?,?,?)", id, b.name, b.url, JSON.stringify(b.members));
+  run("INSERT INTO calendars(id, household_id, name, url, members) VALUES (?,?,?,?,?)", id, hid(), b.name, b.url, JSON.stringify(b.members));
   const cal = S.listCalendars().find((c) => c.id === id)!;
   try {
     const n = await syncCalendar(cal);
@@ -196,20 +386,22 @@ api.post("/calendars", async (req, res) => {
 });
 api.put("/calendars/:id", async (req, res) => {
   const b = S.CalendarInput.parse(req.body);
-  run("UPDATE calendars SET name=?, url=?, members=? WHERE id=?", b.name, b.url, JSON.stringify(b.members), p(req));
+  run("UPDATE calendars SET name=?, url=?, members=? WHERE id=? AND household_id=?", b.name, b.url, JSON.stringify(b.members), p(req), hid());
   const cal = S.listCalendars().find((c) => c.id === p(req));
   if (cal) await syncCalendar(cal).catch(() => {});
   res.json({ ok: true });
   broadcast("calendars", "events");
 });
 api.delete("/calendars/:id", (req, res) => {
-  run("DELETE FROM events WHERE source=?", p(req));
-  run("DELETE FROM calendars WHERE id=?", p(req));
+  if (get("SELECT 1 FROM calendars WHERE id=? AND household_id=?", p(req), hid())) {
+    run("DELETE FROM events WHERE source=? AND household_id=?", p(req), hid());
+    run("DELETE FROM calendars WHERE id=?", p(req));
+  }
   res.json({ ok: true });
   broadcast("calendars", "events");
 });
 api.post("/calendars/sync", async (_req, res) => {
-  await syncAll(() => broadcast("calendars", "events"));
+  await syncAll((h) => broadcastTo(h, ["calendars", "events"]), S.listCalendars());
   res.json({ calendars: S.listCalendars() });
 });
 
@@ -253,6 +445,14 @@ api.post("/assistant", async (req, res) => {
 api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof ZodError) {
     res.status(400).json({ error: "Controleer de ingevulde gegevens.", details: err.issues.map((i) => `${i.path.join(".")}: ${i.message}`) });
+    return;
+  }
+  if (err instanceof A.UserError) {
+    res.status(400).json({ error: err.message });
+    return;
+  }
+  if (err instanceof Error && /^Onbekend/.test(err.message)) {
+    res.status(400).json({ error: `${err.message}.` });
     return;
   }
   console.error(err);

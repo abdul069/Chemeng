@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { connectRealtime, onConnection, setCode, api, ApiError } from "./api";
+import { connectRealtime, onConnection } from "./api";
+import { AcceptInvite, AuthScreen, NoHousehold, inviteTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
 import { Icon } from "./components/Icons";
 import { EventEditor, type EditorState } from "./components/EventEditor";
@@ -25,7 +26,8 @@ const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }
 ];
 
 export function App() {
-  const { data, error } = useData();
+  const { data, error, errorCode, reload } = useData();
+  const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
   const [screen, setScreen] = useState<Screen>(() => (location.hash.slice(1) as Screen) || "today");
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [assist, setAssist] = useState<{ prompt?: string; key: number } | null>(null);
@@ -70,7 +72,10 @@ export function App() {
 
   const openAssistant = useCallback((prompt?: string) => setAssist({ prompt, key: Date.now() }), []);
 
-  if (error && !data) return <Login error={error} />;
+  if (errorCode === "login") return <AuthScreen onDone={() => { setInviteToken(null); reload(); }} />;
+  if (errorCode === "no_household" && !inviteToken) return <NoHousehold onDone={reload} />;
+  if (errorCode === "no_household" && inviteToken) return <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />;
+  if (error && !data) return <ErrorScreen error={error} />;
   if (!data) return <div className="center"><div className="mascot thinking" aria-label="Laden" /></div>;
 
   const current = NAV.find((n) => n.id === screen);
@@ -106,40 +111,20 @@ export function App() {
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
+      {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
     </div>
   );
 }
 
-function Login({ error }: { error: string }) {
-  const { reload } = useData();
-  const [code, setC] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [needsCode, setNeedsCode] = useState<boolean | null>(null);
-  useEffect(() => { api.get<{ authRequired: boolean }>("/health").then((h) => setNeedsCode(h.authRequired)).catch(() => setNeedsCode(false)); }, []);
-  const go = async () => {
-    setCode(code.trim());
-    try { await api.get("/bootstrap"); reload(); location.reload(); }
-    catch (e) { setMsg(e instanceof ApiError && e.status === 401 ? "Die code klopt niet." : (e as Error).message); }
-  };
+function ErrorScreen({ error }: { error: string }) {
   return (
     <div className="center">
-      <div className="card login">
+      <div className="card auth">
         <div className="mascot" />
         <h1>Gezinsbord</h1>
-        {needsCode ? (
-          <>
-            <p className="hint">Voer de toegangscode van je gezinsbord in. Je vindt ze bij wie de server installeerde.</p>
-            <input id="code" type="password" value={code} onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()} aria-label="Toegangscode" autoFocus />
-            {msg && <p className="error">{msg}</p>}
-            <button className="btn" onClick={go} disabled={!code.trim()}>Openen</button>
-          </>
-        ) : (
-          <>
-            <p className="error">{error}</p>
-            <button className="btn" onClick={() => location.reload()}>Opnieuw proberen</button>
-          </>
-        )}
+        <p className="error">{error}</p>
+        <button className="btn" onClick={() => location.reload()}>Opnieuw proberen</button>
       </div>
     </div>
   );

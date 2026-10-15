@@ -5,8 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { api } from "./routes.js";
-import { attachRealtime, broadcast } from "./realtime.js";
-import { seedIfEmpty } from "./seed.js";
+import { attachRealtime, broadcastTo } from "./realtime.js";
 import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
 
@@ -14,10 +13,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8080);
 const WEB_DIR = path.resolve(process.env.WEB_DIR ?? path.join(here, "../../web/dist"));
 
-seedIfEmpty();
-
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", api);
 
@@ -31,7 +29,7 @@ const server = http.createServer(app);
 attachRealtime(server);
 
 const SYNC_MIN = Number(process.env.CALENDAR_SYNC_MINUTES ?? 15);
-const doSync = () => syncAll(() => broadcast("calendars", "events")).catch((e) => console.warn("[agenda]", e));
+const doSync = () => syncAll((h) => broadcastTo(h, ["calendars", "events"])).catch((e) => console.warn("[agenda]", e));
 setTimeout(doSync, 5_000).unref();
 setInterval(doSync, SYNC_MIN * 60_000).unref();
 

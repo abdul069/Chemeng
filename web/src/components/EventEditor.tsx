@@ -35,12 +35,15 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
 
   if (occ?.readOnly) {
     const cal = data?.calendars.find((c) => c.id === occ.source);
+    const owner = occ.source === "shared" ? data?.shared.find((p) => p.id === occ.members[0]) : undefined;
     return (
       <Modal title={occ.title} onClose={onClose}>
         <p className="hint">{cap(longDate(occ.on))} · {fmtRange(occ)}{occ.location ? ` · ${occ.location}` : ""}</p>
         {occ.notes && <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{occ.notes}</p>}
         <MemberDots ids={occ.members} />
-        <p className="hint">Uit de gekoppelde agenda “{cal?.name ?? "extern"}”. Pas deze afspraak aan in die agenda; ze wordt hier automatisch bijgewerkt.</p>
+        <p className="hint">{owner
+          ? `Uit de agenda die ${owner.name} met je deelt.${owner.level === "bezet" ? ` ${owner.name} deelt alleen wanneer hij of zij bezet is.` : ""}`
+          : `Uit de gekoppelde agenda “${cal?.name ?? "extern"}”. Pas deze afspraak aan in die agenda; ze wordt hier automatisch bijgewerkt.`}</p>
         <div className="actions"><button className="btn" onClick={onClose}>Sluiten</button></div>
       </Modal>
     );

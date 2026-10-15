@@ -43,11 +43,11 @@ function useNow() {
 export function DayView({ date, events, onOpen, onSlot, compact }: {
   date: string; events: Occurrence[]; onOpen: (o: Occurrence) => void; onSlot?: (date: string, time: string, member?: string) => void; compact?: boolean;
 }) {
-  const { data, hidden } = useData();
+  const { people, hidden } = useData();
   const now = useNow();
   const scroller = useRef<HTMLDivElement>(null);
   const isToday = date === todayIso();
-  const cols = (data?.members ?? []).filter((m) => !hidden.has(m.id));
+  const cols = people.filter((m) => !hidden.has(m.id));
   const dayEvents = events.filter((e) => e.on <= date && e.until >= date);
   if (dayEvents.some((e) => !e.members.length)) cols.push(FAMILY);
 

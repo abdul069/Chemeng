@@ -358,3 +358,13 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 @media (min-width: 821px) { .mascot-float { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 .suggest button svg, .talk svg { width: 18px; height: 18px; flex: none; }
+.people-sep { align-self: stretch; display: flex; align-items: center; padding: 0 2px 0 6px; border-left: 2px dashed var(--line); }
+.people-sep span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.person.shared .avatar { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--c); }
+.linkbox { display: flex; gap: 8px; align-items: center; background: var(--surface-2); border: 1px dashed var(--accent); border-radius: 14px; padding: 10px 12px; }
+.linkbox code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; }
+.badge { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-ink); white-space: nowrap; }
+.auth { width: min(460px, 100%); display: flex; flex-direction: column; gap: 14px; padding: 28px; }
+.auth h1 { font-size: 32px; }
+.auth .switch { text-align: center; font-size: 14px; }
+.invite-card { border-radius: 18px; padding: 14px 16px; background: radial-gradient(90% 140% at 100% 0%, color-mix(in srgb, var(--glow-a) 35%, transparent), transparent 70%), var(--surface-2); }

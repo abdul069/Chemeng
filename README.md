@@ -18,6 +18,23 @@ Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 | **Assistent** | Claude, met spraak: "Zet volleybal op dinsdag om 17u voor Lina en Mama", "Wat eten we deze week?", "Zet melk op de boodschappenlijst", "Wat kunnen we dit weekend doen met een vierjarige?" |
 | **Instellingen** | Gezinsleden (naam, kleur, figuurtje of foto, ouder/kind), woonplaats voor het weer, fotolijst, ouder-pincode, thema |
 
+## Accounts, gezinnen en delen
+
+- **Account maken.** Iedereen maakt een account met e-mail en wachtwoord en krijgt meteen een eigen gezin,
+  met zichzelf als eerste gezinslid en beheerder.
+- **Iemand in je gezin uitnodigen** (bv. je partner): Instellingen → *Toegang tot het gezin* → tik op het
+  profiel (bv. "Mama") of op *Uitnodigen*. Je krijgt een link (WhatsApp, e-mail of kopiëren). Wie de link opent,
+  maakt een account of meldt zich aan, en ziet en beheert daarna alles van het gezin.
+- **Je eigen agenda delen met iemand buiten je gezin** (bv. een vriend): Instellingen → *Mijn agenda delen*.
+  Die persoon ziet enkel de afspraken waaraan jij zelf deelneemt, niet die van je partner of kinderen, en
+  niets van je taken, maaltijden of lijsten. Kies "alleen bezet" om enkel te tonen wanneer je bezet bent.
+  Je kunt het delen altijd stoppen. Hij of zij kan met één tik terugdelen.
+- **Rollen.** Een *beheerder* nodigt mensen uit, koppelt accounts aan profielen en kan toegang intrekken.
+  Een *lid* gebruikt alles in het gezin.
+- **Meerdere gezinnen.** Een account kan bij meerdere gezinnen horen en wisselt in Instellingen.
+
+Wachtwoord vergeten kan nog niet via e-mail worden hersteld.
+
 ## Architectuur
 
 ```
@@ -45,7 +62,7 @@ Open daarna `http://<ip-van-je-server>:8080` op het keukenscherm en op de telefo
 Railway bouwt de `Dockerfile` rechtstreeks uit deze repo. Nodig in de service:
 
 - een volume gekoppeld op `/data` (database en foto's);
-- variabelen `PORT=8080`, `DATA_DIR=/data`, `TZ=Europe/Brussels`, `ACCESS_CODE=<eigen code>` en `ANTHROPIC_API_KEY`;
+- variabelen `PORT=8080`, `DATA_DIR=/data`, `TZ=Europe/Brussels` en `ANTHROPIC_API_KEY`;
 - een publiek domein naar poort 8080.
 
 Elke push naar de gekoppelde branch zet automatisch een nieuwe versie online.
@@ -105,12 +122,10 @@ Gekoppelde agenda's zijn alleen-lezen in Gezinsbord; wijzigingen doe je in de oo
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Sleutel voor de assistent. Zonder sleutel staat alleen de assistent uit. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Model voor de assistent |
-| `ACCESS_CODE` | — | Verplichte toegangscode voor elk toestel. Zet dit als de server vanaf het internet bereikbaar is. |
 | `PORT` | `8080` | Poort van de server |
 | `DATA_DIR` | `data` | Map voor database en foto's |
 | `TZ` | `Europe/Brussels` | Tijdzone voor gekoppelde agenda's |
 | `CALENDAR_SYNC_MINUTES` | `15` | Hoe vaak gekoppelde agenda's bijgewerkt worden |
-| `SEED_DEMO` | `1` | Bij een lege database een voorbeeldgezin aanmaken. Zet op `0` om leeg te starten. |
 
 ## Privacy
 

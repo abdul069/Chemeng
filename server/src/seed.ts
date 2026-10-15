@@ -1,19 +1,20 @@
-// Vult een lege database met een voorbeeldgezin zodat het scherm meteen iets toont.
-// Uitzetten met SEED_DEMO=0; alles is achteraf aan te passen of te verwijderen in Instellingen.
-import { get, run, setSettings } from "./db.js";
+// Vult het actieve gezin met voorbeeldgegevens, zodat je kunt zien hoe alles werkt.
+// Alles is achteraf aan te passen of te verwijderen.
+import { ctx, get } from "./db.js";
 import { createEvent } from "./events.js";
-import { addItem, createChore, createList, createMember, createRecipe, createReward, setMeal, setChoreDone } from "./store.js";
+import { addItem, createChore, createList, createMember, createRecipe, createReward, findList, listMembers, setMeal, setChoreDone } from "./store.js";
 import { addDays, today, weekday } from "./dates.js";
 
-export function seedIfEmpty() {
-  if (process.env.SEED_DEMO === "0") return;
-  if (get("SELECT 1 FROM members LIMIT 1")) return;
+export function seedDemo() {
+  const { userId, householdId } = ctx();
 
   const t = today();
   const monday = addDays(t, -((weekday(t) + 6) % 7));
   const d = (n: number) => addDays(monday, n);
 
-  const papa = createMember({ name: "Papa", color: "#4a7bd8", avatar: "🧔", role: "ouder" });
+  // het eigen profiel van wie de voorbeeldgegevens laadt, speelt de rol van "Papa"
+  const ownId = get<{ member_id: string | null }>("SELECT member_id FROM household_users WHERE household_id=? AND user_id=?", householdId, userId)?.member_id;
+  const papa = listMembers().find((m) => m.id === ownId) ?? createMember({ name: "Papa", color: "#4a7bd8", avatar: "🧔", role: "ouder" });
   const mama = createMember({ name: "Mama", color: "#d9576b", avatar: "👩", role: "ouder" });
   const noah = createMember({ name: "Noah", color: "#4f9e5b", avatar: "🧒", role: "kind" });
   const lina = createMember({ name: "Lina", color: "#8a62d1", avatar: "👧", role: "kind" });
@@ -79,12 +80,9 @@ export function seedIfEmpty() {
     setMeal(d(i), "diner", dn, dn === "Spaghetti bolognese" ? bolo : dn === "Zelfgemaakte pizza" ? pizza : null);
   });
 
-  const shop = createList("Boodschappen", "🛒");
+  const shop = findList("Boodschappen")?.id ?? createList("Boodschappen", "🛒");
   ["Melk", "Brood", "Bananen", "Kaas", "Wasmiddel"].forEach((x) => addItem(shop, x));
-  const todo = createList("To-do", "✅");
+  const todo = findList("To-do")?.id ?? createList("To-do", "✅");
   ["Turnzak Lina wassen", "Cadeau oma kopen", "Afspraak garage maken"].forEach((x) => addItem(todo, x));
 
-  setSettings({ family_name: "Familie Voorbeeld" });
-  run("INSERT OR REPLACE INTO settings(key, value) VALUES('demo', '1')");
-  console.log("[gezinsbord] Voorbeeldgezin aangemaakt");
 }

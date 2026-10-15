@@ -1,7 +1,7 @@
 // Synchroniseert externe agenda's (Google Agenda, Outlook, iCloud) via hun iCal-adres.
 import ical, { type VEvent } from "node-ical";
-import { run, tx, get } from "./db.js";
-import { listCalendars, type CalendarSub } from "./store.js";
+import { run, tx } from "./db.js";
+import { allCalendars, type CalendarSub } from "./store.js";
 import { addDays, today } from "./dates.js";
 
 const TZ = process.env.TZ;
@@ -45,9 +45,9 @@ export async function syncCalendar(cal: CalendarSub): Promise<number> {
       run("DELETE FROM events WHERE source=?", cal.id);
       for (const r of rows) {
         run(
-          `INSERT INTO events(id, title, notes, location, date, end_date, start_time, end_time, all_day, external_uid, members, source)
-           VALUES (lower(hex(randomblob(16))),?,?,?,?,?,?,?,?,?,?,?)`,
-          ...r, JSON.stringify(cal.members), cal.id,
+          `INSERT INTO events(id, household_id, title, notes, location, date, end_date, start_time, end_time, all_day, external_uid, members, source)
+           VALUES (lower(hex(randomblob(16))),?,?,?,?,?,?,?,?,?,?,?,?)`,
+          cal.householdId, ...r, JSON.stringify(cal.members), cal.id,
         );
       }
       run("UPDATE calendars SET last_sync=datetime('now'), last_error=NULL WHERE id=?", cal.id);
@@ -60,18 +60,13 @@ export async function syncCalendar(cal: CalendarSub): Promise<number> {
   }
 }
 
-export async function syncAll(onChange: () => void) {
-  for (const cal of listCalendars()) {
+export async function syncAll(onChange: (householdId: string) => void, cals = allCalendars()) {
+  for (const cal of cals) {
     try {
       await syncCalendar(cal);
     } catch (e) {
       console.warn(`[agenda] ${cal.name}:`, e instanceof Error ? e.message : e);
     }
   }
-  onChange();
-}
-
-export function removeCalendarEvents(id: string) {
-  run("DELETE FROM events WHERE source=?", id);
-  return !!get("SELECT 1 FROM calendars WHERE id=?", id);
+  for (const h of new Set(cals.map((c) => c.householdId))) onChange(h);
 }

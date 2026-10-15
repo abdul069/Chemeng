@@ -4,6 +4,7 @@ import { useAction, useData } from "../store";
 import type { CalendarSub, Member } from "../types";
 import { AVATARS, Avatar, Confirm, EmojiPicker, MemberPicks, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
+import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 
 const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#5b6b7f", "#3d9bd1"];
 const THEME_KEY = "gezinsbord.theme";
@@ -24,7 +25,10 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
     <>
       <div className="topbar">{header}</div>
       <div className="page-scroll" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
+        <AccountSection />
         <Family />
+        <HouseholdAccess />
+        <AgendaSharing />
         <Calendars />
         <Place />
         <Screen />
@@ -91,13 +95,16 @@ function Family() {
         {data!.members.map((m, i) => (
           <div className="item" key={m.id}>
             <Avatar m={m} size={40} dot={false} />
-            <span style={{ flex: 1 }}><b>{m.name}</b><small>{m.role === "ouder" ? "Ouder" : "Kind"}</small></span>
+            <span style={{ flex: 1 }}><b>{m.name}</b><small>{m.role === "ouder" ? "Ouder" : "Kind"}{m.userId ? " · heeft een account" : ""}</small></span>
             <button className="iconbtn" aria-label={`${m.name} omhoog`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
             <button className="iconbtn" aria-label={`${m.name} omlaag`} disabled={i === data!.members.length - 1} onClick={() => move(i, 1)}>↓</button>
             <button className="btn ghost small" onClick={() => setEdit(m)}>Bewerken</button>
           </div>
         ))}
       </div>
+      {data!.me.role === "beheerder" && data!.members.length <= 1 && (
+        <button className="btn ghost small" style={{ alignSelf: "flex-start" }} onClick={() => act(() => api.post("/household/demo"), "Voorbeeldgezin geladen")}>Voorbeeldgegevens laden om te proberen</button>
+      )}
       {edit && <MemberEditor member={edit === "new" ? undefined : edit} onClose={() => setEdit(null)} />}
     </Section>
   );

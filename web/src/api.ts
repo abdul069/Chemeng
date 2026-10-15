@@ -1,28 +1,25 @@
 import type { Topic } from "./types";
 
-const CODE_KEY = "gezinsbord.code";
-export const getCode = () => { try { return localStorage.getItem(CODE_KEY) ?? ""; } catch { return ""; } };
-export const setCode = (c: string) => { try { localStorage.setItem(CODE_KEY, c); } catch { /* geen opslag */ } };
-
 export class ApiError extends Error {
-  constructor(message: string, public status: number) { super(message); }
+  constructor(message: string, public status: number, public code?: string) { super(message); }
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
-  const code = getCode();
-  if (code) headers.authorization = `Bearer ${code}`;
   let payload: BodyInit | undefined;
   if (body instanceof FormData) payload = body;
   else if (body !== undefined) { headers["content-type"] = "application/json"; payload = JSON.stringify(body); }
   let res: Response;
   try {
-    res = await fetch(`/api${url}`, { method, headers, body: payload });
+    res = await fetch(`/api${url}`, { method, headers, body: payload, credentials: "same-origin" });
   } catch {
-    throw new ApiError("Geen verbinding met de Gezinsbord-server. Controleer het wifi.", 0);
+    throw new ApiError("Geen verbinding met de Gezinsbord-server. Controleer je internet.", 0);
   }
   const data = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
-  if (!res.ok) throw new ApiError(data?.error ?? `Fout ${res.status}`, res.status);
+  if (!res.ok) {
+    const msg = data?.details?.length && data.error === "Controleer de ingevulde gegevens." ? String(data.details[0]).replace(/^[\w.]+: /, "") : data?.error;
+    throw new ApiError(msg ?? `Fout ${res.status}`, res.status, data?.code);
+  }
   return data as T;
 }
 
@@ -34,10 +31,7 @@ export const api = {
   del: <T = { ok: boolean }>(url: string) => request<T>("DELETE", url),
 };
 
-export const photoUrl = (filename: string) => {
-  const code = getCode();
-  return `/api/photos/file/${encodeURIComponent(filename)}${code ? `?code=${encodeURIComponent(code)}` : ""}`;
-};
+export const photoUrl = (filename: string) => `/api/photos/file/${encodeURIComponent(filename)}`;
 
 type Listener = (topics: Topic[]) => void;
 const listeners = new Set<Listener>();
@@ -45,22 +39,33 @@ export const onChanged = (fn: Listener) => { listeners.add(fn); return () => { l
 let online = (_: boolean) => {};
 export const onConnection = (fn: (ok: boolean) => void) => { online = fn; };
 
+const ALL: Topic[] = ["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards", "access", "sharing"];
+
 /** Houdt een websocket open en herverbindt automatisch. */
+let current: WebSocket | null = null;
 export function connectRealtime() {
   let retry = 1000;
   const open = () => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${location.host}/ws?code=${encodeURIComponent(getCode())}`);
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    current = ws;
     ws.onopen = () => { retry = 1000; online(true); };
     ws.onmessage = (m) => {
       try {
         const msg = JSON.parse(m.data);
         if (msg.type === "changed") listeners.forEach((l) => l(msg.topics));
         // na een herverbinding alles opnieuw ophalen
-        if (msg.type === "hello") listeners.forEach((l) => l(["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards"]));
+        if (msg.type === "hello") listeners.forEach((l) => l(ALL));
       } catch { /* negeren */ }
     };
-    ws.onclose = () => { online(false); setTimeout(open, retry); retry = Math.min(retry * 2, 30_000); };
+    ws.onclose = () => {
+      if (current !== ws) return;
+      online(false);
+      setTimeout(open, retry);
+      retry = Math.min(retry * 2, 30_000);
+    };
   };
   open();
 }
+/** Na wisselen van gezin hoort de verbinding bij het nieuwe gezin. */
+export function reconnectRealtime() { current?.close(); }
