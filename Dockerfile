@@ -15,7 +15,6 @@ COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/server/package.json server/
 COPY --from=build /app/server/dist server/dist
 COPY --from=build /app/web/dist web/dist
-VOLUME /data
 EXPOSE 8080
 WORKDIR /app/server
 CMD ["node", "--disable-warning=ExperimentalWarning", "dist/index.js"]
