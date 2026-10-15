@@ -561,3 +561,5 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
   .slot.has-img { flex-direction: row; align-items: center; }
   .slot-img { width: 76px; height: 64px; flex: none; }
 }
+.langseg { align-self: flex-start; }
+.langseg button { min-width: 0; padding: 0 14px; }

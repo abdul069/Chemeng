@@ -6,6 +6,9 @@ import { Confirm, Modal } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 
+const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: "Deutsch" };
+const FLAG: Record<string, string> = { tr: "🇹🇷", nl: "🇳🇱", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪" };
+
 /** Een recept openen vanaf eender welk scherm. */
 export const openRecipe = (id: string) => window.dispatchEvent(new CustomEvent("gb:recipe", { detail: id }));
 
@@ -46,8 +49,13 @@ export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen: () => void }) {
 export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
   const { data, toast } = useData();
   const act = useAction();
-  const ingredients = useMemo(() => lines(recipe.ingredients), [recipe.ingredients]);
-  const steps = lines(recipe.instructions);
+  // Nederlands is de standaard; het origineel (bv. Turks) is één tik verder
+  const [showOrig, setShowOrig] = useState(false);
+  const version = showOrig && recipe.original ? recipe.original : recipe;
+  const ingredients = useMemo(() => lines(version.ingredients), [version.ingredients]);
+  const steps = lines(version.instructions);
+  const notTranslated = recipe.lang !== "nl" && !recipe.original;
+  const origLang = LANG[recipe.original?.lang ?? recipe.lang] ?? (recipe.original?.lang ?? recipe.lang);
   const [have, setHave] = useState<Set<number>>(new Set());
   const [plan, setPlan] = useState(false);
   const [edit, setEdit] = useState(false);
@@ -71,7 +79,19 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
 
   if (edit) return <RecipeEditor recipe={recipe} onClose={() => setEdit(false)} />;
   return (
-    <Modal title={recipe.title} onClose={onClose} wide>
+    <Modal title={version.title} onClose={onClose} wide>
+      {recipe.original && (
+        <div className="seg langseg" role="group" aria-label="Taal van het recept">
+          <button aria-pressed={!showOrig} onClick={() => { setShowOrig(false); setHave(new Set()); }}>🇳🇱 Nederlands</button>
+          <button aria-pressed={showOrig} onClick={() => { setShowOrig(true); setHave(new Set()); }}>{FLAG[recipe.original.lang] ?? "🌐"} {origLang}</button>
+        </div>
+      )}
+      {notTranslated && (
+        <div className="invite-card">
+          <b>Dit recept is nog in het {origLang.toLowerCase()}.</b>
+          <p className="hint">{data?.assistant.available ? "Tik op “Vertaal naar Nederlands”; het origineel blijft bewaard." : "Vertalen kan zodra de assistent ingesteld is (ANTHROPIC_API_KEY)."}</p>
+        </div>
+      )}
       <div className="rhero-wrap">
         {recipe.image ? <img className="rhero" src={recipe.image} alt="" referrerPolicy="no-referrer" /> : <div className="rhero ph" aria-hidden>🍲</div>}
         <button className="pill rhero-btn" onClick={() => setPhoto(true)}>📷 {recipe.image ? "Foto wijzigen" : "Foto toevoegen"}</button>
@@ -85,7 +105,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
       <div className="actions" style={{ justifyContent: "flex-start" }}>
         <button className="btn accent" onClick={() => setPlan(true)}>📅 Inplannen</button>
         <button className="btn" onClick={toList} disabled={!missing.length}>🛒 {missing.length === ingredients.length ? "Alles" : `${missing.length} ontbrekende`} op {shop?.name ?? "de boodschappenlijst"}</button>
-        {data?.assistant.available && recipe.cuisine === "Turks" && <button className="btn ghost" onClick={translate} disabled={busy}>{busy ? "Vertalen…" : "Vertaal naar Nederlands"}</button>}
+        {data?.assistant.available && notTranslated && <button className="btn ghost" onClick={translate} disabled={busy}>{busy ? "Vertalen…" : "Vertaal naar Nederlands"}</button>}
       </div>
       <section>
         <div className="section-title"><h2>Ingrediënten</h2><span className="hint">Vink aan wat je al in huis hebt</span></div>
@@ -109,7 +129,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         <button className="btn ghost" onClick={() => setEdit(true)}>Bewerken</button>
       </div>
       {plan && <PlanRecipe recipe={recipe} onClose={() => setPlan(false)} />}
-      {photo && <PhotoPicker title={recipe.title.replace(/\s*(tarifi|\(.*\))\s*/gi, " ").trim()} current={recipe.image}
+      {photo && <PhotoPicker title={(recipe.original?.title ?? recipe.title).replace(/\s*(tarifi|\(.*\))\s*/gi, " ").trim()} current={recipe.image}
         onPick={(image) => act(() => api.put(`/recipes/${recipe.id}/image`, { image }), image ? "Foto bewaard" : "Foto weggehaald")} onClose={() => setPhoto(false)} />}
       {confirm && <Confirm title="Recept verwijderen?" onClose={() => setConfirm(false)}
         actions={[{ label: "Verwijderen", run: async () => { if (await act(() => api.del(`/recipes/${recipe.id}`), "Recept verwijderd")) onClose(); } }]} />}
@@ -144,7 +164,7 @@ export function RecipeEditor({ recipe, onClose }: { recipe?: Recipe; onClose: ()
   const [f, setF] = useState({
     title: recipe?.title ?? "", ingredients: recipe?.ingredients ?? "", instructions: recipe?.instructions ?? "",
     minutes: recipe?.minutes ?? (null as number | null), image: recipe?.image ?? null, sourceUrl: recipe?.sourceUrl ?? null,
-    servings: recipe?.servings ?? "", cuisine: recipe?.cuisine ?? "",
+    servings: recipe?.servings ?? "", cuisine: recipe?.cuisine ?? "", lang: recipe?.lang ?? "nl",
   });
   const save = async () => {
     if (!f.title.trim()) return;
@@ -178,7 +198,6 @@ export function RecipeSearch({ onClose }: { onClose: () => void }) {
   const [hits, setHits] = useState<RecipeHit[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
-  const [translate, setTranslate] = useState(true);
   const search = async (query: string) => {
     setQ(query);
     setBusy(true);
@@ -189,7 +208,7 @@ export function RecipeSearch({ onClose }: { onClose: () => void }) {
   };
   const add = async (h: RecipeHit) => {
     setAdding(h.url);
-    const r = await act(() => api.post<{ id: string; existing: boolean }>("/recipes/import", { url: h.url, translate }));
+    const r = await act(() => api.post<{ id: string; existing: boolean }>("/recipes/import", { url: h.url, translate: true }));
     setAdding(null);
     if (r) { toast(r.existing ? "Stond al in je bibliotheek" : "In de bibliotheek gezet"); onClose(); setTimeout(() => openRecipe(r.id), 400); }
   };
@@ -202,7 +221,7 @@ export function RecipeSearch({ onClose }: { onClose: () => void }) {
         <button className="btn" type="submit" disabled={busy || q.trim().length < 2}>{busy ? "Zoeken…" : "Zoeken"}</button>
       </form>
       <div className="picks">{IDEAS.map((i) => <button key={i} className="pick" onClick={() => search(i)} disabled={busy}>{i}</button>)}</div>
-      <label className="check-row"><input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} disabled={!data?.assistant.available} /> Vertalen naar het Nederlands bij het toevoegen</label>
+      <p className="hint">Recepten worden in het Nederlands in je bibliotheek gezet. Het Turkse origineel blijft bewaard: je wisselt met één tik.</p>
       {busy && <p className="hint">Even zoeken op de receptsites… dit duurt een halve minuut.</p>}
       {hits && !hits.length && !busy && <p className="empty">Niets gevonden. Probeer een ander woord, of plak de link van een recept via “Via link toevoegen”.</p>}
       <div className="rgrid">
@@ -211,6 +230,7 @@ export function RecipeSearch({ onClose }: { onClose: () => void }) {
             {h.image ? <img src={h.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="rcard-ph" aria-hidden>🍲</span>}
             <span className="rcard-body">
               <b>{h.title}</b>
+              {h.original !== h.title && <small lang="tr">🇹🇷 {h.original}</small>}
               <small>{h.site}{h.minutes ? ` · ${h.minutes} min` : ""}</small>
               <span style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                 {inLibrary.has(h.url)
@@ -230,11 +250,10 @@ export function RecipeImport({ onClose }: { onClose: () => void }) {
   const { data, toast } = useData();
   const act = useAction();
   const [url, setUrl] = useState("");
-  const [translate, setTranslate] = useState(false);
   const [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true);
-    const r = await act(() => api.post<{ id: string; existing: boolean }>("/recipes/import", { url: url.trim(), translate }));
+    const r = await act(() => api.post<{ id: string; existing: boolean }>("/recipes/import", { url: url.trim(), translate: true }));
     setBusy(false);
     if (r) { toast(r.existing ? "Stond al in je bibliotheek" : "Recept toegevoegd"); onClose(); setTimeout(() => openRecipe(r.id), 400); }
   };
@@ -242,7 +261,7 @@ export function RecipeImport({ onClose }: { onClose: () => void }) {
     <Modal title="Recept via link" onClose={onClose}>
       <p className="hint">Plak de link van een recept, bv. van nefisyemektarifleri.com of yemek.com. Naam, foto, ingrediënten en bereiding worden overgenomen.</p>
       <input id="ri-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.nefisyemektarifleri.com/…" aria-label="Link naar het recept" />
-      <label className="check-row"><input type="checkbox" checked={translate} onChange={(e) => setTranslate(e.target.checked)} disabled={!data?.assistant.available} /> Vertalen naar het Nederlands</label>
+      <p className="hint">{data?.assistant.available ? "Het recept wordt naar het Nederlands vertaald; het origineel blijft bewaard." : "Vertalen naar het Nederlands kan zodra de assistent ingesteld is."}</p>
       <div className="actions"><button className="btn ghost" onClick={onClose}>Annuleren</button><button className="btn" onClick={go} disabled={busy || !/^https?:\/\//.test(url.trim())}>{busy ? "Ophalen…" : "Toevoegen"}</button></div>
     </Modal>
   );

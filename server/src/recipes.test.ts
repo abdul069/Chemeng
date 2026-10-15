@@ -17,6 +17,7 @@ test("leest een recept uit een @graph (Yoast, zoals op veel Turkse sites)", () =
   assert.equal(r.minutes, 60);
   assert.equal(r.servings, "4 kişilik");
   assert.equal(r.cuisine, "Turks");
+  assert.equal(r.lang, "tr");
   assert.equal(r.ingredients.split("\n").length, 5);
   assert.match(r.instructions, /^1\. Patlıcanları/);
   assert.match(r.instructions, /kavurun & domatesi/);
@@ -34,4 +35,11 @@ test("leest secties met stappen en een losse afbeelding", () => {
 test("geeft een duidelijke fout als er geen recept op de pagina staat", () => {
   assert.throws(() => parseRecipeHtml("<html><body>Geen recept</body></html>", "https://x"), RecipeError);
   assert.equal(isoMinutes("PT1H30M"), 90);
+});
+
+test("neemt de hoofdfoto van de pagina als het recept zelf geen foto heeft", () => {
+  const html = `<html lang="tr"><head><meta property="og:image" content="https://cdn.site/mercimek.jpg"><script type="application/ld+json">{"@type":"Recipe","name":"Mercimek","recipeIngredient":["mercimek"],"recipeInstructions":"Pişirin."}</script></head></html>`;
+  const r = parseRecipeHtml(html, "https://lezzet.com.tr/yemek-tarifleri/mercimek");
+  assert.equal(r.image, "https://cdn.site/mercimek.jpg");
+  assert.equal(r.lang, "tr");
 });

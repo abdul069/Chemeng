@@ -29,7 +29,7 @@ async function wikipedia(lang: string, query: string): Promise<DishPhoto[]> {
     .map((p) => ({ url: p.thumbnail!.source, source: `${lang}.wikipedia.org`, title: p.title }));
 }
 
-/** Kandidaat-foto's voor een gerecht, de beste eerst. */
+/** Kandidaat-foto's voor een gerecht, de beste eerst: foto's van receptpagina's, dan Wikipedia. */
 export async function findDishPhotos(query: string, opts: { withSites?: boolean } = {}): Promise<DishPhoto[]> {
   const q = query.trim();
   if (!q || SKIP.test(q)) return [];
@@ -40,7 +40,7 @@ export async function findDishPhotos(query: string, opts: { withSites?: boolean 
   }
   if (opts.withSites && aiAvailable()) {
     try {
-      const hits = await searchTurkishRecipes(q);
+      const hits = await searchTurkishRecipes(q, { translate: false, max: 6 });
       out.unshift(...hits.filter((h) => h.image).map((h) => ({ url: h.image!, source: h.site, title: h.title })));
     } catch { /* geen extra foto's */ }
   }
@@ -55,7 +55,8 @@ export async function autoDishPhoto(title: string): Promise<string | null> {
   const cached = get<{ image: string | null; tried_at: string }>("SELECT image, tried_at FROM dish_photos WHERE title=?", key);
   if (cached && (cached.image || !get("SELECT 1 WHERE ? < datetime('now','-7 days')", cached.tried_at))) return cached.image;
   let image: string | null = null;
-  try { image = (await findDishPhotos(title))[0]?.url ?? null; } catch { image = null; }
+  // eerst een foto van een echte receptpagina, Wikipedia alleen als reserve
+  try { image = (await findDishPhotos(title, { withSites: true }))[0]?.url ?? null; } catch { image = null; }
   run("INSERT INTO dish_photos(title, image, tried_at) VALUES (?,?,datetime('now')) ON CONFLICT(title) DO UPDATE SET image=excluded.image, tried_at=excluded.tried_at", key, image);
   return image;
 }

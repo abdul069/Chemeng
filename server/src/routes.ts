@@ -365,7 +365,7 @@ api.post("/recipes/:id/to-list", (req, res) => {
 
 // recepten van receptwebsites
 api.post("/recipes/import", async (req, res) => {
-  const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), translate: z.boolean().default(false) }).parse(req.body);
+  const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), translate: z.boolean().default(true) }).parse(req.body);
   const existing = S.recipeBySource(b.url);
   if (existing) return void res.json({ id: existing.id, existing: true });
   try {
@@ -394,8 +394,8 @@ api.post("/recipes/:id/translate", async (req, res) => {
   const r = S.listRecipes().find((x) => x.id === p(req));
   if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
   if (!aiAvailable()) return void res.status(400).json({ error: "Vertalen gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server." });
-  const t = await translateRecipe(S.RecipeInput.parse(r));
-  S.updateRecipe(r.id, t);
+  const t = await translateRecipe(S.RecipeInput.parse({ ...r, lang: r.lang === "nl" && r.cuisine === "Turks" && !r.original ? "tr" : r.lang }));
+  S.saveTranslation(r.id, t);
   res.json({ ok: true });
   broadcast("recipes", "meals");
 });

@@ -204,6 +204,12 @@ addColumn("recipes", "source_url", "TEXT");
 addColumn("recipes", "servings", "TEXT NOT NULL DEFAULT ''");
 addColumn("recipes", "cuisine", "TEXT NOT NULL DEFAULT ''");
 addColumn("meals", "image", "TEXT");
+// het origineel (bv. Turks) naast de Nederlandse versie
+addColumn("recipes", "orig_title", "TEXT");
+addColumn("recipes", "orig_ingredients", "TEXT");
+addColumn("recipes", "orig_instructions", "TEXT");
+addColumn("recipes", "orig_lang", "TEXT");
+addColumn("recipes", "lang", "TEXT NOT NULL DEFAULT 'nl'");
 db.exec(`CREATE TABLE IF NOT EXISTS dish_photos (title TEXT PRIMARY KEY, image TEXT, tried_at TEXT NOT NULL DEFAULT (datetime('now')))`);
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_feedback (

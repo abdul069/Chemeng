@@ -206,7 +206,7 @@ function buildTools(changes: Change[]) {
       run: async ({ zoekopdracht }) => {
         try {
           const hits = await searchTurkishRecipes(zoekopdracht);
-          return hits.length ? hits.map((h) => `${h.title} (${h.site}${h.minutes ? `, ${h.minutes} min` : ""}) ${h.url}`).join("\n") : "Niets gevonden.";
+          return hits.length ? hits.map((h) => `${h.title} [${h.original}] (${h.site}${h.minutes ? `, ${h.minutes} min` : ""}) ${h.url}`).join("\n") : "Niets gevonden.";
         } catch (e) {
           return e instanceof RecipeError ? e.message : "Zoeken lukte niet.";
         }
@@ -215,7 +215,7 @@ function buildTools(changes: Change[]) {
     betaZodTool({
       name: "recept_importeren",
       description: "Zet een recept van een receptwebsite in de receptenbibliotheek van het gezin. Geeft het recept-id terug.",
-      inputSchema: z.object({ url: z.string().url(), vertalen: z.boolean().default(false).describe("Vertaal naar het Nederlands") }),
+      inputSchema: z.object({ url: z.string().url(), vertalen: z.boolean().default(true).describe("Vertaal naar het Nederlands (standaard aan)") }),
       run: async ({ url, vertalen }) => {
         const existing = recipeBySource(url);
         if (existing) {

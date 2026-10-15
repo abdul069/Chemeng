@@ -125,21 +125,43 @@ export const RecipeInput = z.object({
   sourceUrl: z.string().max(2000).nullable().optional(),
   servings: z.string().max(60).default(""),
   cuisine: z.string().max(60).default(""),
+  /** taal van title/ingredients/instructions */
+  lang: z.string().max(8).default("nl"),
+  original: z.object({ title: z.string(), ingredients: z.string(), instructions: z.string(), lang: z.string().max(8) }).nullable().optional(),
 });
 export type RecipeInputT = z.infer<typeof RecipeInput>;
-export interface Recipe { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string }
-type RecipeRow = Omit<Recipe, "sourceUrl"> & { source_url: string | null };
+export interface Recipe {
+  id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null;
+  servings: string; cuisine: string; lang: string; original: { title: string; ingredients: string; instructions: string; lang: string } | null;
+}
+type RecipeRow = Omit<Recipe, "sourceUrl" | "original"> & { source_url: string | null; orig_title: string | null; orig_ingredients: string | null; orig_instructions: string | null; orig_lang: string | null };
 export const listRecipes = (): Recipe[] =>
   all<RecipeRow>(
-    "SELECT id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine FROM recipes WHERE household_id=? ORDER BY title", hid(),
-  ).map(({ source_url, ...r }) => ({ ...r, sourceUrl: source_url }));
+    `SELECT id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine, lang, orig_title, orig_ingredients, orig_instructions, orig_lang
+     FROM recipes WHERE household_id=? ORDER BY title`, hid(),
+  ).map(({ source_url, orig_title, orig_ingredients, orig_instructions, orig_lang, ...r }) => ({
+    ...r, sourceUrl: source_url,
+    original: orig_title ? { title: orig_title, ingredients: orig_ingredients ?? "", instructions: orig_instructions ?? "", lang: orig_lang ?? "tr" } : null,
+  }));
 export function createRecipe(i: RecipeInputT) {
   const id = newId();
   run(
-    "INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine) VALUES (?,?,?,?,?,?,?,?,?,?)",
-    id, hid(), i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine,
+    `INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine, lang, orig_title, orig_ingredients, orig_instructions, orig_lang)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    id, hid(), i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine, i.lang,
+    i.original?.title ?? null, i.original?.ingredients ?? null, i.original?.instructions ?? null, i.original?.lang ?? null,
   );
   return id;
+}
+/** Zet de vertaalde versie in een recept en bewaart het origineel. */
+export function saveTranslation(id: string, t: RecipeInputT) {
+  run(
+    `UPDATE recipes SET title=?, ingredients=?, instructions=?, servings=?, lang=?,
+       orig_title=COALESCE(orig_title, ?), orig_ingredients=COALESCE(orig_ingredients, ?), orig_instructions=COALESCE(orig_instructions, ?), orig_lang=COALESCE(orig_lang, ?)
+     WHERE id=? AND household_id=?`,
+    t.title, t.ingredients, t.instructions, t.servings, t.lang,
+    t.original?.title ?? null, t.original?.ingredients ?? null, t.original?.instructions ?? null, t.original?.lang ?? null, id, hid(),
+  );
 }
 export const updateRecipe = (id: string, i: RecipeInputT) =>
   run(
