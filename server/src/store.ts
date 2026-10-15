@@ -1,18 +1,19 @@
 import { z } from "zod";
 import { all, get, run, newId, tx, hid } from "./db.js";
-import { weekday } from "./dates.js";
+import { weekday, today as todayStr, addDays as addDaysStr } from "./dates.js";
 
 // ---------- gezinsleden ----------
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId: string | null }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId: string | null; birthday: string | null }
 export const MemberInput = z.object({
   name: z.string().trim().min(1).max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   avatar: z.string().max(16).default(""),
   photo: z.string().nullable().optional(),
   role: z.enum(["ouder", "kind"]).default("kind"),
+  birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 type MemberRow = Omit<Member, "userId"> & { user_id: string | null };
-const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, hu.user_id
+const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, m.birthday, hu.user_id
   FROM members m LEFT JOIN household_users hu ON hu.member_id = m.id AND hu.household_id = m.household_id`;
 const toMember = ({ user_id, ...m }: MemberRow): Member => ({ ...m, userId: user_id });
 export const listMembers = (h = hid()) => all<MemberRow>(`${MEMBER_SQL} WHERE m.household_id=? ORDER BY m.sort, m.name`, h).map(toMember);
@@ -20,11 +21,11 @@ export const getMember = (id: string) => listMembers().find((m) => m.id === id);
 export function createMember(i: z.infer<typeof MemberInput>, h = hid()): Member {
   const id = newId();
   const sort = get<{ n: number }>("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM members WHERE household_id=?", h)?.n ?? 0;
-  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort) VALUES (?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar, i.photo ?? null, i.role, sort);
+  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort, birthday) VALUES (?,?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar, i.photo ?? null, i.role, sort, i.birthday ?? null);
   return listMembers(h).find((m) => m.id === id)!;
 }
 export function updateMember(id: string, i: z.infer<typeof MemberInput>) {
-  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar, i.photo ?? null, i.role, id, hid());
+  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=?, birthday=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar, i.photo ?? null, i.role, i.birthday ?? null, id, hid());
   return getMember(id);
 }
 export function deleteMember(id: string) {
@@ -47,28 +48,58 @@ export const memberByName = (name: string) =>
   listMembers().find((m) => m.name.toLocaleLowerCase("nl") === name.trim().toLocaleLowerCase("nl"));
 
 // ---------- taken ----------
-export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number }
+export const MOMENTS = ["ochtend", "middag", "avond", "altijd"] as const;
+export type Moment = (typeof MOMENTS)[number];
+export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number; moment: Moment; streak: number }
 export const ChoreInput = z.object({
   memberId: z.string(),
   title: z.string().trim().min(1).max(80),
   icon: z.string().max(16).default("✅"),
   days: z.array(z.number().int().min(0).max(6)).min(1).default([0, 1, 2, 3, 4, 5, 6]),
   points: z.number().int().min(0).max(100).default(1),
+  moment: z.enum(MOMENTS).default("altijd"),
 });
-type ChoreRow = { id: string; member_id: string; title: string; icon: string; days: string; points: number };
-const toChore = (r: ChoreRow): Chore => ({ id: r.id, memberId: r.member_id, title: r.title, icon: r.icon, days: JSON.parse(r.days), points: r.points });
-export const listChores = () => all<ChoreRow>("SELECT * FROM chores WHERE household_id=? ORDER BY sort, title", hid()).map(toChore);
+type ChoreRow = { id: string; member_id: string; title: string; icon: string; days: string; points: number; moment: string };
+const toChore = (r: ChoreRow, streak = 0): Chore => ({ id: r.id, memberId: r.member_id, title: r.title, icon: r.icon, days: JSON.parse(r.days), points: r.points, moment: (MOMENTS as readonly string[]).includes(r.moment) ? (r.moment as Moment) : "altijd", streak });
+/** Hoeveel geplande dagen op rij is deze taak gedaan (vandaag telt mee als ze al gedaan is)? */
+function streaks(h: string): Map<string, number> {
+  const done = new Map<string, Set<string>>();
+  for (const r of all<{ chore_id: string; date: string }>("SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date >= date('now','-120 days')", h)) {
+    if (!done.has(r.chore_id)) done.set(r.chore_id, new Set());
+    done.get(r.chore_id)!.add(r.date);
+  }
+  const out = new Map<string, number>();
+  const t = todayStr();
+  for (const c of all<ChoreRow>("SELECT * FROM chores WHERE household_id=?", h)) {
+    const days: number[] = JSON.parse(c.days);
+    const set = done.get(c.id) ?? new Set<string>();
+    let n = 0;
+    let d = t;
+    // vandaag mag nog open staan zonder de reeks te breken
+    if (!set.has(d)) d = addDaysStr(d, -1);
+    for (let i = 0; i < 120; i++, d = addDaysStr(d, -1)) {
+      if (!days.includes(weekday(d))) continue;
+      if (set.has(d)) n++; else break;
+    }
+    out.set(c.id, n);
+  }
+  return out;
+}
+export const listChores = () => {
+  const st = streaks(hid());
+  return all<ChoreRow>("SELECT * FROM chores WHERE household_id=? ORDER BY sort, title", hid()).map((r) => toChore(r, st.get(r.id) ?? 0));
+};
 const ownsMember = (memberId: string) => !!get("SELECT 1 FROM members WHERE id=? AND household_id=?", memberId, hid());
 const ownsChore = (choreId: string) => !!get("SELECT 1 FROM chores WHERE id=? AND household_id=?", choreId, hid());
 export function createChore(i: z.infer<typeof ChoreInput>) {
   if (!ownsMember(i.memberId)) throw new Error("Onbekend gezinslid");
   const id = newId();
-  run("INSERT INTO chores(id, household_id, member_id, title, icon, days, points) VALUES (?,?,?,?,?,?,?)", id, hid(), i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points);
+  run("INSERT INTO chores(id, household_id, member_id, title, icon, days, points, moment) VALUES (?,?,?,?,?,?,?,?)", id, hid(), i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points, i.moment);
   return toChore(get<ChoreRow>("SELECT * FROM chores WHERE id=?", id)!);
 }
 export function updateChore(id: string, i: z.infer<typeof ChoreInput>) {
   if (!ownsMember(i.memberId)) throw new Error("Onbekend gezinslid");
-  run("UPDATE chores SET member_id=?, title=?, icon=?, days=?, points=? WHERE id=? AND household_id=?", i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points, id, hid());
+  run("UPDATE chores SET member_id=?, title=?, icon=?, days=?, points=?, moment=? WHERE id=? AND household_id=?", i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points, i.moment, id, hid());
 }
 export const deleteChore = (id: string) => run("DELETE FROM chores WHERE id=? AND household_id=?", id, hid());
 export const choresOn = (date: string) => listChores().filter((c) => c.days.includes(weekday(date)));

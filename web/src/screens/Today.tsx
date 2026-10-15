@@ -62,6 +62,24 @@ export function TodayScreen({ openEditor, openAssistant, goto, header }: {
             <div className="section-title"><h2>Straks</h2></div>
             {upcoming.length ? <div className="upnext">{upcoming.map((e) => <EventRow key={e.key} e={e} onOpen={(o) => openEditor({ occ: o })} />)}</div> : <p className="empty">Niets meer gepland. Tijd voor jezelf.</p>}
           </section>
+          {!!data?.countdowns.length && (
+            <section className="card card-pad">
+              <div className="section-title"><h2>Aftellen</h2></div>
+              <div className="countdowns">
+                {data.countdowns.map((c) => {
+                  const m = c.memberId ? data.members.find((x) => x.id === c.memberId) : null;
+                  return (
+                    <div className="cd" key={c.kind + c.title + c.date} style={{ "--c": m?.color ?? "var(--accent)" } as React.CSSProperties}>
+                      <span className="cd-ic" aria-hidden>{c.icon}</span>
+                      <span className="cd-n num">{c.days === 0 ? "Vandaag!" : c.days === 1 ? "Morgen" : c.days}</span>
+                      {c.days > 1 && <span className="cd-l">dagen</span>}
+                      <b>{c.title}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           <section className="card card-pad">
             <div className="section-title"><h2>Maaltijden vandaag</h2><button className="linkbtn" onClick={() => goto("meals")}>Plannen</button></div>
             {(["ontbijt", "lunch", "diner"] as const).map((slot) => {

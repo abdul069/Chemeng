@@ -36,6 +36,8 @@ export function App() {
   const [assist, setAssist] = useState<{ prompt?: string; key: number } | null>(null);
   const [convo, setConvo] = useState<Msg[]>([]);
   const [saver, setSaver] = useState(false);
+  const [sleeping, setSleeping] = useState(false);
+  const wokeAt = useRef(0);
   const [online, setOnline] = useState(true);
   const [time, setTime] = useState(clock());
   const lastActivity = useRef(Date.now());
@@ -59,9 +61,19 @@ export function App() {
       const idle = Date.now() - lastActivity.current;
       if (minutes > 0 && idle > minutes * 60_000 && !assist) setSaver(true);
       if (idle > 10 * 60_000) setConvo((c) => (c.length ? [] : c));
+      // na een tijdje zonder aanraking terug naar het startscherm
+      const homeAfter = Number(data?.settings.home_after_minutes ?? 0);
+      if (homeAfter > 0 && idle > homeAfter * 60_000 && !assist && !editor) { setScreenState((s) => (s === "today" ? s : "today")); setAppView("grid"); }
+      // nachtrust
+      const from = data?.settings.sleep_from, until = data?.settings.sleep_until;
+      if (from && until && Date.now() - wokeAt.current > 2 * 60_000) {
+        const now = new Date(); const hm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        const inSleep = from < until ? hm >= from && hm < until : hm >= from || hm < until;
+        setSleeping(inSleep);
+      }
     }, 15_000);
     return () => { evs.forEach((e) => window.removeEventListener(e, bump)); clearInterval(t); };
-  }, [minutes, assist]);
+  }, [minutes, assist, editor, data?.settings.home_after_minutes, data?.settings.sleep_from, data?.settings.sleep_until]);
 
   // Scherm wakker houden op een keukenscherm
   useEffect(() => {
@@ -119,9 +131,17 @@ export function App() {
       <RecipeHost />
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
+      {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
     </div>
   );
+}
+
+/** Nachtrust: bijna zwart scherm met een gedimde klok. Tik om twee minuten wakker te maken. */
+function SleepScreen({ onWake }: { onWake: () => void }) {
+  const [t, setT] = useState(clock());
+  useEffect(() => { const i = setInterval(() => setT(clock()), 10_000); return () => clearInterval(i); }, []);
+  return <div className="sleep" onPointerDown={onWake} role="button" tabIndex={0} aria-label="Scherm wakker maken"><span className="num">{t}</span></div>;
 }
 
 function ErrorScreen({ error }: { error: string }) {

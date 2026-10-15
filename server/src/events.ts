@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { all, get, run, newId, hid } from "./db.js";
-import { addDays, addMonths, diffDays, isDate } from "./dates.js";
+import { addDays, addMonths, diffDays, isDate, today as todayFn } from "./dates.js";
 
 export const REPEATS = ["none", "daily", "weekly", "biweekly", "monthly", "yearly"] as const;
 
@@ -8,14 +8,14 @@ export interface EventRow {
   id: string; title: string; notes: string; location: string;
   date: string; end_date: string | null; start_time: string | null; end_time: string | null;
   all_day: number; repeat: string; repeat_until: string | null; exdates: string; members: string;
-  source: string; external_uid: string | null;
+  source: string; external_uid: string | null; countdown: number;
 }
 
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;
   date: string; endDate: string | null; startTime: string | null; endTime: string | null;
   allDay: boolean; repeat: (typeof REPEATS)[number]; repeatUntil: string | null; exdates: string[];
-  members: string[]; source: string; readOnly: boolean;
+  members: string[]; source: string; readOnly: boolean; countdown: boolean;
 }
 
 export interface Occurrence extends CalEvent {
@@ -41,6 +41,7 @@ export const EventInput = z.object({
   repeat: z.enum(REPEATS).default("none"),
   repeatUntil: day.nullable().optional(),
   members: z.array(z.string()).default([]),
+  countdown: z.boolean().default(false),
 });
 export type EventInputT = z.infer<typeof EventInput>;
 
@@ -50,7 +51,7 @@ export function toEvent(r: EventRow): CalEvent {
     date: r.date, endDate: r.end_date, startTime: r.start_time, endTime: r.end_time,
     allDay: !!r.all_day, repeat: (REPEATS as readonly string[]).includes(r.repeat) ? (r.repeat as CalEvent["repeat"]) : "none",
     repeatUntil: r.repeat_until, exdates: JSON.parse(r.exdates), members: JSON.parse(r.members),
-    source: r.source, readOnly: r.source !== "local",
+    source: r.source, readOnly: r.source !== "local", countdown: !!r.countdown,
   };
 }
 
@@ -69,10 +70,10 @@ export function createEvent(input: EventInputT, source = "local", externalUid: s
   const e = normalize(input);
   const id = newId();
   run(
-    `INSERT INTO events(id, household_id, title, notes, location, date, end_date, start_time, end_time, all_day, repeat, repeat_until, members, source, external_uid)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO events(id, household_id, title, notes, location, date, end_date, start_time, end_time, all_day, repeat, repeat_until, members, source, external_uid, countdown)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id, hid(), e.title, e.notes, e.location, e.date, e.endDate, e.startTime, e.endTime, e.allDay ? 1 : 0,
-    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), source, externalUid,
+    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), source, externalUid, e.countdown ? 1 : 0,
   );
   return getEvent(id)!;
 }
@@ -85,10 +86,10 @@ export function getEvent(id: string): CalEvent | undefined {
 export function updateEvent(id: string, input: EventInputT): CalEvent | undefined {
   const e = normalize(input);
   run(
-    `UPDATE events SET title=?, notes=?, location=?, date=?, end_date=?, start_time=?, end_time=?, all_day=?, repeat=?, repeat_until=?, members=?
+    `UPDATE events SET title=?, notes=?, location=?, date=?, end_date=?, start_time=?, end_time=?, all_day=?, repeat=?, repeat_until=?, members=?, countdown=?
      WHERE id=? AND household_id=? AND source='local'`,
     e.title, e.notes, e.location, e.date, e.endDate, e.startTime, e.endTime, e.allDay ? 1 : 0,
-    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), id, hid(),
+    e.repeat, e.repeatUntil ?? null, JSON.stringify(e.members), e.countdown ? 1 : 0, id, hid(),
   );
   return getEvent(id);
 }
@@ -165,3 +166,36 @@ export function eventsBetween(from: string, to: string, memberIds?: string[]): O
     a.on.localeCompare(b.on) || Number(b.allDay) - Number(a.allDay) || (a.startTime ?? "").localeCompare(b.startTime ?? "") || a.title.localeCompare(b.title),
   );
 }
+
+export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" }
+
+/** Aftellen: verjaardagen van gezinsleden en afspraken met "aftellen" aan, de eerstvolgende eerst. */
+export function countdowns(members: { id: string; name: string; birthday: string | null }[], limit = 6): Countdown[] {
+  const t = todayFn();
+  const out: Countdown[] = [];
+  for (const m of members) {
+    if (!m.birthday) continue;
+    const [by, bm, bd] = m.birthday.split("-").map(Number);
+    let next = `${t.slice(0, 4)}-${String(bm).padStart(2, "0")}-${String(bd).padStart(2, "0")}`;
+    if (next < t) next = `${Number(t.slice(0, 4)) + 1}-${next.slice(5)}`;
+    const age = Number(next.slice(0, 4)) - by;
+    out.push({ title: `${m.name} wordt ${age}`, date: next, days: diffDays(t, next), icon: "🎂", memberId: m.id, kind: "birthday" });
+  }
+  const rows = all<EventRow>("SELECT * FROM events WHERE household_id=? AND countdown=1", hid());
+  for (const r of rows) {
+    const ev = toEvent(r);
+    const occ = expand(ev, t, addDays(t, 400)).find((o) => o.on >= t);
+    if (occ) out.push({ title: ev.title, date: occ.on, days: diffDays(t, occ.on), icon: pickIcon(ev.title), memberId: ev.members[0] ?? null, kind: "event" });
+  }
+  return out.sort((a, b) => a.days - b.days).slice(0, limit);
+}
+const pickIcon = (title: string) => {
+  const t = title.toLowerCase();
+  if (/vakantie|reis|strand|zee|camping/.test(t)) return "🏖️";
+  if (/kerst|noel/.test(t)) return "🎄";
+  if (/bayram|feest|party|verjaardag/.test(t)) return "🎉";
+  if (/school|examen|toets/.test(t)) return "🎒";
+  if (/trouw|huwelijk|dugun|düğün/.test(t)) return "💍";
+  if (/baby|geboorte/.test(t)) return "👶";
+  return "⭐";
+};

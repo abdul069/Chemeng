@@ -210,6 +210,9 @@ addColumn("recipes", "orig_ingredients", "TEXT");
 addColumn("recipes", "orig_instructions", "TEXT");
 addColumn("recipes", "orig_lang", "TEXT");
 addColumn("recipes", "lang", "TEXT NOT NULL DEFAULT 'nl'");
+addColumn("members", "birthday", "TEXT");
+addColumn("events", "countdown", "INTEGER NOT NULL DEFAULT 0");
+addColumn("chores", "moment", "TEXT NOT NULL DEFAULT 'altijd'");
 db.exec(`CREATE TABLE IF NOT EXISTS dish_photos (title TEXT PRIMARY KEY, image TEXT, tried_at TEXT NOT NULL DEFAULT (datetime('now')))`);
 db.exec(`
 CREATE TABLE IF NOT EXISTS assistant_feedback (
@@ -270,6 +273,11 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   week_start: "1",
   assistant_voice: "1",
   settings_pin: "",
+  // nachtrust: scherm gedimd tussen deze uren (leeg = uit)
+  sleep_from: "",
+  sleep_until: "",
+  // na zoveel minuten zonder aanraking terug naar Vandaag (0 = nooit)
+  home_after_minutes: "3",
 };
 
 export function getSettings(householdId = hid()): Record<string, string> {

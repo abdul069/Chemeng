@@ -111,7 +111,7 @@ function Family() {
 
 function MemberEditor({ member, onClose }: { member?: Member; onClose: () => void }) {
   const act = useAction();
-  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "🙂", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind" });
+  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "🙂", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "" });
   const [confirm, setConfirm] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const upload = async (fl: FileList | null) => {
@@ -123,7 +123,8 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
   };
   const save = async () => {
     if (!f.name.trim()) return;
-    if (await act(() => (member ? api.put(`/members/${member.id}`, f) : api.post("/members", f)), "Gezinslid bewaard")) onClose();
+    const body = { ...f, birthday: f.birthday || null };
+    if (await act(() => (member ? api.put(`/members/${member.id}`, body) : api.post("/members", body)), "Gezinslid bewaard")) onClose();
   };
   const preview: Member = { id: "p", sort: 0, ...f, name: f.name || "?" };
   return (
@@ -136,7 +137,10 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
           <input ref={file} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files)} />
         </div>
       </div>
-      <label className="field"><span>Naam</span><input id="mb-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+      <div className="row2">
+        <label className="field"><span>Naam</span><input id="mb-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+        <label className="field"><span>Verjaardag (voor het aftellen)</span><input id="mb-bd" type="date" value={f.birthday} onChange={(e) => setF({ ...f, birthday: e.target.value })} /></label>
+      </div>
       <div className="field"><span>Rol</span>
         <div className="picks">
           {(["ouder", "kind"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r })}>{r === "ouder" ? "Ouder" : "Kind"}</button>)}
@@ -257,6 +261,16 @@ function Screen() {
           </select>
         </label>
       </div>
+      <div className="row3">
+        <label className="field"><span>Nachtrust van</span><input id="sleep-from" type="time" value={s.sleep_from} onChange={(e) => save({ sleep_from: e.target.value })} /></label>
+        <label className="field"><span>tot</span><input id="sleep-until" type="time" value={s.sleep_until} onChange={(e) => save({ sleep_until: e.target.value })} /></label>
+        <label className="field"><span>Terug naar Vandaag na</span>
+          <select id="home-after" value={s.home_after_minutes} onChange={(e) => save({ home_after_minutes: e.target.value })}>
+            {["0", "1", "3", "5", "10"].map((v) => <option key={v} value={v}>{v === "0" ? "Nooit" : `${v} min zonder aanraking`}</option>)}
+          </select>
+        </label>
+      </div>
+      <p className="hint">Tijdens de nachtrust toont het scherm alleen een gedimde klok. Tik om het even wakker te maken. Laat beide uren leeg om dit uit te zetten.</p>
       <label className="check-row"><input id="voice" type="checkbox" checked={s.assistant_voice === "1"} onChange={(e) => save({ assistant_voice: e.target.checked ? "1" : "0" })} /> Antwoorden van de assistent voorlezen</label>
     </Section>
   );

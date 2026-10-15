@@ -563,3 +563,35 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 }
 .langseg { align-self: flex-start; }
 .langseg button { min-width: 0; padding: 0 14px; }
+
+/* ---------- slim importeren ---------- */
+.imp-preview { position: relative; max-width: 360px; }
+.imp-preview img { width: 100%; border-radius: 14px; display: block; }
+.imp-preview .iconbtn { position: absolute; top: 8px; right: 8px; }
+.imp-list { display: flex; flex-direction: column; gap: 10px; }
+.imp-ev { display: flex; gap: 10px; padding: 12px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); }
+.imp-ev.off { opacity: .45; }
+.imp-check input { width: 24px; height: 24px; accent-color: var(--accent); margin-top: 8px; }
+.imp-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.imp-title { font-weight: 700; font-size: 16px; }
+.imp-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.imp-row input { width: auto; }
+.quickadd { display: flex; gap: 8px; align-items: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 999px; padding: 4px 6px 4px 14px; }
+.quickadd input { border: 0; background: none; padding: 8px 0; }
+.quickadd input:focus-visible { outline: none; }
+@media (max-width: 820px) { .quickadd .btn { padding-inline: 10px; } }
+
+/* ---------- aftellen, routines, nachtrust ---------- */
+.countdowns { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.cd { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 12px 8px; border-radius: 16px; background: color-mix(in srgb, var(--c) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 30%, var(--line)); }
+.cd-ic { font-size: 28px; }
+.cd-n { font-family: var(--f-display); font-size: 30px; line-height: 1; color: var(--c); }
+.cd-l { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.cd b { font-size: 13px; margin-top: 4px; overflow-wrap: anywhere; }
+.routines { display: flex; flex-direction: column; gap: 12px; }
+.routine-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 14px; }
+.routine.now .routine-h b { color: var(--accent-ink); }
+.routine.now { padding: 8px; margin: -8px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.tico { overflow: visible; }
+.tico .streak { position: absolute; left: -6px; bottom: -8px; font-size: 10px; font-style: normal; font-weight: 800; background: var(--surface); border-radius: 999px; padding: 0 4px; box-shadow: var(--shadow); }
+.sleep { position: fixed; inset: 0; z-index: 96; background: #000; color: #2a2f38; display: grid; place-items: center; font-family: var(--f-body); font-weight: 700; font-size: clamp(48px, 10vw, 120px); cursor: none; }

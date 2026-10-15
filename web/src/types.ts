@@ -1,13 +1,15 @@
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet" }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null }
 export type Repeat = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;
   date: string; endDate: string | null; startTime: string | null; endTime: string | null;
   allDay: boolean; repeat: Repeat; repeatUntil: string | null; exdates: string[];
-  members: string[]; source: string; readOnly: boolean;
+  members: string[]; source: string; readOnly: boolean; countdown: boolean;
 }
 export interface Occurrence extends CalEvent { on: string; until: string; key: string }
-export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number }
+export type Moment = "ochtend" | "middag" | "avond" | "altijd";
+export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number; moment: Moment; streak: number }
+export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" }
 export interface Reward { id: string; title: string; icon: string; cost: number }
 export interface Points { earned: number; spent: number; balance: number }
 export interface ListItem { id: string; text: string; done: boolean }
@@ -27,6 +29,7 @@ export interface CalendarSub { id: string; name: string; url: string; members: s
 export interface Settings {
   family_name: string; city: string; latitude: string; longitude: string;
   screensaver_minutes: string; week_start: string; assistant_voice: string; has_pin: boolean;
+  sleep_from: string; sleep_until: string; home_after_minutes: string;
 }
 export interface Weather {
   city: string;
@@ -39,6 +42,7 @@ export interface Bootstrap {
   assistant: { available: boolean; model: string };
   /** Mensen buiten het gezin die hun agenda met jou delen */
   shared: Member[];
+  countdowns: Countdown[];
   me: { id: string; name: string; email: string; role: "beheerder" | "lid"; memberId: string | null };
 }
 export interface Me { user: { id: string; email: string; name: string; color: string }; households: { id: string; name: string; role: "beheerder" | "lid"; memberId: string | null }[]; householdId: string | null }

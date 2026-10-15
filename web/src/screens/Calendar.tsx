@@ -7,6 +7,7 @@ import { Icon } from "../components/Icons";
 import type { EditorState } from "../components/EventEditor";
 import { MONTHS, MSHORT, addDays, addMonths, cap, longDate, shortDate, startOfMonth, startOfWeek, todayIso } from "../dates";
 import { api } from "../api";
+import { Importer, QuickAdd } from "../components/Importer";
 
 type View = "D" | "W" | "M" | "L";
 const VIEW_KEY = "gezinsbord.view";
@@ -19,6 +20,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
   const [cursor, setCursor] = useState(todayIso());
   const [dayPop, setDayPop] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const range = (() => {
     if (view === "D") return { from: cursor, to: cursor };
@@ -67,15 +69,18 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
             ))}
           </div>
           {!!data?.calendars.length && <button className="iconbtn" onClick={sync} disabled={syncing} aria-label="Gekoppelde agenda's bijwerken"><Icon.sync /></button>}
+          <button className="pill" onClick={() => setImporting(true)} title="Foto van een brief of flyer, of geplakte tekst, wordt afspraken">📷 Importeren</button>
         </div>
       </div>
       <PeopleBar />
+      <QuickAdd onParsed={(p) => openEditor({ defaults: { title: p.title, date: p.date, endDate: p.endDate, startTime: p.startTime, endTime: p.endTime, allDay: !p.startTime, members: p.memberIds, location: p.location, notes: p.notes, repeat: p.repeat, repeatUntil: p.repeatUntil } })} />
       <section className="card board">
         {view === "D" && <DayView date={cursor} events={visible} onOpen={open} onSlot={(date, startTime, m) => openEditor({ defaults: { date, startTime, endTime: addHour(startTime), members: m ? [m] : [] } })} />}
         {view === "W" && <WeekView start={range.from} events={visible} weather={weather} onOpen={open} onDay={(d) => { setCursor(d); setView("D"); }} onNextWeek={() => step(1)} />}
         {view === "M" && <MonthView month={cursor} events={visible} weekStart={weekStart} onDay={setDayPop} />}
         {view === "L" && <AgendaView from={range.from} days={30} events={visible} onOpen={open} />}
       </section>
+      {importing && <Importer onClose={() => setImporting(false)} />}
       {dayPop && (
         <Modal title={cap(longDate(dayPop))} onClose={() => setDayPop(null)}>
           {(() => {

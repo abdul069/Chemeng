@@ -16,13 +16,14 @@ export function seedDemo() {
   const ownId = get<{ member_id: string | null }>("SELECT member_id FROM household_users WHERE household_id=? AND user_id=?", householdId, userId)?.member_id;
   const papa = listMembers().find((m) => m.id === ownId) ?? createMember({ name: "Papa", color: "#4a7bd8", avatar: "🧔", role: "ouder" });
   const mama = createMember({ name: "Mama", color: "#d9576b", avatar: "👩", role: "ouder" });
-  const noah = createMember({ name: "Noah", color: "#4f9e5b", avatar: "🧒", role: "kind" });
-  const lina = createMember({ name: "Lina", color: "#8a62d1", avatar: "👧", role: "kind" });
-  const adam = createMember({ name: "Adam", color: "#e08a3c", avatar: "👶", role: "kind" });
+  const y = Number(t.slice(0, 4));
+  const noah = createMember({ name: "Noah", color: "#4f9e5b", avatar: "🧒", role: "kind", birthday: `${y - 9}-${addDays(t, 40).slice(5)}` });
+  const lina = createMember({ name: "Lina", color: "#8a62d1", avatar: "👧", role: "kind", birthday: `${y - 6}-${addDays(t, 12).slice(5)}` });
+  const adam = createMember({ name: "Adam", color: "#e08a3c", avatar: "👶", role: "kind", birthday: `${y - 3}-${addDays(t, 200).slice(5)}` });
   const all = [papa, mama, noah, lina, adam].map((m) => m.id);
 
   const ev = (title: string, date: string, startTime: string | null, endTime: string | null, members: string[], extra: Partial<Parameters<typeof createEvent>[0]> = {}) =>
-    createEvent({ title, date, startTime, endTime, members, allDay: !startTime, repeat: "none", notes: "", location: "", ...extra });
+    createEvent({ title, date, startTime, endTime, members, allDay: !startTime, repeat: "none", notes: "", location: "", countdown: false, ...extra });
 
   ev("Werk", d(0), "07:00", "16:00", [papa.id], { repeat: "weekly" });
   ev("Werk", d(1), "07:00", "16:00", [papa.id], { repeat: "weekly" });
@@ -36,23 +37,26 @@ export function seedDemo() {
   ev("Spelletjesavond", d(4), "19:00", "20:00", all);
   ev("Tandarts", d(5), "10:00", "10:30", [adam.id, papa.id]);
   ev("Brunch bij oma", d(6), "11:00", "13:00", all);
-  ev("Verjaardag oma", d(9), null, null, all);
+  ev("Verjaardag oma", d(9), null, null, all, { countdown: true });
+  ev("Herfstvakantie", addDays(t, 18), null, null, all, { endDate: addDays(t, 26), countdown: true });
   ev("Oudercontact school", d(8), "19:30", "21:00", [papa.id, mama.id]);
   ev("Afvalophaling", d(1), null, null, [], { repeat: "biweekly" });
 
-  const c = (m: string, title: string, icon: string, points = 1, days = [0, 1, 2, 3, 4, 5, 6]) => createChore({ memberId: m, title, icon, points, days });
-  const choreBed = c(noah.id, "Bed opmaken", "🛏️");
-  c(noah.id, "Huiswerk", "📚", 2, [1, 2, 3, 4]);
-  c(noah.id, "Hond uitlaten", "🐕", 2);
-  const choreTeeth = c(lina.id, "Tanden poetsen", "🪥");
-  c(lina.id, "Speelgoed opruimen", "🧸");
-  c(lina.id, "Tafel dekken", "🍴");
-  c(adam.id, "Schoenen wegzetten", "👟");
-  c(adam.id, "Tanden poetsen", "🪥");
-  const choreTrash = c(papa.id, "Vuilnis buiten", "🗑️", 1, [1]);
-  c(papa.id, "Afwas", "🍽️");
+  const c = (m: string, title: string, icon: string, points = 1, days = [0, 1, 2, 3, 4, 5, 6], moment: "ochtend" | "middag" | "avond" | "altijd" = "altijd") => createChore({ memberId: m, title, icon, points, days, moment });
+  const choreBed = c(noah.id, "Bed opmaken", "🛏️", 1, undefined, "ochtend");
+  c(noah.id, "Huiswerk", "📚", 2, [1, 2, 3, 4], "middag");
+  c(noah.id, "Hond uitlaten", "🐕", 2, undefined, "avond");
+  const choreTeeth = c(lina.id, "Tanden poetsen", "🪥", 1, undefined, "ochtend");
+  c(lina.id, "Speelgoed opruimen", "🧸", 1, undefined, "avond");
+  c(lina.id, "Tafel dekken", "🍴", 1, undefined, "avond");
+  c(adam.id, "Schoenen wegzetten", "👟", 1, undefined, "middag");
+  c(adam.id, "Tanden poetsen", "🪥", 1, undefined, "avond");
+  const choreTrash = c(papa.id, "Vuilnis buiten", "🗑️", 1, [1], "avond");
+  c(papa.id, "Afwas", "🍽️", 1, undefined, "avond");
   c(mama.id, "Was draaien", "🧺", 1, [1, 3, 5]);
   c(mama.id, "Planten water geven", "🪴", 1, [0, 3]);
+  // een paar dagen geschiedenis zodat reeksen zichtbaar zijn
+  for (let i = 1; i <= 5; i++) { setChoreDone(choreBed.id, addDays(t, -i), true); setChoreDone(choreTeeth.id, addDays(t, -i), true); }
   setChoreDone(choreBed.id, t, true);
   setChoreDone(choreTeeth.id, t, true);
   if (weekday(t) === 1) setChoreDone(choreTrash.id, t, true);

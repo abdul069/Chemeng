@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { z, ZodError } from "zod";
 import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all } from "./db.js";
 import {
-  EventInput, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
+  EventInput, countdowns, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
 } from "./events.js";
 import * as S from "./store.js";
 import { broadcast, broadcastTo, notifyUsers } from "./realtime.js";
@@ -20,6 +20,7 @@ import * as A from "./accounts.js";
 import { seedDemo } from "./seed.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
 import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
+import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { isDate } from "./dates.js";
 
 export const api = express.Router();
@@ -183,8 +184,9 @@ function publicSettings() {
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
   const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
+  const members = S.listMembers();
   res.json({
-    members: S.listMembers(), shared: A.sharedPeople(userId, householdId),
+    members, shared: A.sharedPeople(userId, householdId), countdowns: countdowns(members),
     chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL },
@@ -271,6 +273,45 @@ api.delete("/events/:id", (req, res) => {
   else deleteEvent(p(req));
   res.json({ ok: true });
   broadcast("events");
+});
+
+// ---------- slim importeren ----------
+const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|gif|webp)$/.test(f.mimetype)) });
+api.post("/import/extract", memUpload.single("image"), async (req, res) => {
+  if (!importAvailable()) return void res.status(400).json({ error: "Importeren gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server." });
+  const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 20000) : "";
+  const hint = typeof req.body?.hint === "string" ? req.body.hint.slice(0, 500) : "";
+  if (!text.trim() && !req.file) return void res.status(400).json({ error: "Plak tekst of kies een foto." });
+  try {
+    const r = await extractEvents({
+      text: text.trim() || undefined, hint: hint || undefined,
+      image: req.file ? { data: req.file.buffer.toString("base64"), mediaType: req.file.mimetype as "image/jpeg" } : undefined,
+    });
+    res.json(r);
+  } catch (e) {
+    console.error("[import]", e);
+    res.status(502).json({ error: "Lezen lukte niet. Probeer een scherpere foto of plak de tekst." });
+  }
+});
+/** Bevestigde voorstellen in één keer in de kalender zetten. */
+api.post("/import/commit", (req, res) => {
+  const b = z.object({ events: z.array(Proposal).max(100), listItems: z.array(z.string().trim().min(1).max(200)).max(100).default([]), listId: z.string().nullable().default(null) }).parse(req.body);
+  const members = S.listMembers();
+  const created = b.events.map((e) => createEvent({
+    title: e.title, date: e.date, endDate: e.endDate, startTime: e.startTime, endTime: e.endTime, allDay: !e.startTime,
+    location: e.location, notes: e.notes, repeat: e.repeat, repeatUntil: e.repeatUntil, countdown: false,
+    members: e.members.map((n) => members.find((m) => m.name.toLocaleLowerCase("nl") === n.toLocaleLowerCase("nl"))?.id).filter((x): x is string => !!x),
+  }));
+  if (b.listId && b.listItems.length) b.listItems.forEach((it) => S.addItem(b.listId!, it));
+  res.json({ added: created.length, items: b.listItems.length });
+  broadcast("events", "lists");
+});
+api.post("/events/quick", async (req, res) => {
+  const text = z.object({ text: z.string().trim().min(2).max(300) }).parse(req.body).text;
+  if (!importAvailable()) return void res.status(400).json({ error: "Snel toevoegen met tekst gebruikt de assistent. Gebruik het formulier, of zet een ANTHROPIC_API_KEY op de server." });
+  const p = await parseQuickAdd(text);
+  if (!p) return void res.status(400).json({ error: "Ik kon daar geen afspraak van maken. Probeer bv. “zwemles dinsdag 17u Lina”." });
+  res.json(p);
 });
 
 // ---------- taken & beloningen ----------

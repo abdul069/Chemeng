@@ -20,14 +20,16 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
     title: occ?.title ?? defaults?.title ?? "",
     date: occ?.on ?? defaults?.date ?? new Date().toISOString().slice(0, 10),
     endDate: occ ? (occ.until !== occ.on ? occ.until : "") : defaults?.endDate ?? "",
+
     allDay: occ?.allDay ?? defaults?.allDay ?? false,
     startTime: occ?.startTime ?? defaults?.startTime ?? "17:00",
     endTime: occ?.endTime ?? defaults?.endTime ?? "18:00",
-    repeat: (occ?.repeat ?? "none") as Repeat,
-    repeatUntil: occ?.repeatUntil ?? "",
+    repeat: (occ?.repeat ?? defaults?.repeat ?? "none") as Repeat,
+    repeatUntil: occ?.repeatUntil ?? defaults?.repeatUntil ?? "",
     members: occ?.members ?? defaults?.members ?? [],
-    location: occ?.location ?? "",
-    notes: occ?.notes ?? "",
+    location: occ?.location ?? defaults?.location ?? "",
+    notes: occ?.notes ?? defaults?.notes ?? "",
+    countdown: occ?.countdown ?? false,
   }));
   const [err, setErr] = useState<string | null>(null);
   const [ask, setAsk] = useState<null | "save" | "delete">(null);
@@ -54,7 +56,7 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
   const body = (scope: "all" | "one") => ({
     title: f.title.trim(), date: scope === "all" ? seriesShift(f.date) : f.date,
     endDate: f.endDate ? (scope === "all" ? seriesShift(f.endDate) : f.endDate) : null, allDay: f.allDay, startTime: f.allDay ? null : f.startTime, endTime: f.allDay ? null : f.endTime,
-    repeat: scope === "one" ? "none" : f.repeat, repeatUntil: f.repeatUntil || null, members: f.members, location: f.location, notes: f.notes,
+    repeat: scope === "one" ? "none" : f.repeat, repeatUntil: f.repeatUntil || null, members: f.members, location: f.location, notes: f.notes, countdown: f.countdown,
     scope, on: occ?.on,
   });
 
@@ -95,6 +97,7 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
           <label className="field"><span>Herhalen tot en met (optioneel)</span><input id="ev-until" type="date" value={f.repeatUntil} min={f.date} onChange={(e) => set("repeatUntil", e.target.value)} /></label>
         )}
         <div className="field"><span>Voor wie</span><MemberPicks value={f.members} onChange={(v) => set("members", v)} /></div>
+        <label className="check-row"><input id="ev-cd" type="checkbox" checked={f.countdown} onChange={(e) => set("countdown", e.target.checked)} /> Aftellen tonen op het startscherm (vakantie, feest, grote dag)</label>
         <label className="field"><span>Locatie</span><input id="ev-loc" value={f.location} onChange={(e) => set("location", e.target.value)} placeholder="Optioneel" /></label>
         <label className="field"><span>Notities</span><textarea id="ev-notes" value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Optioneel" /></label>
         {err && <p className="error">{err}</p>}

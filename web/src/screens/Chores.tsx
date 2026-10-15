@@ -57,7 +57,8 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                   return (
                     <div className={`task${d ? " done" : ""}`} key={c.id}>
                       <button className="tico" aria-pressed={d} aria-label={`${c.title} ${d ? "terug open zetten" : "afvinken"}`} onClick={() => toggle(c)}>{c.icon}</button>
-                      <span className="title">{c.title}</span>
+                      <span className="title">{c.title}{c.moment !== "altijd" && <small className="muted"> · {c.moment}</small>}</span>
+                      {c.streak >= 2 && <span className="pts" title="dagen op rij">🔥{c.streak}</span>}
                       <span className="pts">{c.points}⭐</span>
                       <button className="iconbtn" style={{ width: 34, height: 34 }} aria-label={`${c.title} bewerken`} onClick={() => setEdit({ chore: c, memberId: m.id })}>✎</button>
                     </div>
@@ -80,7 +81,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
 function ChoreEditor({ chore, memberId, onClose }: { chore?: Chore; memberId: string; onClose: () => void }) {
   const { data } = useData();
   const act = useAction();
-  const [f, setF] = useState({ title: chore?.title ?? "", icon: chore?.icon ?? "✅", days: chore?.days ?? [0, 1, 2, 3, 4, 5, 6], points: chore?.points ?? 1, memberId: chore?.memberId ?? memberId });
+  const [f, setF] = useState({ title: chore?.title ?? "", icon: chore?.icon ?? "✅", days: chore?.days ?? [0, 1, 2, 3, 4, 5, 6], points: chore?.points ?? 1, memberId: chore?.memberId ?? memberId, moment: chore?.moment ?? "altijd" });
   const [confirm, setConfirm] = useState(false);
   const save = async () => {
     if (!f.title.trim() || !f.days.length) return;
@@ -97,6 +98,11 @@ function ChoreEditor({ chore, memberId, onClose }: { chore?: Chore; memberId: st
       <div className="field"><span>Op welke dagen</span>
         <div className="picks">{ALL_DAYS.map((d) => (
           <button type="button" key={d} className="pick" aria-pressed={f.days.includes(d)} onClick={() => setF({ ...f, days: f.days.includes(d) ? f.days.filter((x) => x !== d) : [...f.days, d] })}>{DSHORT[d]}</button>
+        ))}</div>
+      </div>
+      <div className="field"><span>Wanneer</span>
+        <div className="picks">{([["ochtend", "🌅 Ochtendroutine"], ["middag", "☀️ Middag"], ["avond", "🌙 Avondroutine"], ["altijd", "Gelijk wanneer"]] as const).map(([v, l]) => (
+          <button type="button" key={v} className="pick" aria-pressed={f.moment === v} onClick={() => setF({ ...f, moment: v })}>{l}</button>
         ))}</div>
       </div>
       <label className="field"><span>Sterren per keer</span><input id="ch-points" type="number" min={0} max={20} value={f.points} onChange={(e) => setF({ ...f, points: Math.max(0, Number(e.target.value) || 0) })} /></label>

@@ -74,13 +74,14 @@ function buildTools(changes: Change[]) {
         herhaling: z.enum(["none", "daily", "weekly", "biweekly", "monthly", "yearly"]).optional(),
         locatie: z.string().optional(),
         notities: z.string().optional(),
+        aftellen: z.boolean().optional().describe("Toon een aftelling op het startscherm (vakantie, feest, grote dag)"),
       }),
       run: async (i) => {
         const { ids, unknown } = memberIds(i.gezinsleden);
         if (unknown.length) return `Onbekende gezinsleden: ${unknown.join(", ")}. Gezinsleden zijn: ${listMembers().map((m) => m.name).join(", ")}. Vraag na wie bedoeld wordt.`;
         const ev = createEvent({
           title: i.titel, date: i.datum, endDate: i.einddatum ?? null, startTime: i.begintijd ?? null, endTime: i.eindtijd ?? null,
-          allDay: !i.begintijd, repeat: i.herhaling ?? "none", members: ids, location: i.locatie ?? "", notes: i.notities ?? "",
+          allDay: !i.begintijd, repeat: i.herhaling ?? "none", members: ids, location: i.locatie ?? "", notes: i.notities ?? "", countdown: !!i.aftellen,
         });
         changes.push({ kind: "event_added", event: ev });
         return `Toegevoegd: ${ev.title} op ${ev.date}${ev.startTime ? ` ${ev.startTime}-${ev.endTime}` : " (hele dag)"} voor ${names(ev.members).join(", ") || "het gezin"}. id=${ev.id}`;
@@ -140,11 +141,12 @@ function buildTools(changes: Change[]) {
         gezinslid: z.string(), titel: z.string().min(1), icoon: z.string().optional().describe("Eén emoji"),
         dagen: z.array(z.number().int().min(0).max(6)).optional().describe("Weekdagen, 0 = zondag. Weglaten = elke dag"),
         sterren: z.number().int().min(0).max(20).optional(),
+        dagdeel: z.enum(["ochtend", "middag", "avond", "altijd"]).optional().describe("Hoort de taak bij de ochtend- of avondroutine?"),
       }),
       run: async (i) => {
         const m = memberByName(i.gezinslid);
         if (!m) return `Onbekend gezinslid. Kies uit: ${listMembers().map((x) => x.name).join(", ")}.`;
-        createChore({ memberId: m.id, title: i.titel, icon: i.icoon ?? "✅", days: i.dagen?.length ? i.dagen : [0, 1, 2, 3, 4, 5, 6], points: i.sterren ?? 1 });
+        createChore({ memberId: m.id, title: i.titel, icon: i.icoon ?? "✅", days: i.dagen?.length ? i.dagen : [0, 1, 2, 3, 4, 5, 6], points: i.sterren ?? 1, moment: i.dagdeel ?? "altijd" });
         changes.push({ kind: "chore", title: i.titel, member: m.name });
         return `Taak "${i.titel}" toegevoegd voor ${m.name}.`;
       },
