@@ -4,9 +4,10 @@ import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { createEvent, deleteEvent, eventsBetween, getEvent, skipOccurrence, type CalEvent } from "./events.js";
 import {
-  addItem, choresOn, createChore, createList, doneBetween, findList, listLists, listMembers, mealsBetween,
-  memberByName, setChoreDone, setMeal, SLOTS,
+  addItem, choresOn, createChore, createList, createRecipe, doneBetween, findList, listLists, listMembers, listRecipes, mealsBetween,
+  memberByName, recipeBySource, setChoreDone, setMeal, SLOTS,
 } from "./store.js";
+import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError } from "./recipes.js";
 import { getSettings } from "./db.js";
 import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
@@ -20,7 +21,9 @@ export type Change =
   | { kind: "event_removed"; title: string }
   | { kind: "meal"; date: string; slot: string; title: string }
   | { kind: "chore"; title: string; member: string }
-  | { kind: "list"; list: string; items: string[] };
+  | { kind: "list"; list: string; items: string[] }
+  | { kind: "options"; options: string[] }
+  | { kind: "recipe"; id: string; title: string; image: string | null };
 
 const DAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Datum als YYYY-MM-DD");
@@ -107,9 +110,9 @@ function buildTools(changes: Change[]) {
     betaZodTool({
       name: "maaltijd_plannen",
       description: "Zet een gerecht in het maaltijdplan (overschrijft wat er al stond voor die dag en dat moment).",
-      inputSchema: z.object({ datum: date, moment: z.enum(SLOTS), gerecht: z.string().min(1) }),
-      run: async ({ datum, moment, gerecht }) => {
-        setMeal(datum, moment, gerecht);
+      inputSchema: z.object({ datum: date, moment: z.enum(SLOTS), gerecht: z.string().min(1), recept_id: z.string().optional().describe("id uit de receptenbibliotheek, als het gerecht daar staat") }),
+      run: async ({ datum, moment, gerecht, recept_id }) => {
+        setMeal(datum, moment, gerecht, recept_id ?? null);
         changes.push({ kind: "meal", date: datum, slot: moment, title: gerecht });
         return `Gepland: ${moment} op ${datum}: ${gerecht}.`;
       },
@@ -174,6 +177,59 @@ function buildTools(changes: Change[]) {
       },
     }),
     betaZodTool({
+      name: "keuzes_aanbieden",
+      description: "Toont tikbare antwoordknoppen onder je vraag, bv. wie iets doet of welke dag. Gebruik dit telkens je de gebruiker laat kiezen uit een paar mogelijkheden; stel de vraag zelf in je antwoordtekst.",
+      inputSchema: z.object({ opties: z.array(z.string().min(1).max(60)).min(2).max(6) }),
+      run: async ({ opties }) => {
+        changes.push({ kind: "options", options: opties });
+        return "De knoppen worden getoond. Stel nu kort je vraag.";
+      },
+    }),
+    betaZodTool({
+      name: "recepten_bekijken",
+      description: "Toont de receptenbibliotheek van het gezin (id, naam, tijd, keuken), optioneel gefilterd op een zoekwoord.",
+      inputSchema: z.object({ zoekwoord: z.string().optional() }),
+      run: async ({ zoekwoord }) => {
+        const q = zoekwoord?.toLocaleLowerCase("tr");
+        const list = listRecipes().filter((r) => !q || `${r.title} ${r.ingredients}`.toLocaleLowerCase("tr").includes(q));
+        return list.length ? list.slice(0, 40).map((r) => `${r.title}${r.minutes ? ` (${r.minutes} min)` : ""}${r.cuisine ? ` [${r.cuisine}]` : ""} id=${r.id}`).join("\n") : "Geen recepten gevonden in de bibliotheek.";
+      },
+    }),
+    betaZodTool({
+      name: "recept_zoeken_online",
+      description: "Zoekt recepten op Turkse receptwebsites (nefisyemektarifleri, yemek.com, lezzet, ...). Geeft titels en links terug die je met recept_importeren kunt toevoegen.",
+      inputSchema: z.object({ zoekopdracht: z.string().min(2) }),
+      run: async ({ zoekopdracht }) => {
+        try {
+          const hits = await searchTurkishRecipes(zoekopdracht);
+          return hits.length ? hits.map((h) => `${h.title} (${h.site}${h.minutes ? `, ${h.minutes} min` : ""}) ${h.url}`).join("\n") : "Niets gevonden.";
+        } catch (e) {
+          return e instanceof RecipeError ? e.message : "Zoeken lukte niet.";
+        }
+      },
+    }),
+    betaZodTool({
+      name: "recept_importeren",
+      description: "Zet een recept van een receptwebsite in de receptenbibliotheek van het gezin. Geeft het recept-id terug.",
+      inputSchema: z.object({ url: z.string().url(), vertalen: z.boolean().default(false).describe("Vertaal naar het Nederlands") }),
+      run: async ({ url, vertalen }) => {
+        const existing = recipeBySource(url);
+        if (existing) {
+          changes.push({ kind: "recipe", id: existing.id, title: existing.title, image: existing.image });
+          return `Staat al in de bibliotheek: ${existing.title} id=${existing.id}`;
+        }
+        try {
+          let r = await fetchRecipe(url);
+          if (vertalen) r = await translateRecipe(r);
+          const id = createRecipe(r);
+          changes.push({ kind: "recipe", id, title: r.title, image: r.image ?? null });
+          return `Toegevoegd: ${r.title} id=${id}\nIngrediënten:\n${r.ingredients}`;
+        } catch (e) {
+          return e instanceof RecipeError ? e.message : "Importeren lukte niet.";
+        }
+      },
+    }),
+    betaZodTool({
       name: "weer_bekijken",
       description: "Geeft het huidige weer en de verwachting voor de komende 7 dagen.",
       inputSchema: z.object({}),
@@ -191,7 +247,9 @@ function buildTools(changes: Change[]) {
 
 const SYSTEM = `Je bent de gezinsassistent op het keukenscherm van een gezin. Je praat Nederlands (Vlaams is welkom), warm en kort: je antwoorden worden ook voorgelezen, dus schrijf zoals je praat. Gebruik hoogstens een korte opsomming als dat duidelijker is, en geen tabellen of koppen.
 
-Je kunt de gezinskalender, het maaltijdplan, de taken en de lijsten bekijken en aanpassen met je tools. Kijk in de agenda voor je een vraag over planning beantwoordt, in plaats van te gokken.
+Je kunt de gezinskalender, het maaltijdplan, de receptenbibliotheek, de taken en de lijsten bekijken en aanpassen met je tools. Het gezin kookt graag Turks: zoek nieuwe recepten op Turkse receptsites, zet ze in de bibliotheek en plan ze in. Zet ingrediënten pas op de boodschappenlijst als de gebruiker dat vraagt, en vraag dan eventueel welke ze al hebben.
+Laat de gebruiker kiezen met keuzes_aanbieden wanneer je een vraag stelt met een paar duidelijke mogelijkheden.
+Opmaak: korte zinnen; een genummerde lijst of **vet** mag als het helpt, verder geen opmaak. Kijk in de agenda voor je een vraag over planning beantwoordt, in plaats van te gokken.
 Bij een nieuwe afspraak: als de dag of het uur ontbreekt, vraag het kort na; ontbreekt alleen voor wie, plan het dan voor het hele gezin. Zeg na het toevoegen in één zin wat er gepland is en voor wie.
 Bij vragen over koken, spelletjes, uitstapjes of opvoeding geef je praktische, gezinsvriendelijke ideeën die passen bij de leeftijden en de agenda van het gezin.`;
 

@@ -194,6 +194,36 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `);
 
+// kolommen die later bijkwamen
+function addColumn(table: string, col: string, def: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+addColumn("recipes", "image", "TEXT");
+addColumn("recipes", "source_url", "TEXT");
+addColumn("recipes", "servings", "TEXT NOT NULL DEFAULT ''");
+addColumn("recipes", "cuisine", "TEXT NOT NULL DEFAULT ''");
+db.exec(`
+CREATE TABLE IF NOT EXISTS assistant_feedback (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  rating INTEGER NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS memos (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  seconds INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
+
 type Row = Record<string, unknown>;
 export const all = <T = Row>(sql: string, ...p: unknown[]) => db.prepare(sql).all(...(p as never[])) as T[];
 export const get = <T = Row>(sql: string, ...p: unknown[]) => db.prepare(sql).get(...(p as never[])) as T | undefined;

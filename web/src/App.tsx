@@ -11,24 +11,27 @@ import { CalendarScreen } from "./screens/Calendar";
 import { ChoresScreen } from "./screens/Chores";
 import { MealsScreen } from "./screens/Meals";
 import { ListsScreen } from "./screens/Lists";
-import { PhotosScreen } from "./screens/Photos";
+import { AppsScreen, type AppView } from "./screens/Apps";
+import { RecipeHost } from "./components/Recipes";
 import { SettingsScreen } from "./screens/Settings";
 import { cap, clock, longDate, todayIso } from "./dates";
 
-type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "photos" | "settings";
+type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
   { id: "today", label: "Vandaag", icon: "home", title: "Vandaag" },
   { id: "calendar", label: "Kalender", icon: "calendar", title: "Kalender" },
   { id: "chores", label: "Taken", icon: "tasks", title: "Taken" },
   { id: "meals", label: "Maaltijden", icon: "meals", title: "Maaltijden" },
   { id: "lists", label: "Lijsten", icon: "lists", title: "Lijsten" },
-  { id: "photos", label: "Foto's", icon: "photos", title: "Foto's" },
+  { id: "apps", label: "Apps", icon: "apps", title: "Apps" },
 ];
 
 export function App() {
   const { data, error, errorCode, reload } = useData();
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
-  const [screen, setScreen] = useState<Screen>(() => (location.hash.slice(1) as Screen) || "today");
+  const [screen, setScreenState] = useState<Screen>(() => { const h = location.hash.slice(1); return (h === "photos" ? "apps" : h as Screen) || "today"; });
+  const [appView, setAppView] = useState<AppView>("grid");
+  const setScreen = (s: Screen) => { setScreenState(s); if (s === "apps") setAppView("grid"); };
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [assist, setAssist] = useState<{ prompt?: string; key: number } | null>(null);
   const [convo, setConvo] = useState<Msg[]>([]);
@@ -79,12 +82,15 @@ export function App() {
   if (!data) return <div className="center"><div className="mascot thinking" aria-label="Laden" /></div>;
 
   const current = NAV.find((n) => n.id === screen);
-  const header = (
+  const makeHeader = (title: string, back?: () => void) => (
     <div className="titleblock">
-      <span className="eyebrow">{time} · {cap(longDate(todayIso()))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>
-      <h1>{screen === "settings" ? "Instellingen" : current?.title}</h1>
+      {back
+        ? <button className="backbtn" onClick={back}><Icon.left /> Apps</button>
+        : <span className="eyebrow">{time} · {cap(longDate(todayIso()))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>}
+      <h1>{title}</h1>
     </div>
   );
+  const header = makeHeader(screen === "settings" ? "Instellingen" : current?.title ?? "");
   const openEditor = (s: EditorState) => setEditor(s);
 
   return (
@@ -104,12 +110,13 @@ export function App() {
         {screen === "chores" && <ChoresScreen header={header} />}
         {screen === "meals" && <MealsScreen header={header} />}
         {screen === "lists" && <ListsScreen header={header} />}
-        {screen === "photos" && <PhotosScreen header={header} startSlideshow={() => setSaver(true)} />}
+        {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} startSlideshow={() => setSaver(true)} />}
         {screen === "settings" && <SettingsScreen header={header} />}
       </main>
       {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label="Afspraak toevoegen">+</button>}
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
+      <RecipeHost />
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}

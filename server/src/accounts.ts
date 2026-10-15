@@ -197,8 +197,9 @@ export function canSeePhoto(userId: string, filename: string): boolean {
   const own = get(
     `SELECT 1 FROM household_users hu WHERE hu.user_id=? AND (
        EXISTS (SELECT 1 FROM photos p WHERE p.household_id = hu.household_id AND p.filename = ?)
-       OR EXISTS (SELECT 1 FROM members m WHERE m.household_id = hu.household_id AND m.photo = ?))`,
-    userId, filename, filename,
+       OR EXISTS (SELECT 1 FROM members m WHERE m.household_id = hu.household_id AND m.photo = ?)
+       OR EXISTS (SELECT 1 FROM memos mm WHERE mm.household_id = hu.household_id AND mm.filename = ?))`,
+    userId, filename, filename, filename,
   );
   if (own) return true;
   return !!get(

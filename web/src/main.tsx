@@ -8,6 +8,7 @@ import "@fontsource/young-serif/400.css";
 import "./styles.css";
 import { App } from "./App";
 import { DataProvider } from "./store";
+import { TimerProvider } from "./components/Timers";
 import { applyTheme } from "./screens/Settings";
 
 applyTheme();
@@ -19,7 +20,9 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <DataProvider>
-      <App />
+      <TimerProvider>
+        <App />
+      </TimerProvider>
     </DataProvider>
   </StrictMode>,
 );

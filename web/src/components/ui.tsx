@@ -23,9 +23,16 @@ export function Avatar({ m, size = 52, dot = true }: { m: Member; size?: number;
   );
 }
 
-export function MemberDots({ ids }: { ids: string[] }) {
+/** Kleine profielfotootjes van wie meedoet aan een afspraak. */
+export function MemberDots({ ids, max = 6 }: { ids: string[]; max?: number }) {
   const { member } = useData();
-  return <span className="dots">{ids.map((id) => <i key={id} style={cvar(member(id)?.color ?? "#999")} title={member(id)?.name} />)}</span>;
+  const shown = ids.map((id) => member(id)).filter(Boolean).slice(0, max);
+  return (
+    <span className="minis" aria-label={shown.map((m) => m!.name).join(", ")}>
+      {shown.map((m) => <span key={m!.id} title={m!.name}><Avatar m={m!} size={20} dot={false} /></span>)}
+      {ids.length > max && <span className="minis-more">+{ids.length - max}</span>}
+    </span>
+  );
 }
 
 /** De rij gezinsleden bovenaan; tikken verbergt of toont iemand in de kalender. */

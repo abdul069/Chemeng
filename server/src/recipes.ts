@@ -1,0 +1,204 @@
+// Recepten ophalen van receptwebsites (via schema.org/Recipe in de pagina), zoeken op Turkse receptsites
+// en optioneel vertalen naar het Nederlands.
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
+import type { RecipeInputT } from "./store.js";
+
+export const TURKISH_SITES = [
+  "nefisyemektarifleri.com",
+  "yemek.com",
+  "lezzet.com.tr",
+  "ardaninmutfagi.com",
+  "refikaninmutfagi.com",
+  "yemektarifleri.com",
+  "mutfaksirlari.com",
+];
+
+const client = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : null;
+const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
+export const aiAvailable = () => client !== null;
+
+export class RecipeError extends Error {}
+
+// ---------- recept uit een webpagina halen ----------
+type Json = Record<string, unknown>;
+const asArray = <T,>(v: T | T[] | undefined | null): T[] => (v == null ? [] : Array.isArray(v) ? v : [v]);
+const decode = (s: string) =>
+  s.replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&#039;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/\s+/g, " ").trim();
+
+function isRecipe(o: unknown): o is Json {
+  if (!o || typeof o !== "object") return false;
+  const t = (o as Json)["@type"];
+  return asArray(t as string | string[]).some((x) => String(x).toLowerCase() === "recipe");
+}
+
+function findRecipe(node: unknown): Json | null {
+  if (isRecipe(node)) return node;
+  if (Array.isArray(node)) {
+    for (const n of node) { const r = findRecipe(n); if (r) return r; }
+  } else if (node && typeof node === "object") {
+    const o = node as Json;
+    for (const key of ["@graph", "mainEntity", "itemListElement"]) {
+      const r = findRecipe(o[key]);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+/** ISO 8601-duur (PT1H30M) naar minuten. */
+export function isoMinutes(d: unknown): number | null {
+  if (typeof d !== "string") return null;
+  const m = d.match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/i);
+  if (!m) return null;
+  const total = Number(m[1] ?? 0) * 1440 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  return total > 0 ? total : null;
+}
+
+function imageOf(v: unknown): string | null {
+  for (const x of asArray(v as unknown)) {
+    if (typeof x === "string" && /^https?:/.test(x)) return x;
+    if (x && typeof x === "object" && typeof (x as Json).url === "string") return (x as Json).url as string;
+  }
+  return null;
+}
+
+function stepsOf(v: unknown): string[] {
+  const out: string[] = [];
+  for (const x of asArray(v as unknown)) {
+    if (typeof x === "string") out.push(...x.split(/\n+/).map(decode).filter(Boolean));
+    else if (x && typeof x === "object") {
+      const o = x as Json;
+      if (o.itemListElement) {
+        if (typeof o.name === "string") out.push(`— ${decode(o.name)} —`);
+        out.push(...stepsOf(o.itemListElement));
+      } else if (typeof o.text === "string") out.push(decode(o.text));
+      else if (typeof o.name === "string") out.push(decode(o.name));
+    }
+  }
+  return out.filter(Boolean);
+}
+
+/** Leest het recept uit de HTML van een receptpagina. */
+export function parseRecipeHtml(html: string, url: string): RecipeInputT {
+  const blocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  for (const raw of blocks) {
+    let data: unknown;
+    try { data = JSON.parse(raw.trim()); } catch {
+      try { data = JSON.parse(raw.trim().replace(/[\u0000-\u001f]+/g, " ")); } catch { continue; }
+    }
+    const r = findRecipe(data);
+    if (!r) continue;
+    const ingredients = asArray((r.recipeIngredient ?? r.ingredients) as string[]).map((x) => decode(String(x))).filter(Boolean);
+    const steps = stepsOf(r.recipeInstructions);
+    const title = decode(String(r.name ?? "")) || "Recept";
+    const servings = decode(String(asArray(r.recipeYield as string | string[])[0] ?? ""));
+    return {
+      title,
+      ingredients: ingredients.join("\n"),
+      instructions: steps.map((s, i) => (s.startsWith("—") ? s : `${i + 1}. ${s}`)).join("\n"),
+      minutes: isoMinutes(r.totalTime) ?? ((isoMinutes(r.prepTime) ?? 0) + (isoMinutes(r.cookTime) ?? 0) || null),
+      image: imageOf(r.image),
+      sourceUrl: url,
+      servings: servings.slice(0, 60),
+      cuisine: decode(String(asArray(r.recipeCuisine as string | string[])[0] ?? "")).slice(0, 60) || (TURKISH_SITES.some((d) => url.includes(d)) ? "Turks" : ""),
+    };
+  }
+  throw new RecipeError("Op deze pagina staat geen recept dat we kunnen lezen. Probeer de link van één specifiek recept.");
+}
+
+export async function fetchRecipe(url: string): Promise<RecipeInputT> {
+  let u: URL;
+  try { u = new URL(url); } catch { throw new RecipeError("Dat is geen geldige link."); }
+  if (!/^https?:$/.test(u.protocol)) throw new RecipeError("Gebruik een link die met https:// begint.");
+  const res = await fetch(u, {
+    headers: { "user-agent": "Mozilla/5.0 (Gezinsbord receptenbibliotheek)", "accept-language": "tr,nl;q=0.8,en;q=0.5", accept: "text/html" },
+    redirect: "follow",
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => { throw new RecipeError("De receptsite reageert niet. Probeer het later opnieuw."); });
+  if (!res.ok) throw new RecipeError(`De receptsite gaf foutcode ${res.status}.`);
+  const html = await res.text();
+  return parseRecipeHtml(html.slice(0, 3_000_000), res.url || url);
+}
+
+// ---------- zoeken op Turkse receptsites ----------
+export interface RecipeHit { title: string; url: string; site: string; image: string | null; minutes: number | null }
+
+/** Laat Claude op Turkse receptsites zoeken en geeft de gevonden receptpagina's terug. */
+export async function searchTurkishRecipes(query: string): Promise<RecipeHit[]> {
+  if (!client) throw new RecipeError("Zoeken naar recepten gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server. Een recept toevoegen via een link werkt wel.");
+  const messages: Anthropic.MessageParam[] = [{
+    role: "user",
+    content: `Zoek Turkse recepten voor: "${query}". Zoek in het Turks (vertaal de vraag zo nodig, bv. "kip" → "tavuk"). Zoek naar pagina's van individuele recepten, geen overzichtspagina's. Doe hoogstens drie zoekopdrachten en antwoord daarna kort.`,
+  }];
+  const hits = new Map<string, string>();
+  for (let i = 0; i < 4; i++) {
+    const msg = await client.messages.create({
+      model: MODEL,
+      max_tokens: 4000,
+      output_config: { effort: "low" },
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3, allowed_domains: TURKISH_SITES }],
+      messages,
+    });
+    for (const block of msg.content) {
+      if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+        for (const r of block.content) if (r.type === "web_search_result" && !hits.has(r.url)) hits.set(r.url, r.title);
+      }
+    }
+    if (msg.stop_reason !== "pause_turn") break;
+    messages.push({ role: "assistant", content: msg.content });
+  }
+  // alleen pagina's die echt een recept bevatten, met foto en titel van de site zelf
+  const candidates = [...hits.entries()].filter(([url]) => !/\/(kategori|category|etiket|tag|arama|search)\//i.test(url)).slice(0, 10);
+  const checked = await Promise.all(candidates.map(async ([url, title]) => {
+    try {
+      const r = await fetchRecipe(url);
+      return { title: r.title || title, url, site: new URL(url).hostname.replace(/^www\./, ""), image: r.image ?? null, minutes: r.minutes ?? null };
+    } catch {
+      return null;
+    }
+  }));
+  return checked.filter((x): x is RecipeHit => x !== null);
+}
+
+// ---------- vertalen ----------
+const Translated = z.object({
+  title: z.string(),
+  ingredients: z.array(z.string()),
+  instructions: z.array(z.string()),
+  servings: z.string(),
+});
+
+export async function translateRecipe(r: RecipeInputT): Promise<RecipeInputT> {
+  if (!client) return r;
+  const res = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 8000,
+    output_config: { effort: "low", format: zodOutputFormat(Translated) },
+    messages: [{
+      role: "user",
+      content: `Vertaal dit recept naar het Nederlands (Vlaams mag). Behoud hoeveelheden en eenheden; zet Turkse maten om waar het helpt (bv. "1 su bardağı" → "1 waterglas (ca. 200 ml)"). Laat de naam van het gerecht in het Turks staan en zet de vertaling tussen haakjes, bv. "Karnıyarık (gevulde aubergine)". Geef de bereiding als losse stappen zonder nummer.
+
+Titel: ${r.title}
+Porties: ${r.servings}
+Ingrediënten:
+${r.ingredients}
+Bereiding:
+${r.instructions}`,
+    }],
+  });
+  const t = res.parsed_output;
+  if (!t) return r;
+  return {
+    ...r,
+    title: t.title || r.title,
+    ingredients: t.ingredients.join("\n"),
+    instructions: t.instructions.map((s, i) => `${i + 1}. ${s.replace(/^\d+[.)]\s*/, "")}`).join("\n"),
+    servings: t.servings.slice(0, 60) || r.servings,
+  };
+}

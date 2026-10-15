@@ -117,23 +117,37 @@ export function claimReward(rewardId: string, memberId: string): string | null {
 // ---------- recepten & maaltijden ----------
 export const SLOTS = ["ontbijt", "lunch", "diner", "snack"] as const;
 export const RecipeInput = z.object({
-  title: z.string().trim().min(1).max(120),
-  ingredients: z.string().max(4000).default(""),
-  instructions: z.string().max(8000).default(""),
+  title: z.string().trim().min(1).max(160),
+  ingredients: z.string().max(6000).default(""),
+  instructions: z.string().max(20000).default(""),
   minutes: z.number().int().min(0).max(1440).nullable().optional(),
+  image: z.string().max(2000).nullable().optional(),
+  sourceUrl: z.string().max(2000).nullable().optional(),
+  servings: z.string().max(60).default(""),
+  cuisine: z.string().max(60).default(""),
 });
-export const listRecipes = () =>
-  all<{ id: string; title: string; ingredients: string; instructions: string; minutes: number | null }>(
-    "SELECT id, title, ingredients, instructions, minutes FROM recipes WHERE household_id=? ORDER BY title", hid(),
-  );
-export function createRecipe(i: z.infer<typeof RecipeInput>) {
+export type RecipeInputT = z.infer<typeof RecipeInput>;
+export interface Recipe { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string }
+type RecipeRow = Omit<Recipe, "sourceUrl"> & { source_url: string | null };
+export const listRecipes = (): Recipe[] =>
+  all<RecipeRow>(
+    "SELECT id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine FROM recipes WHERE household_id=? ORDER BY title", hid(),
+  ).map(({ source_url, ...r }) => ({ ...r, sourceUrl: source_url }));
+export function createRecipe(i: RecipeInputT) {
   const id = newId();
-  run("INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes) VALUES (?,?,?,?,?,?)", id, hid(), i.title, i.ingredients, i.instructions, i.minutes ?? null);
+  run(
+    "INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    id, hid(), i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine,
+  );
   return id;
 }
-export const updateRecipe = (id: string, i: z.infer<typeof RecipeInput>) =>
-  run("UPDATE recipes SET title=?, ingredients=?, instructions=?, minutes=? WHERE id=? AND household_id=?", i.title, i.ingredients, i.instructions, i.minutes ?? null, id, hid());
+export const updateRecipe = (id: string, i: RecipeInputT) =>
+  run(
+    "UPDATE recipes SET title=?, ingredients=?, instructions=?, minutes=?, image=?, source_url=?, servings=?, cuisine=? WHERE id=? AND household_id=?",
+    i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine, id, hid(),
+  );
 export const deleteRecipe = (id: string) => run("DELETE FROM recipes WHERE id=? AND household_id=?", id, hid());
+export const recipeBySource = (url: string) => listRecipes().find((r) => r.sourceUrl === url);
 
 export const mealsBetween = (from: string, to: string) =>
   all<{ date: string; slot: string; title: string; recipe_id: string | null }>(

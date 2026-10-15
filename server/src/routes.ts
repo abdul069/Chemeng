@@ -18,6 +18,7 @@ import {
 } from "./auth.js";
 import * as A from "./accounts.js";
 import { seedDemo } from "./seed.js";
+import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
 import { isDate } from "./dates.js";
 
 export const api = express.Router();
@@ -312,11 +313,51 @@ api.delete("/recipes/:id", (req, res) => { S.deleteRecipe(p(req)); res.json({ ok
 api.post("/recipes/:id/to-list", (req, res) => {
   const recipe = S.listRecipes().find((r) => r.id === p(req));
   if (!recipe) return void res.status(404).json({ error: "Recept niet gevonden." });
-  const listId = z.object({ listId: z.string() }).parse(req.body).listId;
-  const items = recipe.ingredients.split("\n").map((s) => s.replace(/^[-*•\s]+/, "").trim()).filter(Boolean);
-  items.forEach((it) => S.addItem(listId, it));
-  res.json({ added: items.length });
+  const b = z.object({ listId: z.string(), items: z.array(z.string().trim().min(1).max(200)).max(100).optional() }).parse(req.body);
+  const all = recipe.ingredients.split("\n").map((s) => s.replace(/^[-*•\s]+/, "").trim()).filter(Boolean);
+  const items = b.items ?? all;
+  // niets dubbel zetten wat nog open op de lijst staat
+  const open = new Set(S.listLists().find((l) => l.id === b.listId)?.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")) ?? []);
+  const fresh = items.filter((it) => !open.has(it.toLocaleLowerCase("nl")));
+  fresh.forEach((it) => S.addItem(b.listId, it));
+  res.json({ added: fresh.length, skipped: items.length - fresh.length });
   broadcast("lists");
+});
+
+// recepten van receptwebsites
+api.post("/recipes/import", async (req, res) => {
+  const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), translate: z.boolean().default(false) }).parse(req.body);
+  const existing = S.recipeBySource(b.url);
+  if (existing) return void res.json({ id: existing.id, existing: true });
+  try {
+    let r = await fetchRecipe(b.url);
+    if (b.translate) r = await translateRecipe(r);
+    const id = S.createRecipe(r);
+    res.json({ id, existing: false });
+    broadcast("recipes");
+  } catch (e) {
+    if (e instanceof RecipeError) return void res.status(400).json({ error: e.message });
+    throw e;
+  }
+});
+api.post("/recipes/search", async (req, res) => {
+  const q = z.object({ query: z.string().trim().min(2, "Typ minstens twee letters.").max(100) }).parse(req.body).query;
+  try {
+    res.json(await searchTurkishRecipes(q));
+  } catch (e) {
+    if (e instanceof RecipeError) return void res.status(400).json({ error: e.message });
+    console.error("[recepten zoeken]", e);
+    res.status(502).json({ error: "Zoeken lukte niet. Probeer het zo opnieuw." });
+  }
+});
+api.post("/recipes/:id/translate", async (req, res) => {
+  const r = S.listRecipes().find((x) => x.id === p(req));
+  if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
+  if (!aiAvailable()) return void res.status(400).json({ error: "Vertalen gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server." });
+  const t = await translateRecipe(S.RecipeInput.parse(r));
+  S.updateRecipe(r.id, t);
+  res.json({ ok: true });
+  broadcast("recipes", "meals");
 });
 
 // ---------- lijsten ----------
@@ -427,6 +468,44 @@ api.get("/geocode", async (req, res) => {
   try { res.json(await geocode(q)); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Zoeken mislukt" }); }
 });
 
+// ---------- spraakmemo's ----------
+const audio = multer({
+  storage: multer.diskStorage({
+    destination: PHOTO_DIR,
+    filename: (_req, file, cb) => cb(null, `memo-${crypto.randomUUID()}${/mp4|m4a|aac/.test(file.mimetype) ? ".m4a" : /ogg/.test(file.mimetype) ? ".ogg" : ".webm"}`),
+  }),
+  limits: { fileSize: 30 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /^audio\//.test(file.mimetype) || file.mimetype === "video/webm"),
+});
+api.get("/memos", (_req, res) => {
+  res.json(all<{ id: string; title: string; filename: string; seconds: number; created_at: string; name: string | null }>(
+    "SELECT m.id, m.title, m.filename, m.seconds, m.created_at, u.name FROM memos m LEFT JOIN users u ON u.id = m.user_id WHERE m.household_id=? ORDER BY m.created_at DESC", hid(),
+  ).map((m) => ({ id: m.id, title: m.title, filename: m.filename, seconds: m.seconds, createdAt: m.created_at, by: m.name })));
+});
+api.post("/memos", audio.single("audio"), (req, res) => {
+  if (!req.file) return void res.status(400).json({ error: "De opname kwam niet goed door. Probeer opnieuw." });
+  const title = String(req.body?.title ?? "").trim().slice(0, 80) || "Spraakmemo";
+  const seconds = Math.max(0, Math.min(3600, Math.round(Number(req.body?.seconds) || 0)));
+  run("INSERT INTO memos(id, household_id, user_id, title, filename, seconds) VALUES (?,?,?,?,?,?)", newId(), hid(), ctx().userId, title, req.file.filename, seconds);
+  res.json({ ok: true });
+  broadcast("memos");
+});
+api.delete("/memos/:id", (req, res) => {
+  const m = get<{ filename: string }>("SELECT filename FROM memos WHERE id=? AND household_id=?", p(req), hid());
+  if (m) {
+    run("DELETE FROM memos WHERE id=?", p(req));
+    fs.rm(path.join(PHOTO_DIR, path.basename(m.filename)), { force: true }, () => {});
+  }
+  res.json({ ok: true });
+  broadcast("memos");
+});
+
+api.post("/assistant/feedback", (req, res) => {
+  const b = z.object({ rating: z.union([z.literal(1), z.literal(-1)]), question: z.string().max(4000), answer: z.string().max(8000) }).parse(req.body);
+  run("INSERT INTO assistant_feedback(id, household_id, user_id, rating, question, answer) VALUES (?,?,?,?,?,?)", newId(), hid(), ctx().userId, b.rating, b.question, b.answer);
+  res.json({ ok: true });
+});
+
 // ---------- assistent ----------
 const ChatBody = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(4000) })).min(1).max(40) });
 api.post("/assistant", async (req, res) => {
@@ -434,7 +513,7 @@ api.post("/assistant", async (req, res) => {
   try {
     const out = await chat(messages);
     res.json(out);
-    if (out.changes.length) broadcast("events", "meals", "chores", "lists", "rewards");
+    if (out.changes.some((c) => c.kind !== "options")) broadcast("events", "meals", "chores", "lists", "rewards", "recipes");
   } catch (e) {
     console.error("[assistent]", e);
     res.status(502).json({ error: "De assistent is even niet bereikbaar. Probeer het zo opnieuw." });

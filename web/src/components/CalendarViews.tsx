@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useData } from "../store";
 import type { Member, Occurrence, Weather } from "../types";
 import { Avatar, MemberDots, cvar } from "./ui";
-import { DSHORT, addDays, cap, fmtRange, fmtTime, longDate, nowMin, startOfMonth, startOfWeek, toMin, todayIso, weekday, clock } from "../dates";
+import { DSHORT, MSHORT, addDays, cap, fmtRange, fmtTime, longDate, nowMin, startOfMonth, startOfWeek, toMin, todayIso, weekday, clock } from "../dates";
 
 const START_H = 6;
 const END_H = 24;
@@ -130,10 +130,21 @@ function Chip({ e, onOpen }: { e: Occurrence; onOpen: (o: Occurrence) => void })
   );
 }
 
-export function WeekView({ start, events, weather, onOpen, onDay }: {
-  start: string; events: Occurrence[]; weather?: Weather | null; onOpen: (o: Occurrence) => void; onDay: (d: string) => void;
+function weekMood(n: number, busiest: number) {
+  if (n === 0) return "Nog niets gepland. Tijd voor iets leuks samen?";
+  if (n <= 4) return "Een rustige week. Of toch niet?";
+  if (busiest >= 5) return "Een drukke week: plan wat rust in.";
+  return "Een gewone week met genoeg te doen.";
+}
+
+export function WeekView({ start, events, weather, onOpen, onDay, onNextWeek }: {
+  start: string; events: Occurrence[]; weather?: Weather | null; onOpen: (o: Occurrence) => void; onDay: (d: string) => void; onNextWeek?: () => void;
 }) {
   const t = todayIso();
+  const next = addDays(start, 7);
+  const nextEnd = addDays(start, 13);
+  const nextEvents = events.filter((e) => e.until >= next && e.on <= nextEnd);
+  const perDay = Array.from({ length: 7 }, (_, i) => { const d = addDays(next, i); return nextEvents.filter((e) => e.on <= d && e.until >= d).length; });
   return (
     <div className="scroll">
       <div className="week">
@@ -153,6 +164,14 @@ export function WeekView({ start, events, weather, onOpen, onDay }: {
           );
         })}
       </div>
+      {onNextWeek && (
+        <button className="nextweek" onClick={onNextWeek}>
+          <span className="nw-h">{Number(next.slice(8))} {MSHORT[Number(next.slice(5, 7)) - 1]} – {Number(nextEnd.slice(8))} {MSHORT[Number(nextEnd.slice(5, 7)) - 1]}</span>
+          <span className="nw-mood">{weekMood(nextEvents.length, Math.max(...perDay))}</span>
+          <span className="nw-bars" aria-hidden>{perDay.map((n, i) => <i key={i} style={{ height: `${Math.min(100, 12 + n * 16)}%` }} />)}</span>
+          <span className="muted">{nextEvents.length} afspraken · bekijk volgende week →</span>
+        </button>
+      )}
     </div>
   );
 }

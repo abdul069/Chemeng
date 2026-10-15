@@ -12,10 +12,11 @@ Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 | **Kalender** | Dag- (een kolom per gezinslid), week-, maand- en lijstweergave. Tik op een gezinslid om die persoon te verbergen. Herhalende afspraken (dagelijks, wekelijks, tweewekelijks, maandelijks, jaarlijks), meerdaagse afspraken, "alleen deze dag" of "hele reeks" aanpassen |
 | **Gekoppelde agenda's** | Google Agenda, Outlook en iCloud via het iCal-adres, elk kwartier bijgewerkt |
 | **Taken** | Klusjes per gezinslid met icoontjes, per weekdag, met sterren die kinderen inruilen voor beloningen |
-| **Maaltijden** | Weekmenu (ontbijt, lunch, diner), receptenboek, ingrediënten in één tik naar de boodschappenlijst |
+| **Maaltijden en recepten** | Weekmenu (ontbijt, lunch, diner) en een receptenbibliotheek met foto's. Recepten zoeken op Turkse receptsites (nefisyemektarifleri, yemek.com, lezzet, Arda'nın Mutfağı, Refika'nın Mutfağı, ...) of toevoegen via een link; optioneel vertaald naar het Nederlands. Per recept: ingrediënten afvinken die je al hebt, de ontbrekende op de boodschappenlijst zetten en het recept op een dag inplannen |
+| **Apps** | Foto's, weer (7 dagen), klok met kookwekkers en wekkers, gedeelde spraakmemo's, en snelkoppelingen naar YouTube, Spotify, Google Foto's/Agenda/Maps |
 | **Lijsten** | Boodschappen, to-do en eigen lijsten, live gedeeld tussen alle toestellen |
 | **Foto's** | Foto's uploaden; na een tijdje zonder aanraking wordt het scherm een fotolijst met klok, weer en de volgende afspraak |
-| **Assistent** | Claude, met spraak: "Zet volleybal op dinsdag om 17u voor Lina en Mama", "Wat eten we deze week?", "Zet melk op de boodschappenlijst", "Wat kunnen we dit weekend doen met een vierjarige?" |
+| **Assistent** | Claude als laag over het scherm, met handsfree praten (tot je op Stop tikt), voorlezen, opgemaakte antwoorden, antwoordknoppen en duimpjes. "Zet volleybal op dinsdag om 17u voor Lina en Mama", "Wat kook ik vanavond?", "Zoek een recept voor mercimek çorbası en plan het vrijdag", "Zet de ingrediënten op de boodschappenlijst" |
 | **Instellingen** | Gezinsleden (naam, kleur, figuurtje of foto, ouder/kind), woonplaats voor het weer, fotolijst, ouder-pincode, thema |
 
 ## Accounts, gezinnen en delen
@@ -134,6 +135,7 @@ Gekoppelde agenda's zijn alleen-lezen in Gezinsbord; wijzigingen doe je in de oo
 Alles blijft op je eigen server. Alleen deze gegevens verlaten je netwerk:
 
 - de vragen aan de assistent, samen met de gezinsnamen en de agenda/taken/maaltijden die de assistent
-  opvraagt, gaan naar de Claude API van Anthropic;
+  opvraagt, gaan naar de Claude API van Anthropic (ook zoeken en vertalen van recepten);
+- de server haalt receptpagina's op van de receptsites die je kiest;
 - je ingestelde woonplaats (coördinaten) gaat naar Open-Meteo voor het weer;
 - de server haalt de gekoppelde iCal-adressen op.

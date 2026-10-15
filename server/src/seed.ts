@@ -2,7 +2,7 @@
 // Alles is achteraf aan te passen of te verwijderen.
 import { ctx, get } from "./db.js";
 import { createEvent } from "./events.js";
-import { addItem, createChore, createList, createMember, createRecipe, createReward, findList, listMembers, setMeal, setChoreDone } from "./store.js";
+import { addItem, createChore, createList, createMember, createRecipe, createReward, findList, listMembers, setMeal, setChoreDone, RecipeInput } from "./store.js";
 import { addDays, today, weekday } from "./dates.js";
 
 export function seedDemo() {
@@ -61,9 +61,9 @@ export function seedDemo() {
   createReward({ title: "Half uur langer opblijven", icon: "🌙", cost: 20 });
   createReward({ title: "Uitstap naar de speeltuin", icon: "🛝", cost: 40 });
 
-  const bolo = createRecipe({ title: "Spaghetti bolognese", minutes: 40, ingredients: "500 g gehakt\n1 ui\n2 teentjes look\n1 blik tomatenblokjes\n500 g spaghetti\nGeraspte kaas", instructions: "Stoof ui en look, bak het gehakt rul, voeg tomaten toe en laat 20 minuten sudderen. Kook de spaghetti en serveer met kaas." });
-  const pizza = createRecipe({ title: "Zelfgemaakte pizza", minutes: 45, ingredients: "Pizzadeeg\nTomatensaus\nMozzarella\nHam\nChampignons", instructions: "Rol het deeg uit, beleg en bak 12 minuten op 230 °C." });
-  createRecipe({ title: "Linzensoep", minutes: 35, ingredients: "250 g rode linzen\n1 ui\n2 wortels\n1 l groentebouillon\nKomijn", instructions: "Fruit ui en wortel, voeg linzen, kruiden en bouillon toe, kook 20 minuten en mix fijn." });
+  const bolo = createRecipe(RecipeInput.parse({ title: "Spaghetti bolognese", minutes: 40, ingredients: "500 g gehakt\n1 ui\n2 teentjes look\n1 blik tomatenblokjes\n500 g spaghetti\nGeraspte kaas", instructions: "Stoof ui en look, bak het gehakt rul, voeg tomaten toe en laat 20 minuten sudderen. Kook de spaghetti en serveer met kaas." }));
+  const pizza = createRecipe(RecipeInput.parse({ title: "Zelfgemaakte pizza", minutes: 45, ingredients: "Pizzadeeg\nTomatensaus\nMozzarella\nHam\nChampignons", instructions: "Rol het deeg uit, beleg en bak 12 minuten op 230 °C." }));
+  createRecipe(RecipeInput.parse({ title: "Linzensoep", minutes: 35, ingredients: "250 g rode linzen\n1 ui\n2 wortels\n1 l groentebouillon\nKomijn", instructions: "Fruit ui en wortel, voeg linzen, kruiden en bouillon toe, kook 20 minuten en mix fijn." }));
 
   const menu: [string, string, string][] = [
     ["Yoghurt met fruit", "Boterhammen", "Spaghetti bolognese"],

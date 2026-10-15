@@ -39,7 +39,7 @@ export const onChanged = (fn: Listener) => { listeners.add(fn); return () => { l
 let online = (_: boolean) => {};
 export const onConnection = (fn: (ok: boolean) => void) => { online = fn; };
 
-const ALL: Topic[] = ["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards", "access", "sharing"];
+const ALL: Topic[] = ["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards", "access", "sharing", "memos"];
 
 /** Houdt een websocket open en herverbindt automatisch. */
 let current: WebSocket | null = null;

@@ -12,7 +12,9 @@ export interface Reward { id: string; title: string; icon: string; cost: number 
 export interface Points { earned: number; spent: number; balance: number }
 export interface ListItem { id: string; text: string; done: boolean }
 export interface List { id: string; name: string; icon: string; items: ListItem[] }
-export interface Recipe { id: string; title: string; ingredients: string; instructions: string; minutes: number | null }
+export interface Recipe { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string }
+export interface RecipeHit { title: string; url: string; site: string; image: string | null; minutes: number | null }
+export interface Memo { id: string; title: string; filename: string; seconds: number; createdAt: string; by: string | null }
 export interface Meal { date: string; slot: Slot; title: string; recipeId: string | null }
 export type Slot = "ontbijt" | "lunch" | "diner" | "snack";
 export interface Photo { id: string; filename: string; created_at: string }
@@ -42,10 +44,12 @@ export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
   | { valid: true; kind: "agenda"; from: string; level: string };
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }
   | { kind: "meal"; date: string; slot: string; title: string }
   | { kind: "chore"; title: string; member: string }
-  | { kind: "list"; list: string; items: string[] };
+  | { kind: "list"; list: string; items: string[] }
+  | { kind: "options"; options: string[] }
+  | { kind: "recipe"; id: string; title: string; image: string | null };

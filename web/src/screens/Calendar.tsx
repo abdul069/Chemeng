@@ -22,7 +22,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
 
   const range = (() => {
     if (view === "D") return { from: cursor, to: cursor };
-    if (view === "W") { const s = startOfWeek(cursor, weekStart); return { from: s, to: addDays(s, 6) }; }
+    if (view === "W") { const s = startOfWeek(cursor, weekStart); return { from: s, to: addDays(s, 13) }; }
     if (view === "L") return { from: cursor, to: addDays(cursor, 29) };
     const s = startOfWeek(startOfMonth(cursor), weekStart);
     return { from: s, to: addDays(s, 41) };
@@ -35,7 +35,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
   const label = (() => {
     if (view === "D") return shortDate(cursor);
     if (view === "M") return `${cap(MONTHS[Number(cursor.slice(5, 7)) - 1])} ${cursor.slice(0, 4)}`;
-    const a = range.from, b = range.to;
+    const a = range.from, b = view === "W" ? addDays(range.from, 6) : range.to;
     const ma = Number(a.slice(5, 7)) - 1, mb = Number(b.slice(5, 7)) - 1;
     return ma === mb ? `${Number(a.slice(8))}–${Number(b.slice(8))} ${MSHORT[mb]}` : `${Number(a.slice(8))} ${MSHORT[ma]} – ${Number(b.slice(8))} ${MSHORT[mb]}`;
   })();
@@ -55,6 +55,12 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
           <span className="range">{label}</span>
           <button className="iconbtn" onClick={() => step(1)} aria-label="Volgende"><Icon.right /></button>
           <button className="pill" onClick={() => setCursor(todayIso())}>Vandaag</button>
+          <label className="iconbtn datejump" title="Naar een datum springen">
+            <Icon.calpick />
+            <input type="date" aria-label="Naar een datum springen" value={cursor}
+              onClick={(e) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* */ } }}
+              onChange={(e) => e.target.value && setCursor(e.target.value)} />
+          </label>
           <div className="seg" role="group" aria-label="Weergave">
             {([["D", "Dag"], ["W", "Week"], ["M", "Maand"], ["L", "Lijst"]] as [View, string][]).map(([v, l]) => (
               <button key={v} aria-pressed={view === v} title={l} onClick={() => setView(v)}>{v}</button>
@@ -66,7 +72,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
       <PeopleBar />
       <section className="card board">
         {view === "D" && <DayView date={cursor} events={visible} onOpen={open} onSlot={(date, startTime, m) => openEditor({ defaults: { date, startTime, endTime: addHour(startTime), members: m ? [m] : [] } })} />}
-        {view === "W" && <WeekView start={range.from} events={visible} weather={weather} onOpen={open} onDay={(d) => { setCursor(d); setView("D"); }} />}
+        {view === "W" && <WeekView start={range.from} events={visible} weather={weather} onOpen={open} onDay={(d) => { setCursor(d); setView("D"); }} onNextWeek={() => step(1)} />}
         {view === "M" && <MonthView month={cursor} events={visible} weekStart={weekStart} onDay={setDayPop} />}
         {view === "L" && <AgendaView from={range.from} days={30} events={visible} onOpen={open} />}
       </section>

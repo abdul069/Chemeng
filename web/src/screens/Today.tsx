@@ -3,17 +3,18 @@ import type { Meal, Occurrence, Weather } from "../types";
 import { DayView, EventRow } from "../components/CalendarViews";
 import { ChoreTracker } from "../components/ChoreTracker";
 import type { EditorState } from "../components/EventEditor";
+import { RecipeThumb, openRecipe } from "../components/Recipes";
 import { addDays, greeting, nowMin, toMin, todayIso } from "../dates";
 
 const SLOT_ICON: Record<string, string> = { ontbijt: "🌅", lunch: "☀️", diner: "🌙", snack: "🍎" };
 
 export const SUGGESTIONS = [
-  "Wat staat er vandaag op de planning?",
-  "Wat eten we deze week?",
-  "Zet zwemles op dinsdag om 17u voor Lina",
-  "Wat kunnen we dit weekend doen?",
-  "Zet melk en eieren op de boodschappenlijst",
-  "Wie heeft nog taken open?",
+  "🗓️ Wat staat er vandaag op de planning?",
+  "🍲 Wat kook ik vanavond?",
+  "📅 Zet zwemles op dinsdag om 17u voor Lina",
+  "🎉 Wat kunnen we dit weekend doen?",
+  "🛒 Zet melk en eieren op de boodschappenlijst",
+  "✅ Wie heeft nog taken open?",
 ];
 
 export function TodayScreen({ openEditor, openAssistant, goto, header }: {
@@ -65,6 +66,13 @@ export function TodayScreen({ openEditor, openAssistant, goto, header }: {
             <div className="section-title"><h2>Maaltijden vandaag</h2><button className="linkbtn" onClick={() => goto("meals")}>Plannen</button></div>
             {(["ontbijt", "lunch", "diner"] as const).map((slot) => {
               const m = meals.find((x) => x.slot === slot);
+              const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
+              if (r) return (
+                <button className="meal-row link" key={slot} onClick={() => openRecipe(r.id)}>
+                  <RecipeThumb r={r} size={34} />
+                  <span><small>{slot} · recept</small>{m!.title}</span>
+                </button>
+              );
               return (
                 <div className="meal-row" key={slot}>
                   <span className="ic" aria-hidden>{SLOT_ICON[slot]}</span>
