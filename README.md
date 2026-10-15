@@ -40,6 +40,16 @@ docker compose up -d --build
 
 Open daarna `http://<ip-van-je-server>:8080` op het keukenscherm en op de telefoons.
 
+### In de cloud op Railway
+
+Railway bouwt de `Dockerfile` rechtstreeks uit deze repo. Nodig in de service:
+
+- een volume gekoppeld op `/data` (database en foto's);
+- variabelen `PORT=8080`, `DATA_DIR=/data`, `TZ=Europe/Brussels`, `ACCESS_CODE=<eigen code>` en `ANTHROPIC_API_KEY`;
+- een publiek domein naar poort 8080.
+
+Elke push naar de gekoppelde branch zet automatisch een nieuwe versie online.
+
 ### Zonder Docker
 
 Vereist Node.js 22.13 of nieuwer.
