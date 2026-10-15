@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { useAction, useData } from "../store";
+import { useAction, useData, useRemote } from "../store";
 import type { CalendarSub, Member } from "../types";
 import { AVATARS, Avatar, Confirm, EmojiPicker, MemberPicks, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
@@ -31,6 +31,7 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
         <Calendars />
         <Place />
         <Screen />
+        <Notifications />
         <Security />
         <Assistant />
       </div>
@@ -272,6 +273,57 @@ function Screen() {
       </div>
       <p className="hint">Tijdens de nachtrust toont het scherm alleen een gedimde klok. Tik om het even wakker te maken. Laat beide uren leeg om dit uit te zetten.</p>
       <label className="check-row"><input id="voice" type="checkbox" checked={s.assistant_voice === "1"} onChange={(e) => save({ assistant_voice: e.target.checked ? "1" : "0" })} /> Antwoorden van de assistent voorlezen</label>
+    </Section>
+  );
+}
+
+const b64ToU8 = (b64: string) => { const s = atob(b64.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(b64.length / 4) * 4, "=")); return Uint8Array.from(s, (c) => c.charCodeAt(0)); };
+const deviceLabel = () => { const u = navigator.userAgent; return /iPhone|iPad/.test(u) ? "iPhone/iPad" : /Android/.test(u) ? "Android" : /Windows/.test(u) ? "Windows" : /Mac/.test(u) ? "Mac" : "Toestel"; };
+
+/** Meldingen op dit toestel aan- of uitzetten. */
+function Notifications() {
+  const act = useAction();
+  const { toast } = useData();
+  const [info] = useRemote<{ key: string; devices: { endpoint: string; label: string; created_at: string }[] } | null>("/push/key", ["access"], null);
+  const [mine, setMine] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  useEffect(() => {
+    if (!supported) return;
+    navigator.serviceWorker.ready.then((r) => r.pushManager.getSubscription()).then((s) => setMine(s?.endpoint ?? null)).catch(() => {});
+  }, [supported]);
+  const enable = async () => {
+    if (!info) return;
+    setBusy(true);
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { toast("Meldingen zijn geweigerd. Zet ze aan in de instellingen van je browser of telefoon."); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(info.key) });
+      await api.post("/push/subscribe", { subscription: sub.toJSON(), label: deviceLabel() });
+      setMine(sub.endpoint);
+      toast("Meldingen staan aan op dit toestel");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Meldingen aanzetten lukte niet.");
+    } finally { setBusy(false); }
+  };
+  const disable = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await api.post("/push/unsubscribe", { endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); }
+    setMine(null);
+    toast("Meldingen staan uit op dit toestel");
+  };
+  return (
+    <Section title="Meldingen">
+      <p className="hint">Je krijgt een melding 15 minuten voor een afspraak waar jij (of je kind) bij hoort, elke ochtend om 7:30 een dagoverzicht, en bij een nieuwe spraakmemo. Zet dit aan op elk toestel apart. Op iPhone werkt het alleen als de app op het beginscherm staat.</p>
+      {!supported && <p className="error">Deze browser ondersteunt geen meldingen. Installeer de app op je beginscherm en probeer opnieuw.</p>}
+      <div className="actions" style={{ justifyContent: "flex-start" }}>
+        {mine
+          ? <><span className="badge">Aan op dit toestel</span><button className="btn ghost small" onClick={() => act(() => api.post("/push/test"), "Testmelding verstuurd")}>Testmelding</button><button className="btn ghost small" onClick={disable}>Uitzetten</button></>
+          : <button className="btn" onClick={enable} disabled={!supported || busy || !info}>{busy ? "Even geduld…" : "Meldingen aanzetten op dit toestel"}</button>}
+      </div>
+      {!!info?.devices.length && <p className="hint">Toestellen met meldingen: {info.devices.map((d) => d.label || "toestel").join(", ")}.</p>}
     </Section>
   );
 }

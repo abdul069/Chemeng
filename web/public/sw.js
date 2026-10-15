@@ -21,3 +21,21 @@ self.addEventListener("fetch", (e) => {
       .catch(() => caches.match(e.request).then((r) => r || caches.match("/index.html"))),
   );
 });
+
+// Pushmeldingen (afspraak over 15 minuten, ochtendoverzicht, nieuwe memo)
+self.addEventListener("push", (e) => {
+  let d = { title: "Gezinsbord", body: "" };
+  try { d = e.data.json(); } catch { d.body = e.data ? e.data.text() : ""; }
+  e.waitUntil(self.registration.showNotification(d.title || "Gezinsbord", {
+    body: d.body || "", icon: "/icon.svg", badge: "/icon.svg", tag: d.tag || undefined, data: { url: d.url || "/" }, renotify: !!d.tag,
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => {
+    const c = cs.find((x) => "focus" in x);
+    if (c) { c.navigate(url); return c.focus(); }
+    return self.clients.openWindow(url);
+  }));
+});

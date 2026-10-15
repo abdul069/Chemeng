@@ -21,6 +21,7 @@ import { seedDemo } from "./seed.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
 import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
+import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate } from "./dates.js";
 
 export const api = express.Router();
@@ -113,6 +114,22 @@ api.post("/households/switch", (req, res) => {
   const id = z.object({ householdId: z.string() }).parse(req.body).householdId;
   if (!A.householdsOf(req.session!.user.id).some((h) => h.id === id)) return void res.status(403).json({ error: "Je hoort niet bij dit gezin." });
   run("UPDATE sessions SET household_id=? WHERE token_hash=?", id, req.session!.tokenHash);
+  res.json({ ok: true });
+});
+
+// ---------- pushmeldingen ----------
+api.get("/push/key", (req, res) => { res.json({ key: VAPID_PUBLIC, devices: subscriptionsOf(req.session!.user.id) }); });
+api.post("/push/subscribe", (req, res) => {
+  const b = z.object({ subscription: z.object({ endpoint: z.string().url(), keys: z.object({ p256dh: z.string(), auth: z.string() }) }).passthrough(), label: z.string().max(80).default("") }).parse(req.body);
+  subscribe(req.session!.user.id, b.subscription as { endpoint: string; keys: { p256dh: string; auth: string } }, b.label);
+  res.json({ ok: true });
+});
+api.post("/push/unsubscribe", (req, res) => {
+  unsubscribe(req.session!.user.id, z.object({ endpoint: z.string() }).parse(req.body).endpoint);
+  res.json({ ok: true });
+});
+api.post("/push/test", async (req, res) => {
+  await pushToUsers([req.session!.user.id], { title: "Gezinsbord", body: "Meldingen werken op dit toestel. 🎉", url: "/#today", tag: "test" });
   res.json({ ok: true });
 });
 
@@ -570,6 +587,7 @@ api.post("/memos", audio.single("audio"), (req, res) => {
   run("INSERT INTO memos(id, household_id, user_id, title, filename, seconds) VALUES (?,?,?,?,?,?)", newId(), hid(), ctx().userId, title, req.file.filename, seconds);
   res.json({ ok: true });
   broadcast("memos");
+  notifyHousehold(hid(), { title: `🎙️ Nieuwe memo van ${req.session!.user.name}`, body: title, url: "/#apps", tag: "memo" }, ctx().userId).catch(() => {});
 });
 api.delete("/memos/:id", (req, res) => {
   const m = get<{ filename: string }>("SELECT filename FROM memos WHERE id=? AND household_id=?", p(req), hid());

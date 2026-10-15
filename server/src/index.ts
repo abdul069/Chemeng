@@ -8,6 +8,7 @@ import { api } from "./routes.js";
 import { attachRealtime, broadcastTo } from "./realtime.js";
 import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
+import { startPushScheduler } from "./push.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8080);
@@ -32,6 +33,7 @@ const SYNC_MIN = Number(process.env.CALENDAR_SYNC_MINUTES ?? 15);
 const doSync = () => syncAll((h) => broadcastTo(h, ["calendars", "events"])).catch((e) => console.warn("[agenda]", e));
 setTimeout(doSync, 5_000).unref();
 setInterval(doSync, SYNC_MIN * 60_000).unref();
+startPushScheduler();
 
 server.listen(PORT, () => {
   console.log(`[gezinsbord] luistert op http://localhost:${PORT}`);
