@@ -1,5 +1,5 @@
 # Gezinsbord: één container met de server en de gebouwde app
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY server/package.json server/
@@ -8,9 +8,8 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev
 
-FROM node:22-alpine
+FROM node:22-slim
 ENV NODE_ENV=production PORT=8080 DATA_DIR=/data TZ=Europe/Brussels
-RUN apk add --no-cache tzdata
 WORKDIR /app
 COPY --from=build /app/node_modules node_modules
 COPY --from=build /app/server/package.json server/
