@@ -59,7 +59,7 @@ export function LibraryBrowser() {
         <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Zoek in ${ov.total} Turkse recepten (Nederlands of Turks)`} aria-label="Zoek in alle Turkse recepten" />
         {admin && !ov.crawl.running && ov.total > 0 && <button className="btn ghost small" title="Nieuwe recepten van de sites ophalen" onClick={() => act(() => api.post("/library/crawl"), "Bijwerken gestart").then(loadOverview)}>⟳</button>}
       </div>
-      <div className="picks">
+      <div className="picks catrow">
         <button className="pick" aria-pressed={!cat} onClick={() => setCat(null)}>Alles <small className="muted">{ov.total}</small></button>
         {ov.categories.map((c) => <button key={c.key} className="pick" aria-pressed={cat === c.key} onClick={() => setCat(c.key)}>{c.icon} {c.name} <small className="muted">{c.n}</small></button>)}
       </div>
