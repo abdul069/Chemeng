@@ -18,8 +18,9 @@ export function LibraryBrowser() {
   const act = useAction();
   const [ov, setOv] = useState<Overview | null>(null);
   const [cat, setCat] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [typed, setTyped] = useState("");
+  const initial = (() => { try { const v = sessionStorage.getItem("gb.lib") ?? ""; sessionStorage.removeItem("gb.lib"); return v; } catch { return ""; } })();
+  const [q, setQ] = useState(initial);
+  const [typed, setTyped] = useState(initial);
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);

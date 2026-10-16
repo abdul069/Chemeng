@@ -17,7 +17,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
   const weekStart = Number(data?.settings.week_start ?? 1);
   const [view, setViewState] = useState<View>(() => { try { return (localStorage.getItem(VIEW_KEY) as View) || "W"; } catch { return "W"; } });
   const setView = (v: View) => { setViewState(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* */ } };
-  const [cursor, setCursor] = useState(todayIso());
+  const [cursor, setCursor] = useState(() => { try { const d = sessionStorage.getItem("gb.date"); sessionStorage.removeItem("gb.date"); return d || todayIso(); } catch { return todayIso(); } });
   const [dayPop, setDayPop] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);

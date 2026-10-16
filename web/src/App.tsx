@@ -12,6 +12,7 @@ import { ChoresScreen } from "./screens/Chores";
 import { MealsScreen } from "./screens/Meals";
 import { ListsScreen } from "./screens/Lists";
 import { AppsScreen, type AppView } from "./screens/Apps";
+import { Search } from "./components/Search";
 import { RecipeHost } from "./components/Recipes";
 import { SettingsScreen } from "./screens/Settings";
 import { cap, clock, longDate, todayIso } from "./dates";
@@ -29,6 +30,7 @@ const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }
 export function App() {
   const { data, error, errorCode, reload } = useData();
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
+  const [search, setSearch] = useState(false);
   const [resetToken, setResetToken] = useState(resetTokenFromUrl);
   const [screen, setScreenState] = useState<Screen>(() => { const h = location.hash.slice(1); return (h === "photos" ? "apps" : h as Screen) || "today"; });
   const [appView, setAppView] = useState<AppView>("grid");
@@ -101,7 +103,7 @@ export function App() {
       {back
         ? <button className="backbtn" onClick={back}><Icon.left /> Apps</button>
         : <span className="eyebrow">{time} · {cap(longDate(todayIso()))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>}
-      <h1>{title}</h1>
+      <div className="titlerow"><h1>{title}</h1><button className="iconbtn search-top" onClick={() => setSearch(true)} aria-label="Zoeken in alles"><Icon.search /></button></div>
     </div>
   );
   const header = makeHeader(screen === "settings" ? "Instellingen" : current?.title ?? "");
@@ -116,6 +118,7 @@ export function App() {
           return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{n.label}</button>;
         })}
         <span className="spacer" />
+        <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label="Zoeken in alles"><Icon.search />Zoeken</button>
         <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />Instellingen</button>
       </nav>
       <main className="page">
@@ -131,6 +134,10 @@ export function App() {
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
       <RecipeHost />
+      {search && <Search onClose={() => setSearch(false)} goto={(sc, extra) => {
+        try { for (const [k, v] of Object.entries(extra ?? {})) sessionStorage.setItem(`gb.${k}`, v); } catch { /* */ }
+        setScreen(sc as Screen);
+      }} />}
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
       {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}

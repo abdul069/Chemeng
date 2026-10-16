@@ -20,5 +20,6 @@ export const Icon = {
   upload: () => <svg {...P}><path d="M12 16V4M7 9l5-5 5 5M4 20h16" /></svg>,
   play: () => <svg {...P}><path d="M7 4l13 8-13 8z" /></svg>,
   calpick: () => <svg {...P}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4M8 14h2v2H8z" /></svg>,
+  search: () => <svg {...P}><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg>,
   lock: () => <svg {...P}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>,
 };

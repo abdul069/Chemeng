@@ -23,7 +23,7 @@ import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
 import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
-import { isDate } from "./dates.js";
+import { isDate, today, addDays } from "./dates.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -483,6 +483,25 @@ api.post("/recipes/import", async (req, res) => {
     throw e;
   }
 });
+// ---------- zoeken in alles ----------
+api.get("/search", (req, res) => {
+  const q = z.object({ q: z.string().trim().min(1).max(80) }).parse(req.query).q;
+  const lq = q.toLocaleLowerCase("tr");
+  const has = (...parts: (string | null | undefined)[]) => parts.some((x) => (x ?? "").toLocaleLowerCase("tr").includes(lq));
+  const t = today();
+  const events = eventsBetween(addDays(t, -60), addDays(t, 400)).filter((o) => has(o.title, o.location, o.notes))
+    .sort((a, b) => (a.on >= t ? 0 : 1) - (b.on >= t ? 0 : 1) || a.on.localeCompare(b.on))
+    .filter((o, i, arr) => arr.findIndex((x) => x.id === o.id) === i) // herhalingen: enkel de eerstvolgende keer
+    .slice(0, 12)
+    .map((o) => ({ id: o.id, title: o.title, date: o.on, startTime: o.startTime, allDay: o.allDay, location: o.location, members: o.members }));
+  const recipes = S.listRecipes().filter((r) => has(r.title, r.ingredients, r.original?.title)).slice(0, 8).map((r) => ({ id: r.id, title: r.title, image: r.image, minutes: r.minutes }));
+  const items = S.listLists().flatMap((l) => l.items.filter((i) => has(i.text)).map((i) => ({ id: i.id, text: i.text, done: i.done, list: l.name, listId: l.id, icon: l.icon }))).slice(0, 10);
+  const members = S.listMembers();
+  const chores = S.listChores().filter((c) => has(c.title)).slice(0, 8).map((c) => ({ id: c.id, title: c.title, icon: c.icon, member: members.find((m) => m.id === c.memberId)?.name ?? "" }));
+  const library = L.libraryList({ q, limit: 6 });
+  res.json({ events, recipes, items, chores, library: library.items, libraryTotal: library.total });
+});
+
 // ---------- gedeelde receptenbibliotheek (alle recepten van de Turkse sites, per categorie) ----------
 api.get("/library/categories", (_req, res) => { res.json({ categories: L.libraryCategories(), total: L.libraryCount(), crawl: { running: L.crawlStatus.running, site: L.crawlStatus.site, done: L.crawlStatus.done, total: L.crawlStatus.total, added: L.crawlStatus.added, finishedAt: L.crawlStatus.finishedAt } }); });
 api.get("/library", (req, res) => {
@@ -514,6 +533,7 @@ api.post("/library/crawl", requireAdmin, (req, res) => {
   res.json({ ok: true, running: true });
 });
 api.get("/library/crawl/status", (_req, res) => { res.json(L.crawlStatus); });
+api.post("/library/probe", requireAdmin, async (req, res) => { res.json(await L.probe(z.object({ url: z.string().url() }).parse(req.body).url)); });
 api.post("/library/translate-titles", requireAdmin, async (_req, res) => { res.json({ translated: await L.translateMissingTitles() }); });
 
 api.post("/recipes/search", async (req, res) => {

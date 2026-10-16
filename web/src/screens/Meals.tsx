@@ -126,7 +126,7 @@ function Library() {
   const [q, setQ] = useState("");
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
-  const [view, setView] = useState<"mine" | "all">(() => ((data?.recipes.length ?? 0) ? "mine" : "all"));
+  const [view, setView] = useState<"mine" | "all">(() => { try { if (sessionStorage.getItem("gb.lib") !== null) return "all"; } catch { /* */ } return (data?.recipes.length ?? 0) ? "mine" : "all"; });
   const recipes = data?.recipes ?? [];
   const cuisines = [...new Set(recipes.map((r) => r.cuisine).filter(Boolean))];
   const shown = recipes.filter((r) =>

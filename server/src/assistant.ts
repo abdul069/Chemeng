@@ -5,9 +5,10 @@ import { z } from "zod";
 import { createEvent, deleteEvent, eventsBetween, getEvent, skipOccurrence, type CalEvent } from "./events.js";
 import {
   addItem, choresOn, createChore, createList, createRecipe, doneBetween, findList, listLists, listMembers, listRecipes, mealsBetween,
-  memberByName, pantryList, recipeBySource, setChoreDone, setMeal, SLOTS,
+  memberByName, pantryList, recipeBySource, RecipeInput, setChoreDone, setMeal, SLOTS,
 } from "./store.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError } from "./recipes.js";
+import { libraryList, libraryRecipe, libraryCategories } from "./library.js";
 import { getSettings, hid } from "./db.js";
 import { fillMissingPhotos } from "./dishphotos.js";
 import { broadcastTo } from "./realtime.js";
@@ -199,6 +200,32 @@ function buildTools(changes: Change[]) {
         const q = zoekwoord?.toLocaleLowerCase("tr");
         const list = listRecipes().filter((r) => !q || `${r.title} ${r.ingredients}`.toLocaleLowerCase("tr").includes(q));
         return list.length ? list.slice(0, 40).map((r) => `${r.title}${r.minutes ? ` (${r.minutes} min)` : ""}${r.cuisine ? ` [${r.cuisine}]` : ""} id=${r.id}`).join("\n") : "Geen recepten gevonden in de bibliotheek.";
+      },
+    }),
+    betaZodTool({
+      name: "bibliotheek_bladeren",
+      description: "Zoekt in de grote gedeelde bibliotheek met duizenden Turkse recepten (per categorie: soep, kip, vlees, vis, groente, peulvruchten, rijst, borek, kebap, salade, aardappel, dessert, ontbijt, drank, saus). Gebruik dit vóór recept_zoeken_online. Geeft bibliotheek-id's terug voor bibliotheek_toevoegen.",
+      inputSchema: z.object({ zoekwoord: z.string().optional().describe("Nederlands of Turks, bv. 'kip', 'mercimek'"), categorie: z.string().optional() }),
+      run: async ({ zoekwoord, categorie }) => {
+        const r = libraryList({ q: zoekwoord, category: categorie, limit: 25 });
+        if (!r.total) return `Niets gevonden. Categorieën: ${libraryCategories().map((c) => `${c.key} (${c.n})`).join(", ") || "de bibliotheek is nog leeg"}.`;
+        return `${r.total} recepten gevonden. Eerste ${r.items.length}:\n` + r.items.map((i) => `${i.title}${i.title !== i.titleTr ? ` [${i.titleTr}]` : ""} · ${i.category}${i.minutes ? ` · ${i.minutes} min` : ""} bib=${i.id}`).join("\n");
+      },
+    }),
+    betaZodTool({
+      name: "bibliotheek_toevoegen",
+      description: "Zet een recept uit de gedeelde bibliotheek (bib-id van bibliotheek_bladeren) in de receptenbibliotheek van het gezin, in het Nederlands. Geeft het recept-id terug waarmee je het kunt inplannen.",
+      inputSchema: z.object({ bib_id: z.string() }),
+      run: async ({ bib_id }) => {
+        const r = await libraryRecipe(bib_id);
+        if (!r) return "Dat recept staat niet in de bibliotheek.";
+        const existing = recipeBySource(r.sourceUrl!);
+        if (existing) return `Stond al in de bibliotheek van het gezin: ${existing.title} id=${existing.id}`;
+        const { id: _i, category: _c, ...input } = r;
+        const id = createRecipe(RecipeInput.parse(input));
+        changes.push({ kind: "recipe", id, title: r.title, image: r.image ?? null });
+        broadcastTo(hid(), ["recipes"]);
+        return `Toegevoegd: ${r.title} id=${id}`;
       },
     }),
     betaZodTool({

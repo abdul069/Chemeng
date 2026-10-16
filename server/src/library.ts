@@ -110,21 +110,23 @@ export async function libraryRecipe(id: string, translate = true): Promise<(Reci
 }
 
 // ---------- ophalen (crawler) ----------
-const UA = { "user-agent": "Mozilla/5.0 (compatible; Gezinsbord/1.0; receptenbibliotheek)", accept: "text/html,application/xml,text/xml;q=0.9,*/*;q=0.5", "accept-language": "tr" };
+const UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36", accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "accept-language": "tr-TR,tr;q=0.9,nl;q=0.5" };
+/** Laatste reden waarom een pagina niet opgehaald kon worden (voor de logboeken). */
+let lastFetchError = "";
 let fetcher: typeof fetch = (...a) => fetch(...a);
 /** Voor tests: een andere fetch gebruiken. */
 export const setLibraryFetcher = (f: typeof fetch) => { fetcher = f; };
 async function getText(url: string, ms = 20_000): Promise<string | null> {
   try {
     const res = await fetcher(url, { headers: UA, redirect: "follow", signal: AbortSignal.timeout(ms) });
-    if (!res.ok) return null;
+    if (!res.ok) { lastFetchError = `HTTP ${res.status}`; return null; }
     const ct = res.headers.get("content-type") ?? "";
     if (/gzip|octet-stream/.test(ct) || url.endsWith(".gz")) {
       const { gunzipSync } = await import("node:zlib");
       return gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8");
     }
     return await res.text();
-  } catch { return null; }
+  } catch (e) { lastFetchError = (e as Error).message; return null; }
 }
 
 /** Herkent de URL van één recept per site; overzichts- en categoriepagina's worden overgeslagen. */
@@ -174,20 +176,27 @@ const log = (s: string) => { crawlStatus.log.push(`${new Date().toISOString().sl
 export async function ingestUrl(url: string, site: string, html?: string): Promise<"added" | "exists" | "failed"> {
   if (get("SELECT 1 FROM library WHERE source_url=?", url)) return "exists";
   const page = html ?? await getText(url);
-  if (!page) { run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, 'fetch')", url); return "failed"; }
+  if (!page) { run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `fetch ${lastFetchError}`); noteFailure(url, `ophalen mislukt: ${lastFetchError}`); return "failed"; }
   try {
     const r = parseRecipeHtml(page.slice(0, 3_000_000), url);
-    if (!r.ingredients.trim() || !r.instructions.trim()) throw new Error("leeg");
+    if (!r.ingredients.trim() || !r.instructions.trim()) throw new Error(`recept zonder ${!r.ingredients.trim() ? "ingrediënten" : "bereiding"}`);
     const siteCat = page.match(/"recipeCategory"\s*:\s*"([^"]+)"/)?.[1] ?? page.match(/"articleSection"\s*:\s*"([^"]+)"/)?.[1] ?? "";
     run(
       "INSERT OR IGNORE INTO library(id, source_url, site, category, title_tr, image, minutes, servings, ingredients_tr, instructions_tr) VALUES (?,?,?,?,?,?,?,?,?,?)",
       newId(), url, site, classify(r.title, url, siteCat), r.title.replace(/\s*tarifi\s*$/i, "").trim() || r.title, r.image ?? null, r.minutes ?? null, r.servings, r.ingredients, r.instructions,
     );
     return "added";
-  } catch {
-    run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, 'norecipe')", url);
+  } catch (e) {
+    const why = (e as Error).message.slice(0, 120);
+    run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `norecipe ${why}`);
+    noteFailure(url, `${why} (${page.length} tekens, ld+json: ${/application\/ld\+json/.test(page) ? "ja" : "nee"})`);
     return "failed";
   }
+}
+// de eerste paar mislukkingen per run in het logboek, zodat we op de server kunnen zien wat er misgaat
+let failuresLogged = 0;
+function noteFailure(url: string, why: string) {
+  if (failuresLogged++ < 8) log(`mislukt ${url}: ${why}`);
 }
 
 /** Haalt de recepten van alle (of één) sites op, met een paar pagina's tegelijk en een kleine pauze. */
@@ -197,6 +206,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
   const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 1500);
   const conc = opts.concurrency ?? 3;
   Object.assign(crawlStatus, { running: true, done: 0, added: 0, failed: 0, total: 0, log: [], startedAt: new Date().toISOString(), finishedAt: null });
+  failuresLogged = 0;
   try {
     for (const site of sites) {
       crawlStatus.site = site;
@@ -251,4 +261,16 @@ export function startLibraryScheduler() {
   setInterval(kick, 7 * 24 * 3600_000).unref();
   // titels vertalen zodra een sleutel aanwezig is
   setTimeout(() => translateMissingTitles().catch(() => {}), 120_000).unref();
+}
+
+/** Eén pagina proberen (voor de beheerder): wat komt er terug? */
+export async function probe(url: string) {
+  const page = await getText(url);
+  if (!page) return { ok: false, error: lastFetchError };
+  try {
+    const r = parseRecipeHtml(page.slice(0, 3_000_000), url);
+    return { ok: true, title: r.title, ingredients: r.ingredients.split("\n").length, steps: r.instructions.split("\n").length, image: r.image, category: classify(r.title, url) };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message, length: page.length, ldjson: /application\/ld\+json/.test(page), snippet: page.slice(0, 300) };
+  }
 }

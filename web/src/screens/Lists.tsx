@@ -19,7 +19,7 @@ function expiry(i: ListItem): { label: string; cls: string } | null {
 export function ListsScreen({ header }: { header: React.ReactNode }) {
   const { data, toast } = useData();
   const act = useAction();
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(() => { try { const l = sessionStorage.getItem("gb.list"); sessionStorage.removeItem("gb.list"); return l; } catch { return null; } });
   const [text, setText] = useState("");
   const [qty, setQty] = useState("");
   const [expires, setExpires] = useState("");
