@@ -642,6 +642,20 @@ api.patch("/items/:id", (req, res) => {
   res.json({ ok: true });
   broadcast("lists");
 });
+/** Gekochte (afgevinkte) boodschappen naar de voorraad verplaatsen. */
+api.post("/lists/:id/done-to-pantry", (req, res) => {
+  const list = S.listLists().find((l) => l.id === p(req));
+  const pantry = S.pantryList();
+  if (!list || !pantry) return void res.status(400).json({ error: "Geen voorraadlijst gevonden." });
+  const have = new Set(pantry.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")));
+  let moved = 0;
+  for (const it of list.items.filter((i) => i.done)) {
+    if (!have.has(it.text.toLocaleLowerCase("nl"))) { S.addItem(pantry.id, it.text, { qty: it.qty }); have.add(it.text.toLocaleLowerCase("nl")); moved++; }
+    S.deleteItem(it.id);
+  }
+  res.json({ moved, pantry: pantry.name });
+  broadcast("lists");
+});
 /** Voorraad-item op de boodschappenlijst zetten (het item blijft in de voorraad staan). */
 api.post("/items/:id/to-shopping", (req, res) => {
   const it = get<{ text: string }>("SELECT i.text FROM list_items i JOIN lists l ON l.id = i.list_id WHERE i.id=? AND l.household_id=?", p(req), hid());

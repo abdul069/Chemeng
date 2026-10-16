@@ -80,6 +80,10 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               <h2>{list.icon} {list.name}</h2>
               <div style={{ display: "flex", gap: 6 }}>
                 {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? "Opgebruikte items gewist" : "Afgevinkte items gewist")}>{pantry ? "Opgebruikte wissen" : "Afgevinkte wissen"}</button>}
+                {isShop && list.items.some((i) => i.done) && data.lists.some((l) => l.kind === "pantry") && <button className="linkbtn" title="Gekochte items in de voorraad zetten" onClick={async () => {
+                  const r = await act(() => api.post<{ moved: number; pantry: string }>(`/lists/${list.id}/done-to-pantry`));
+                  if (r) toast(`${r.moved} naar ${r.pantry}`);
+                }}>Gekocht → Voorraad</button>}
                 {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? "Per afdeling ✓" : "Per afdeling"}</button>}
                 <button className="iconbtn" aria-label="Lijst delen" title="Lijst delen (WhatsApp, sms…)" onClick={async () => {
                   const open = list.items.filter((i) => !i.done);
