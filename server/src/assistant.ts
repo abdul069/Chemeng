@@ -300,7 +300,7 @@ Bij vragen over koken, spelletjes, uitstapjes of opvoeding geef je praktische, g
 function context(): string {
   const s = getSettings();
   const t = today();
-  const members = listMembers().map((m) => `${m.name} (${m.role})`).join(", ");
+  const members = listMembers().map((m) => `${m.name} (${m.role}${m.diet ? `, vermijdt: ${m.diet}` : ""})`).join(", ");
   return `Vandaag is ${DAYS[weekday(t)]} ${t}. Gezin: ${s.family_name}, woonplaats ${s.city}. Gezinsleden: ${members || "nog niemand ingesteld"}.`;
 }
 

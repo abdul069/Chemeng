@@ -642,3 +642,4 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 .cook-f .btn { min-width: 140px; min-height: 52px; font-size: 17px; }
 @media (max-width: 640px) { .cook-body { flex-direction: column; } .cook-ingr { width: auto; max-height: 40%; border-right: 0; border-bottom: 1px solid var(--line); } }
 @media (max-width: 760px) { .catrow { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; } .catrow .pick { white-space: nowrap; flex: none; } }
+.badge.warn { background: #fff3cd; color: #7a4b00; }

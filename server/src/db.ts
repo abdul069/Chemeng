@@ -211,6 +211,7 @@ addColumn("recipes", "orig_instructions", "TEXT");
 addColumn("recipes", "orig_lang", "TEXT");
 addColumn("recipes", "lang", "TEXT NOT NULL DEFAULT 'nl'");
 addColumn("members", "birthday", "TEXT");
+addColumn("members", "diet", "TEXT NOT NULL DEFAULT ''");
 addColumn("lists", "kind", "TEXT NOT NULL DEFAULT 'list'");
 addColumn("list_items", "expires", "TEXT");
 addColumn("list_items", "qty", "TEXT NOT NULL DEFAULT ''");

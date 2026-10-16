@@ -6,7 +6,7 @@ import { openRecipe } from "./Recipes";
 
 interface Cat { key: string; name: string; icon: string; n: number }
 interface Row { id: string; sourceUrl: string; site: string; category: string; title: string; titleTr: string; image: string | null; minutes: number | null; servings: string; translated: boolean; inLibrary: boolean }
-interface Full { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; lang: string; category: string; original: { title: string; ingredients: string; instructions: string; lang: string } | null; inLibraryId: string | null }
+interface Full { id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; lang: string; category: string; original: { title: string; ingredients: string; instructions: string; lang: string } | null; inLibraryId: string | null; warnings: string[] }
 interface Overview { categories: Cat[]; total: number; crawl: { running: boolean; site: string | null; done: number; total: number; added: number; finishedAt: string | null } }
 
 const PAGE = 60;
@@ -109,6 +109,7 @@ function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: () => vo
             {r.original && <button className="pick" aria-pressed={orig} onClick={() => setOrig(true)}>🇹🇷 Türkçe</button>}
             {!r.original && r.lang === "tr" && <span className="badge">🇹🇷 Turks origineel{data?.assistant.available ? "" : " · vertalen kan zodra de assistent ingesteld is"}</span>}
             {r.minutes && <span className="badge">⏱ {r.minutes} min</span>}
+            {r.warnings?.length > 0 && <span className="badge warn">⚠️ Bevat: {r.warnings.join(", ")}</span>}
             {r.servings && <span className="badge">🍽 {r.servings}</span>}
           </div>
           <div className="recipe-cols">

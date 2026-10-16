@@ -1,4 +1,4 @@
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null; diet?: string }
 export type Repeat = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;

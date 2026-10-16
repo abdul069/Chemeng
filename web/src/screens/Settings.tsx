@@ -113,7 +113,7 @@ function Family() {
 
 function MemberEditor({ member, onClose }: { member?: Member; onClose: () => void }) {
   const act = useAction();
-  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "🙂", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "" });
+  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "🙂", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "", diet: member?.diet ?? "" });
   const [confirm, setConfirm] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const upload = async (fl: FileList | null) => {
@@ -142,6 +142,7 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
       <div className="row2">
         <label className="field"><span>Naam</span><input id="mb-name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label className="field"><span>Verjaardag (voor het aftellen)</span><input id="mb-bd" type="date" value={f.birthday} onChange={(e) => setF({ ...f, birthday: e.target.value })} /></label>
+        <label className="field"><span>Vermijden: allergieën of voorkeuren (komma's)</span><input id="mb-diet" value={f.diet} onChange={(e) => setF({ ...f, diet: e.target.value })} placeholder="bv. noten, varkensvlees, garnalen" /></label>
       </div>
       <div className="field"><span>Rol</span>
         <div className="picks">

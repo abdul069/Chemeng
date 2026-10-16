@@ -431,7 +431,8 @@ api.post("/meals/autoplan", async (req, res) => {
   const to = addDays(b.from, b.days - 1);
   const current = S.mealsBetween(b.from, to);
   const recent = new Set(S.mealsBetween(addDays(b.from, -14), addDays(b.from, -1)).map((m) => m.recipeId).filter(Boolean));
-  let pool = S.listRecipes().filter((r) => !recent.has(r.id));
+  const avoid = S.avoidWords();
+  let pool = S.listRecipes().filter((r) => !recent.has(r.id) && !S.dietHits(r.ingredients, avoid).length);
   const needed = Array.from({ length: b.days }, (_, i) => addDays(b.from, i)).filter((d) => b.overwrite || !current.some((m) => m.date === d && m.slot === b.slot && m.title));
   // te weinig eigen recepten: hoofdgerechten uit de gedeelde bibliotheek erbij halen
   if (pool.length < needed.length) {
@@ -443,7 +444,7 @@ api.post("/meals/autoplan", async (req, res) => {
       for (const it of pick) {
         if (S.recipeBySource(it.sourceUrl)) continue;
         const r = await L.libraryRecipe(it.id);
-        if (!r) continue;
+        if (!r || S.dietHits(r.ingredients, avoid).length) continue;
         const { id: _i, category: _c, ...input } = r;
         const id = S.createRecipe(S.RecipeInput.parse(input));
         pool.push({ ...input, id, minutes: input.minutes ?? null, image: input.image ?? null, sourceUrl: input.sourceUrl ?? null, original: input.original ?? null } as S.Recipe);
@@ -580,7 +581,7 @@ api.get("/library", (req, res) => {
 api.get("/library/:id", async (req, res) => {
   const r = await L.libraryRecipe(p(req), z.object({ translate: z.string().optional() }).parse(req.query).translate !== "0");
   if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
-  res.json({ ...r, inLibraryId: S.recipeBySource(r.sourceUrl!)?.id ?? null });
+  res.json({ ...r, inLibraryId: S.recipeBySource(r.sourceUrl!)?.id ?? null, warnings: S.dietHits(`${r.ingredients}\n${r.original?.ingredients ?? ""}`) });
 });
 /** Zet een recept uit de gedeelde bibliotheek in de bibliotheek van het gezin (in het Nederlands als dat kan). */
 api.post("/library/:id/add", async (req, res) => {

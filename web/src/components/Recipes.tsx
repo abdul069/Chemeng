@@ -70,6 +70,9 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const [cook, setCook] = useState(false);
   const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
   const missing = ingredients.filter((_, i) => !have.has(i));
+  // allergieën/voorkeuren uit de profielen
+  const avoid = [...new Set((data?.members ?? []).flatMap((m) => (m.diet ?? "").split(/[,;]/).map((w) => w.trim().toLocaleLowerCase("tr")).filter((w) => w.length > 1)))];
+  const warnings = avoid.filter((w) => `${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`.toLocaleLowerCase("tr").includes(w));
   const toggle = (i: number) => setHave((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
   const toList = async () => {
@@ -111,6 +114,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
           {servings !== baseServings && <small className="muted">(recept: {baseServings})</small>}
         </span>
         {recipe.cuisine && <span className="badge">{recipe.cuisine}</span>}
+        {warnings.length > 0 && <span className="badge warn" title="Volgens de profielen vermijdt iemand dit">⚠️ Bevat: {warnings.join(", ")}</span>}
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>
       <div className="actions" style={{ justifyContent: "flex-start" }}>

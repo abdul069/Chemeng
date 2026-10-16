@@ -3,7 +3,7 @@ import { all, get, run, newId, tx, hid } from "./db.js";
 import { weekday, today as todayStr, addDays as addDaysStr } from "./dates.js";
 
 // ---------- gezinsleden ----------
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId: string | null; birthday: string | null }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string }
 export const MemberInput = z.object({
   name: z.string().trim().min(1).max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -11,21 +11,22 @@ export const MemberInput = z.object({
   photo: z.string().nullable().optional(),
   role: z.enum(["ouder", "kind"]).default("kind"),
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  diet: z.string().max(200).default(""),
 });
 type MemberRow = Omit<Member, "userId"> & { user_id: string | null };
-const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, m.birthday, hu.user_id
+const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, m.birthday, m.diet, hu.user_id
   FROM members m LEFT JOIN household_users hu ON hu.member_id = m.id AND hu.household_id = m.household_id`;
 const toMember = ({ user_id, ...m }: MemberRow): Member => ({ ...m, userId: user_id });
 export const listMembers = (h = hid()) => all<MemberRow>(`${MEMBER_SQL} WHERE m.household_id=? ORDER BY m.sort, m.name`, h).map(toMember);
 export const getMember = (id: string) => listMembers().find((m) => m.id === id);
-export function createMember(i: z.infer<typeof MemberInput>, h = hid()): Member {
+export function createMember(i: z.input<typeof MemberInput>, h = hid()): Member {
   const id = newId();
   const sort = get<{ n: number }>("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM members WHERE household_id=?", h)?.n ?? 0;
-  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort, birthday) VALUES (?,?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar, i.photo ?? null, i.role, sort, i.birthday ?? null);
+  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort, birthday, diet) VALUES (?,?,?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", sort, i.birthday ?? null, (i.diet ?? "").trim());
   return listMembers(h).find((m) => m.id === id)!;
 }
-export function updateMember(id: string, i: z.infer<typeof MemberInput>) {
-  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=?, birthday=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar, i.photo ?? null, i.role, i.birthday ?? null, id, hid());
+export function updateMember(id: string, i: z.input<typeof MemberInput>) {
+  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=?, birthday=?, diet=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", i.birthday ?? null, (i.diet ?? "").trim(), id, hid());
   return getMember(id);
 }
 export function deleteMember(id: string) {
@@ -281,3 +282,8 @@ type CalRow = { id: string; household_id: string; name: string; url: string; mem
 const toCal = (c: CalRow): CalendarSub => ({ id: c.id, householdId: c.household_id, name: c.name, url: c.url, members: JSON.parse(c.members), lastSync: c.last_sync, lastError: c.last_error });
 export const listCalendars = (): CalendarSub[] => all<CalRow>("SELECT * FROM calendars WHERE household_id=? ORDER BY name", hid()).map(toCal);
 export const allCalendars = (): CalendarSub[] => all<CalRow>("SELECT * FROM calendars").map(toCal);
+
+/** Woorden die het gezin vermijdt (allergieën, voorkeuren), uit de profielen. */
+export const avoidWords = (h = hid()) => [...new Set(listMembers(h).flatMap((m) => m.diet.split(/[,;\n]/).map((w) => w.trim().toLocaleLowerCase("tr")).filter((w) => w.length > 1)))];
+/** Welke te vermijden woorden in deze ingrediënten voorkomen. */
+export const dietHits = (ingredients: string, words = avoidWords()) => { const t = ingredients.toLocaleLowerCase("tr"); return words.filter((w) => t.includes(w)); };
