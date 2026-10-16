@@ -352,12 +352,22 @@ function Assistant() {
   const { data, toast } = useData();
   const act = useAction();
   const [key, setKey] = useState("");
+  const [ws, setWs] = useState("");
   const [busy, setBusy] = useState(false);
+  const [check, setCheck] = useState<{ ok: boolean; error?: string; needsWorkspace?: boolean } | null>(null);
+  const admin = data!.me.role === "beheerder";
+  useEffect(() => { if (admin && data!.assistant.available) api.get<{ ok: boolean; error?: string; needsWorkspace?: boolean }>("/settings/api-check").then(setCheck).catch(() => {}); }, [admin, data!.assistant.available, data!.assistant.keySource]);
   const save = async () => {
     setBusy(true);
-    const ok = await act(() => api.put("/settings/api-key", { key: key.trim() }), "Sleutel gecontroleerd en bewaard. De assistent is actief; de receptenbibliotheek wordt nu vertaald.");
+    const ok = await act(() => api.put("/settings/api-key", { key: key.trim(), workspace: ws.trim() }), "Sleutel gecontroleerd en bewaard. De assistent is actief; de receptenbibliotheek wordt nu vertaald.");
     setBusy(false);
-    if (ok) setKey("");
+    if (ok) { setKey(""); setCheck({ ok: true }); }
+  };
+  const saveWs = async () => {
+    setBusy(true);
+    const ok = await act(() => api.put("/settings/api-workspace", { workspace: ws.trim() }), "Workspace-ID bewaard. De assistent werkt nu; de bibliotheek wordt vertaald.");
+    setBusy(false);
+    if (ok) setCheck({ ok: true });
   };
   return (
     <Section title="Assistent">
@@ -371,7 +381,20 @@ function Assistant() {
           {data!.assistant.available && data!.assistant.keySource === "app" && <button type="button" className="btn ghost" onClick={async () => { if (await act(() => api.del("/settings/api-key"), "Sleutel verwijderd")) toast("De assistent staat nu uit"); }}>Verwijderen</button>}
         </form>
       )}
-      {data!.assistant.keySource === "env" && <p className="hint">De sleutel staat in de omgeving van de server (ANTHROPIC_API_KEY).</p>}
+      {check && !check.ok && (
+        <div className="invite-card">
+          <b>De sleutel werkt nog niet.</b>
+          <p className="hint">{check.needsWorkspace ? "Anthropic meldt dat deze sleutel niet aan een workspace gekoppeld is. Vul de workspace-ID in (console.anthropic.com → Settings → Workspaces → de ID, begint met wrkspc_), of maak een nieuwe sleutel aan binnen een workspace." : check.error}</p>
+          {data!.assistant.canEditKey && (
+            <div className="addrow">
+              <input id="api-ws" value={ws} onChange={(e) => setWs(e.target.value)} placeholder="wrkspc_…" aria-label="Workspace-ID" />
+              <button className="btn" disabled={busy || ws.trim().length < 6} onClick={saveWs}>{busy ? "Controleren…" : "Workspace bewaren"}</button>
+            </div>
+          )}
+        </div>
+      )}
+      {check?.ok && <p className="hint">✅ Verbinding met Claude gecontroleerd: alles werkt.</p>}
+      {data!.assistant.keySource === "env" && <p className="hint">De sleutel staat in de omgeving van de server (ANTHROPIC_API_KEY{data!.assistant.canEditKey ? "; een workspace-ID kan hierboven of als ANTHROPIC_WORKSPACE_ID" : ""}).</p>}
       {!data!.assistant.canEditKey && !data!.assistant.available && <p className="hint">Alleen de beheerder van het eerste gezin op deze server kan de sleutel invullen.</p>}
     </Section>
   );

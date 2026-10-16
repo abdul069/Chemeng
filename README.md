@@ -128,6 +128,7 @@ Gekoppelde agenda's zijn alleen-lezen in Gezinsbord; wijzigingen doe je in de oo
 | Variabele | Standaard | Betekenis |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Sleutel voor de assistent. Niet verplicht: een beheerder kan de sleutel ook in de app invullen (Instellingen → Assistent); ze wordt gecontroleerd en in de database bewaard. |
+| `ANTHROPIC_WORKSPACE_ID` | — | Alleen nodig als de sleutel niet aan een workspace gekoppeld is (Anthropic vraagt dan de header `anthropic-workspace-id`); ook in de app in te vullen. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | Model voor de assistent |
 | `PORT` | `8080` | Poort van de server |
 | `DATA_DIR` | `data` | Map voor database en foto's |

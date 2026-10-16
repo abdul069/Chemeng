@@ -25,7 +25,7 @@ import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./impor
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
-import { saveApiKey, clearApiKey, keySource, operatorHousehold } from "./ai.js";
+import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -243,14 +243,24 @@ const requireOperator = (req: Request, res: Response, next: NextFunction) => {
   requireAdmin(req, res, next);
 };
 api.put("/settings/api-key", requireOperator, async (req, res) => {
-  const { key } = z.object({ key: z.string().min(10).max(300) }).parse(req.body);
-  const r = await saveApiKey(key);
-  if (!r.ok) return void res.status(400).json({ error: r.error });
+  const { key, workspace } = z.object({ key: z.string().min(10).max(300), workspace: z.string().max(120).optional() }).parse(req.body);
+  const r = await saveApiKey(key, workspace ?? "");
+  if (!r.ok) return void res.status(400).json({ error: r.error, needsWorkspace: r.needsWorkspace ?? false });
   res.json({ ok: true });
   broadcast("settings", "recipes");
   // de hele bibliotheek van Nederlandse titels voorzien (op de achtergrond, in groepjes)
   L.translateMissingTitles(100_000).catch(() => {});
 });
+/** Workspace-ID bij een bestaande sleutel (bv. uit de omgeving) zetten. */
+api.put("/settings/api-workspace", requireOperator, async (req, res) => {
+  const r = await saveWorkspace(z.object({ workspace: z.string().max(120) }).parse(req.body).workspace);
+  if (!r.ok) return void res.status(400).json({ error: r.error });
+  res.json({ ok: true });
+  broadcast("settings", "recipes");
+  L.translateMissingTitles(100_000).catch(() => {});
+});
+/** Controle: werkt de assistent echt? */
+api.get("/settings/api-check", requireAdmin, async (_req, res) => { res.json({ ...(await checkAi()), workspace: !!workspaceId() }); });
 api.delete("/settings/api-key", requireOperator, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
