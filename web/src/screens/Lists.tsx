@@ -5,6 +5,7 @@ import type { List, ListItem } from "../types";
 import { Confirm, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { diffDays, shortDate, todayIso } from "../dates";
+import { AISLES, AISLE_INFO, aisleOf } from "../aisles";
 
 /** Houdbaarheid van een voorraad-item: "verlopen", "vandaag", "nog 3 dagen" … */
 function expiry(i: ListItem): { label: string; cls: string } | null {
@@ -26,9 +27,22 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   const [newList, setNewList] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [edit, setEdit] = useState<ListItem | null>(null);
+  const [grouped, setGrouped] = useState(() => { try { return localStorage.getItem("gb.aisles") !== "0"; } catch { return true; } });
   if (!data) return null;
   const list = data.lists.find((l) => l.id === sel) ?? data.lists[0];
   const pantry = list?.kind === "pantry";
+  // boodschappen per afdeling in de winkel; afgevinkte onderaan
+  const isShop = !!list && list.kind === "list" && /boodschap|winkel|markt|alışveriş/i.test(list.name);
+  const toggleGrouped = () => { setGrouped(!grouped); try { localStorage.setItem("gb.aisles", grouped ? "0" : "1"); } catch { /* */ } };
+  const sections: { key: string; items: ListItem[] }[] = (() => {
+    if (!list) return [];
+    if (!(isShop && grouped)) return [{ key: "", items: list.items }];
+    const open = list.items.filter((i) => !i.done); const done = list.items.filter((i) => i.done);
+    const by = new Map<string, ListItem[]>();
+    for (const i of open) { const k = aisleOf(i.text); by.set(k, [...(by.get(k) ?? []), i]); }
+    const order = [...AISLES.map((a) => a.key), "overig"];
+    return [...order.filter((k) => by.has(k)).map((k) => ({ key: k, items: by.get(k)! })), ...(done.length ? [{ key: "done", items: done }] : [])];
+  })();
 
   const add = async () => {
     const parts = text.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
@@ -66,6 +80,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               <h2>{list.icon} {list.name}</h2>
               <div style={{ display: "flex", gap: 6 }}>
                 {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? "Opgebruikte items gewist" : "Afgevinkte items gewist")}>{pantry ? "Opgebruikte wissen" : "Afgevinkte wissen"}</button>}
+                {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? "Per afdeling ✓" : "Per afdeling"}</button>}
                 <button className="iconbtn" aria-label="Lijst verwijderen" onClick={() => setConfirm(true)}><Icon.trash /></button>
               </div>
             </div>
@@ -77,7 +92,9 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               <button className="btn" type="submit" disabled={!text.trim()}>Toevoegen</button>
             </form>
             <div className="items">
-              {list.items.map((i) => {
+              {sections.map((sec) => (<div key={sec.key || "all"} className="items">
+              {sec.key && <div className="aisle-h">{sec.key === "done" ? "✓ Afgevinkt" : `${AISLE_INFO[sec.key].icon} ${AISLE_INFO[sec.key].name}`}<span className="muted num">{sec.items.length}</span></div>}
+              {sec.items.map((i) => {
                 const ex = pantry ? expiry(i) : null;
                 return (
                   <div className={`item${i.done ? " done" : ""}`} key={i.id}>
@@ -92,6 +109,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                   </div>
                 );
               })}
+              </div>))}
               {!list.items.length && <p className="empty">{pantry ? "Nog niets in voorraad. Voeg toe wat je in huis hebt, met houdbaarheidsdatum." : "De lijst is leeg. Typ hierboven of vraag het aan de assistent."}</p>}
             </div>
           </section>

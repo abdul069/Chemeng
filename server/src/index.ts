@@ -10,6 +10,8 @@ import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
 import { startPushScheduler } from "./push.js";
 import { startLibraryScheduler } from "./library.js";
+import { createList } from "./store.js";
+import { all } from "./db.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8080);
@@ -43,6 +45,8 @@ setTimeout(doSync, 5_000).unref();
 setInterval(doSync, SYNC_MIN * 60_000).unref();
 startPushScheduler();
 startLibraryScheduler();
+// bestaande gezinnen van vóór de voorraadlijst krijgen er alsnog een
+for (const h of all<{ id: string }>("SELECT id FROM households WHERE id NOT IN (SELECT household_id FROM lists WHERE kind='pantry')")) createList("Voorraad", "🥫", h.id, "pantry");
 
 server.listen(PORT, () => {
   console.log(`[gezinsbord] luistert op http://localhost:${PORT}`);

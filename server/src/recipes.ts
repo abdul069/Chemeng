@@ -37,18 +37,39 @@ function isRecipe(o: unknown): o is Json {
   return asArray(t as string | string[]).some((x) => String(x).toLowerCase() === "recipe");
 }
 
-function findRecipe(node: unknown): Json | null {
-  if (isRecipe(node)) return node;
-  if (Array.isArray(node)) {
-    for (const n of node) { const r = findRecipe(n); if (r) return r; }
-  } else if (node && typeof node === "object") {
+function findRecipes(node: unknown, out: Json[] = [], depth = 0): Json[] {
+  if (depth > 6 || !node) return out;
+  if (isRecipe(node)) out.push(node as Json);
+  if (Array.isArray(node)) for (const n of node) findRecipes(n, out, depth + 1);
+  else if (typeof node === "object") {
     const o = node as Json;
-    for (const key of ["@graph", "mainEntity", "itemListElement"]) {
-      const r = findRecipe(o[key]);
-      if (r) return r;
-    }
+    for (const key of ["@graph", "mainEntity", "itemListElement", "item", "hasPart"]) if (o[key]) findRecipes(o[key], out, depth + 1);
   }
-  return null;
+  return out;
+}
+/** Alle Recipe-objecten uit de ld+json-blokken van een pagina. */
+export function recipeNodes(html: string): Json[] {
+  const blocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+  const out: Json[] = [];
+  for (const raw of blocks) {
+    let data: unknown;
+    try { data = JSON.parse(raw.trim()); } catch {
+      try { data = JSON.parse(raw.trim().replace(/[\u0000-\u001f]+/g, " ")); } catch { continue; }
+    }
+    findRecipes(data, out);
+  }
+  return out;
+}
+/** Ingrediënten of stappen uit de HTML zelf, als het ld+json ze niet (volledig) heeft. */
+function fromHtml(html: string, kind: "ingredient" | "step"): string[] {
+  const pats = kind === "ingredient"
+    ? [/itemprop=["']recipeIngredient["'][^>]*>([\s\S]*?)<\//gi, /<li[^>]*class=["'][^"']*(?:ingredient|malzeme)[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi]
+    : [/itemprop=["']recipeInstructions["'][^>]*>([\s\S]*?)<\//gi, /<(?:li|p|div)[^>]*class=["'][^"']*(?:instruction|direction|step|yapilis|yapılış|adim|adım|hazirlan|hazırlan)[^"']*["'][^>]*>([\s\S]*?)<\/(?:li|p|div)>/gi];
+  for (const re of pats) {
+    const found = [...html.matchAll(re)].map((m) => decode(m[1])).filter((x) => x.length > 2 && x.length < 600);
+    if (found.length >= 2) return [...new Set(found)];
+  }
+  return [];
 }
 
 /** ISO 8601-duur (PT1H30M) naar minuten. */
@@ -97,16 +118,16 @@ function detectLang(html: string, url: string, r: Json): string {
 
 /** Leest het recept uit de HTML van een receptpagina. */
 export function parseRecipeHtml(html: string, url: string): RecipeInputT {
-  const blocks = [...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-  for (const raw of blocks) {
-    let data: unknown;
-    try { data = JSON.parse(raw.trim()); } catch {
-      try { data = JSON.parse(raw.trim().replace(/[\u0000-\u001f]+/g, " ")); } catch { continue; }
-    }
-    const r = findRecipe(data);
-    if (!r) continue;
-    const ingredients = asArray((r.recipeIngredient ?? r.ingredients) as string[]).map((x) => decode(String(x))).filter(Boolean);
-    const steps = stepsOf(r.recipeInstructions);
+  // het rijkste Recipe-object wint (sommige pagina's hebben er meerdere, bv. voor "gerelateerde recepten")
+  const nodes = recipeNodes(html).map((r) => ({
+    r,
+    ingredients: asArray((r.recipeIngredient ?? r.ingredients) as string[]).map((x) => decode(String(x))).filter(Boolean),
+    steps: stepsOf(r.recipeInstructions ?? r.recipeInstruction ?? r.instructions ?? r.step),
+  })).sort((a, b) => (b.ingredients.length + b.steps.length) - (a.ingredients.length + a.steps.length));
+  for (const n of nodes.slice(0, 1)) {
+    const r = n.r;
+    const ingredients = n.ingredients.length ? n.ingredients : fromHtml(html, "ingredient");
+    const steps = n.steps.length ? n.steps : fromHtml(html, "step");
     const title = decode(String(r.name ?? "")) || "Recept";
     const servings = decode(String(asArray(r.recipeYield as string | string[])[0] ?? ""));
     return {

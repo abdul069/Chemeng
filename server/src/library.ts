@@ -1,7 +1,7 @@
 // Gedeelde receptenbibliotheek: alle recepten van de Turkse receptsites worden via hun sitemaps opgehaald,
 // per categorie opgeslagen en (zodra de assistent beschikbaar is) naar het Nederlands vertaald.
 import { all, get, run, newId, db } from "./db.js";
-import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable } from "./recipes.js";
+import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable, recipeNodes } from "./recipes.js";
 import type { RecipeInputT } from "./store.js";
 
 db.exec(`
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS library (
 );
 CREATE INDEX IF NOT EXISTS library_cat ON library(category);
 CREATE TABLE IF NOT EXISTS library_seen (url TEXT PRIMARY KEY, status TEXT NOT NULL, at TEXT NOT NULL DEFAULT (datetime('now')));
+CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
 /** Categorieën met Nederlandse naam, icoon en Turkse/Nederlandse trefwoorden om een recept in te delen. */
@@ -190,6 +191,11 @@ export async function ingestUrl(url: string, site: string, html?: string): Promi
     const why = (e as Error).message.slice(0, 120);
     run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `norecipe ${why}`);
     noteFailure(url, `${why} (${page.length} tekens, ld+json: ${/application\/ld\+json/.test(page) ? "ja" : "nee"})`);
+    // structuur van het receptblok in het logboek, zodat de parser verbeterd kan worden
+    if (failuresLogged <= 3) for (const n of recipeNodes(page).slice(0, 2)) {
+      const ins = n.recipeInstructions;
+      log(`  recept-sleutels: ${Object.keys(n).join(",")} · instructies: ${Array.isArray(ins) ? `array[${ins.length}] ${JSON.stringify(ins[0]).slice(0, 300)}` : JSON.stringify(ins).slice(0, 300)}`);
+    }
     return "failed";
   }
 }
@@ -251,6 +257,12 @@ export async function translateMissingTitles(limit = 2000) {
   return n;
 }
 
+/** Bij een verbeterde parser worden eerder mislukte pagina's opnieuw geprobeerd. */
+const PARSER_VERSION = "3";
+if (get<{ value: string }>("SELECT value FROM global_settings WHERE key='library_parser'")?.value !== PARSER_VERSION) {
+  run("DELETE FROM library_seen WHERE status LIKE 'norecipe%' OR status LIKE 'fetch%'");
+  run("INSERT INTO global_settings(key, value) VALUES('library_parser', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", PARSER_VERSION);
+}
 export const libraryCount = () => get<{ n: number }>("SELECT COUNT(*) AS n FROM library")?.n ?? 0;
 
 /** Bij het opstarten: bibliotheek opbouwen als ze leeg is, en daarna elke week bijwerken. */
