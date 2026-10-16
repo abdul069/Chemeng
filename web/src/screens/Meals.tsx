@@ -6,6 +6,7 @@ import { Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe } from "../components/Recipes";
 import { LibraryBrowser } from "../components/LibraryBrowser";
+import { useNavParam } from "../nav";
 import { PhotoPicker } from "../components/PhotoPicker";
 import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../dates";
 
@@ -14,6 +15,7 @@ type Tab = "week" | "recipes";
 
 export function MealsScreen({ header }: { header: React.ReactNode }) {
   const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem("gb.meals") as Tab) || "week");
+  useNavParam("meals", (v) => go(v as Tab));
   const go = (t: Tab) => { setTab(t); try { sessionStorage.setItem("gb.meals", t); } catch { /* */ } };
   return (
     <>
@@ -136,6 +138,7 @@ function Library() {
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
   const [view, setView] = useState<"mine" | "all">(() => { try { if (sessionStorage.getItem("gb.lib") !== null) return "all"; } catch { /* */ } return (data?.recipes.length ?? 0) ? "mine" : "all"; });
+  useNavParam("lib", () => setView("all"));
   const recipes = data?.recipes ?? [];
   const cuisines = [...new Set(recipes.map((r) => r.cuisine).filter(Boolean))];
   const shown = recipes.filter((r) =>

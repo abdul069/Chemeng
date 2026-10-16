@@ -2,7 +2,7 @@
 // per categorie opgeslagen en (zodra de assistent beschikbaar is) naar het Nederlands vertaald.
 import { all, get, run, newId, db } from "./db.js";
 import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable, recipeNodes } from "./recipes.js";
-import type { RecipeInputT } from "./store.js";
+import { createRecipe, listRecipes, recipeBySource, RecipeInput, type RecipeInputT } from "./store.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS library (
@@ -158,8 +158,12 @@ export async function discoverUrls(site: string, max: number, log: (s: string) =
   const found = new Set<string>();
   const queue = [...roots]; const seen = new Set<string>();
   const test = RECIPE_URL[site];
-  // alleen pagina's tellen die we nog niet hebben (anders komen we nooit voorbij de eerste sitemaps)
-  const known = (u: string) => !!get("SELECT 1 FROM library WHERE source_url=?", u) || !!get("SELECT 1 FROM library_seen WHERE url=? AND at > datetime('now','-30 days')", u);
+  // alleen pagina's tellen die we nog niet hebben (anders komen we nooit voorbij de eerste sitemaps); één keer inladen
+  const knownSet = new Set([
+    ...all<{ u: string }>("SELECT source_url AS u FROM library WHERE site=?", site).map((r) => r.u),
+    ...all<{ u: string }>("SELECT url AS u FROM library_seen WHERE url LIKE ? AND at > datetime('now','-30 days')", `%${site}%`).map((r) => r.u),
+  ]);
+  const known = (u: string) => knownSet.has(u);
   while (queue.length && found.size < max && seen.size < 400) {
     const u = queue.shift()!;
     if (seen.has(u)) continue;
@@ -183,10 +187,15 @@ export const crawlStatus: CrawlStatus = { running: false, site: null, done: 0, a
 const log = (s: string) => { crawlStatus.log.push(`${new Date().toISOString().slice(11, 19)} ${s}`); if (crawlStatus.log.length > 200) crawlStatus.log.shift(); console.log("[library]", s); };
 
 /** Haalt één receptpagina op en zet ze in de bibliotheek. */
-export async function ingestUrl(url: string, site: string, html?: string): Promise<"added" | "exists" | "failed"> {
+export async function ingestUrl(url: string, site: string, html?: string): Promise<"added" | "exists" | "failed" | "blocked"> {
   if (get("SELECT 1 FROM library WHERE source_url=?", url)) return "exists";
+  lastFetchError = "";
   const page = html ?? await getText(url);
-  if (!page) { run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `fetch ${lastFetchError}`); noteFailure(url, `ophalen mislukt: ${lastFetchError}`); return "failed"; }
+  if (!page) {
+    run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `fetch ${lastFetchError}`);
+    noteFailure(url, `ophalen mislukt: ${lastFetchError}`);
+    return /HTTP (403|429|503)/.test(lastFetchError) ? "blocked" : "failed";
+  }
   try {
     const r = parseRecipeHtml(page.slice(0, 3_000_000), url);
     if (!r.ingredients.trim() || !r.instructions.trim()) throw new Error(`recept zonder ${!r.ingredients.trim() ? "ingrediënten" : "bereiding"}`);
@@ -243,14 +252,15 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
           const r = await ingestUrl(u, site);
           crawlStatus.done++;
           if (r === "added") { crawlStatus.added++; blocked = 0; }
-          else if (r === "failed") { crawlStatus.failed++; if (/HTTP (403|429|503)/.test(lastFetchError)) blocked++; }
+          else if (r === "blocked") { crawlStatus.failed++; blocked++; }
+          else if (r === "failed") crawlStatus.failed++;
           if (crawlStatus.done % 50 === 0) log(`${site}: ${crawlStatus.done}/${crawlStatus.total} (${crawlStatus.added} toegevoegd)`);
           await new Promise((res) => setTimeout(res, pace.delayMs));
         }
       }));
       if (blocked >= 10) {
         // niet blijven kloppen: de rest van deze site krijgt een volgende beurt (de overgeslagen pagina's zijn niet als 'gezien' gemarkeerd)
-        log(`${site}: de site blokkeert ons (${lastFetchError}); de rest komt bij een volgende beurt aan bod`);
+        log(`${site}: de site blokkeert ons; de rest komt bij een volgende beurt aan bod`);
         run("DELETE FROM library_seen WHERE url LIKE ? AND status LIKE 'fetch HTTP 4%'", `%${site}%`);
       }
       log(`${site}: klaar, ${crawlStatus.added} recepten toegevoegd tot nu toe`);
@@ -313,4 +323,16 @@ export async function probe(url: string) {
   } catch (e) {
     return { ok: false, error: (e as Error).message, length: page.length, ldjson: /application\/ld\+json/.test(page), snippet: page.slice(0, 300) };
   }
+}
+
+/** Recept uit de gedeelde bibliotheek in de bibliotheek van het gezin zetten (of het bestaande teruggeven). */
+export async function addToFamily(id: string, opts: { translate?: boolean } = {}) {
+  const r = await libraryRecipe(id, opts.translate ?? true);
+  if (!r) return null;
+  const existing = recipeBySource(r.sourceUrl!);
+  if (existing) return { id: existing.id, existing: true, title: existing.title, image: existing.image, recipe: existing };
+  const { id: _i, category: _c, ...input } = r;
+  const newId = createRecipe(RecipeInput.parse(input));
+  const recipe = listRecipes().find((x) => x.id === newId)!;
+  return { id: newId, existing: false, title: recipe.title, image: recipe.image, recipe };
 }

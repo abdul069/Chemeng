@@ -36,6 +36,7 @@ api.get("/health", (_req, res) => { res.json({ ok: true }); });
 // eenvoudige rem op aanmaken van accounts per adres
 const regHits = new Map<string, { n: number; until: number }>();
 api.use("/auth/register", (req, res, next) => {
+  if (regHits.size > 1000) for (const [k, v] of regHits) if (v.until < Date.now()) regHits.delete(k);
   const a = regHits.get(req.ip ?? "") ?? { n: 0, until: Date.now() + 3600_000 };
   if (a.until < Date.now()) { a.n = 0; a.until = Date.now() + 3600_000; }
   if (++a.n > 20) return void res.status(429).json({ error: "Te veel accounts in korte tijd. Probeer het later opnieuw." });
@@ -432,7 +433,9 @@ api.post("/meals/autoplan", async (req, res) => {
   const current = S.mealsBetween(b.from, to);
   const recent = new Set(S.mealsBetween(addDays(b.from, -14), addDays(b.from, -1)).map((m) => m.recipeId).filter(Boolean));
   const avoid = S.avoidWords();
-  let pool = S.listRecipes().filter((r) => !recent.has(r.id) && !S.dietHits(r.ingredients, avoid).length);
+  const inWeek = new Set(current.map((m) => m.recipeId).filter(Boolean)); // niet twee keer in dezelfde week
+  const ok = (r: S.Recipe) => !inWeek.has(r.id) && !S.dietHits(r.ingredients, avoid).length;
+  let pool = S.listRecipes().filter((r) => !recent.has(r.id) && ok(r));
   const needed = Array.from({ length: b.days }, (_, i) => addDays(b.from, i)).filter((d) => b.overwrite || !current.some((m) => m.date === d && m.slot === b.slot && m.title));
   // te weinig eigen recepten: hoofdgerechten uit de gedeelde bibliotheek erbij halen
   if (pool.length < needed.length) {
@@ -443,15 +446,14 @@ api.post("/meals/autoplan", async (req, res) => {
       const pick = items.filter((i) => i.image).sort(() => Math.random() - 0.5).slice(0, 2);
       for (const it of pick) {
         if (S.recipeBySource(it.sourceUrl)) continue;
-        const r = await L.libraryRecipe(it.id);
+        const r = await L.libraryRecipe(it.id, false); // vertalen gebeurt later, bij het openen
         if (!r || S.dietHits(r.ingredients, avoid).length) continue;
-        const { id: _i, category: _c, ...input } = r;
-        const id = S.createRecipe(S.RecipeInput.parse(input));
-        pool.push({ ...input, id, minutes: input.minutes ?? null, image: input.image ?? null, sourceUrl: input.sourceUrl ?? null, original: input.original ?? null } as S.Recipe);
+        const added = await L.addToFamily(it.id, { translate: false });
+        if (added && !added.existing) pool.push(added.recipe);
       }
     }
   }
-  if (!pool.length) pool = S.listRecipes(); // alles stond onlangs al op tafel: dan toch kiezen
+  if (!pool.length) pool = S.listRecipes().filter(ok); // alles stond onlangs al op tafel: dan toch kiezen (maar nooit wat vermeden wordt)
   pool = pool.sort(() => Math.random() - 0.5);
   // elk recept hoogstens één keer per beurt; te weinig recepten → de rest blijft leeg
   const planned: { date: string; title: string }[] = [];
@@ -585,14 +587,10 @@ api.get("/library/:id", async (req, res) => {
 });
 /** Zet een recept uit de gedeelde bibliotheek in de bibliotheek van het gezin (in het Nederlands als dat kan). */
 api.post("/library/:id/add", async (req, res) => {
-  const r = await L.libraryRecipe(p(req));
-  if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
-  const existing = S.recipeBySource(r.sourceUrl!);
-  if (existing) return void res.json({ id: existing.id, existing: true });
-  const { id: _id, category: _c, ...input } = r;
-  const id = S.createRecipe(S.RecipeInput.parse(input));
-  res.json({ id, existing: false });
-  broadcast("recipes");
+  const added = await L.addToFamily(p(req));
+  if (!added) return void res.status(404).json({ error: "Recept niet gevonden." });
+  res.json({ id: added.id, existing: added.existing });
+  if (!added.existing) broadcast("recipes");
 });
 api.post("/library/crawl", requireAdmin, (req, res) => {
   const b = z.object({ sites: z.array(z.string()).optional(), maxPerSite: z.number().int().min(10).max(20000).optional() }).parse(req.body ?? {});

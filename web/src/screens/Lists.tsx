@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { navParam, useNavParam } from "../nav";
 import { api } from "../api";
 import { useAction, useData } from "../store";
 import type { List, ListItem } from "../types";
@@ -20,7 +21,8 @@ function expiry(i: ListItem): { label: string; cls: string } | null {
 export function ListsScreen({ header }: { header: React.ReactNode }) {
   const { data, toast } = useData();
   const act = useAction();
-  const [sel, setSel] = useState<string | null>(() => { try { const l = sessionStorage.getItem("gb.list"); sessionStorage.removeItem("gb.list"); return l; } catch { return null; } });
+  const [sel, setSel] = useState<string | null>(() => navParam("list"));
+  useNavParam("list", setSel);
   const [text, setText] = useState("");
   const [qty, setQty] = useState("");
   const [expires, setExpires] = useState("");

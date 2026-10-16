@@ -8,7 +8,7 @@ import {
   memberByName, pantryList, recipeBySource, RecipeInput, setChoreDone, setMeal, SLOTS,
 } from "./store.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError } from "./recipes.js";
-import { libraryList, libraryRecipe, libraryCategories } from "./library.js";
+import { libraryList, libraryCategories, addToFamily } from "./library.js";
 import { getSettings, hid } from "./db.js";
 import { fillMissingPhotos } from "./dishphotos.js";
 import { broadcastTo } from "./realtime.js";
@@ -217,15 +217,12 @@ function buildTools(changes: Change[]) {
       description: "Zet een recept uit de gedeelde bibliotheek (bib-id van bibliotheek_bladeren) in de receptenbibliotheek van het gezin, in het Nederlands. Geeft het recept-id terug waarmee je het kunt inplannen.",
       inputSchema: z.object({ bib_id: z.string() }),
       run: async ({ bib_id }) => {
-        const r = await libraryRecipe(bib_id);
-        if (!r) return "Dat recept staat niet in de bibliotheek.";
-        const existing = recipeBySource(r.sourceUrl!);
-        if (existing) return `Stond al in de bibliotheek van het gezin: ${existing.title} id=${existing.id}`;
-        const { id: _i, category: _c, ...input } = r;
-        const id = createRecipe(RecipeInput.parse(input));
-        changes.push({ kind: "recipe", id, title: r.title, image: r.image ?? null });
+        const added = await addToFamily(bib_id);
+        if (!added) return "Dat recept staat niet in de bibliotheek.";
+        if (added.existing) return `Stond al in de bibliotheek van het gezin: ${added.title} id=${added.id}`;
+        changes.push({ kind: "recipe", id: added.id, title: added.title, image: added.image });
         broadcastTo(hid(), ["recipes"]);
-        return `Toegevoegd: ${r.title} id=${id}`;
+        return `Toegevoegd: ${added.title} id=${added.id}`;
       },
     }),
     betaZodTool({

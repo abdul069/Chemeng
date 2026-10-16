@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useAction, useData } from "../store";
 import { Modal } from "./ui";
 import { openRecipe } from "./Recipes";
+import { navParam, useNavParam } from "../nav";
 
 interface Cat { key: string; name: string; icon: string; n: number }
 interface Row { id: string; sourceUrl: string; site: string; category: string; title: string; titleTr: string; image: string | null; minutes: number | null; servings: string; translated: boolean; inLibrary: boolean }
@@ -18,9 +19,9 @@ export function LibraryBrowser() {
   const act = useAction();
   const [ov, setOv] = useState<Overview | null>(null);
   const [cat, setCat] = useState<string | null>(null);
-  const initial = (() => { try { const v = sessionStorage.getItem("gb.lib") ?? ""; sessionStorage.removeItem("gb.lib"); return v; } catch { return ""; } })();
-  const [q, setQ] = useState(initial);
-  const [typed, setTyped] = useState(initial);
+  const [q, setQ] = useState(() => navParam("lib") ?? "");
+  const [typed, setTyped] = useState(q);
+  useNavParam("lib", (v) => { setTyped(v); setQ(v); setCat(null); });
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);

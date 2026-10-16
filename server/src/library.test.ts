@@ -58,3 +58,10 @@ test("haalt de recepten op, zet ze per categorie in de bibliotheek en slaat pagi
   assert.equal(crawlStatus.added, 0);
   assert.equal(crawlStatus.total, 0);
 });
+
+test("vermijden-woorden gelden als heel woord", async () => {
+  const { dietHits } = await import("./store.js");
+  assert.deepEqual(dietHits("250 g suiker\n1 ui\nkruiden", ["ui", "noten"]), ["ui"]);
+  assert.deepEqual(dietHits("250 g suiker\nkruiden\nfruit", ["ui"]), []);
+  assert.deepEqual(dietHits("100 g fındık\n2 yumurta", ["fındık", "ei"]), ["fındık"]);
+});

@@ -13,6 +13,7 @@ import { MealsScreen } from "./screens/Meals";
 import { ListsScreen } from "./screens/Lists";
 import { AppsScreen, type AppView } from "./screens/Apps";
 import { Search } from "./components/Search";
+import { emitNav } from "./nav";
 import { RecipeHost } from "./components/Recipes";
 import { SettingsScreen } from "./screens/Settings";
 import { cap, clock, longDate, todayIso } from "./dates";
@@ -134,10 +135,7 @@ export function App() {
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
       <RecipeHost />
-      {search && <Search onClose={() => setSearch(false)} goto={(sc, extra) => {
-        try { for (const [k, v] of Object.entries(extra ?? {})) sessionStorage.setItem(`gb.${k}`, v); } catch { /* */ }
-        setScreen(sc as Screen);
-      }} />}
+      {search && <Search onClose={() => setSearch(false)} goto={(sc, extra) => { emitNav(extra ?? {}); setScreen(sc as Screen); }} />}
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
       {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}

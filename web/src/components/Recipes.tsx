@@ -7,6 +7,7 @@ import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 import { parseServings, scaleLine } from "../portions";
 import { CookMode } from "./CookMode";
+import { avoidWords, dietHits } from "../diet";
 
 const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: "Deutsch" };
 const FLAG: Record<string, string> = { tr: "🇹🇷", nl: "🇳🇱", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪" };
@@ -71,8 +72,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
   const missing = ingredients.filter((_, i) => !have.has(i));
   // allergieën/voorkeuren uit de profielen
-  const avoid = [...new Set((data?.members ?? []).flatMap((m) => (m.diet ?? "").split(/[,;]/).map((w) => w.trim().toLocaleLowerCase("tr")).filter((w) => w.length > 1)))];
-  const warnings = avoid.filter((w) => `${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`.toLocaleLowerCase("tr").includes(w));
+  const warnings = dietHits(`${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`, avoidWords(data?.members ?? []));
   const toggle = (i: number) => setHave((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
   const toList = async () => {

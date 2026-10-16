@@ -286,4 +286,5 @@ export const allCalendars = (): CalendarSub[] => all<CalRow>("SELECT * FROM cale
 /** Woorden die het gezin vermijdt (allergieën, voorkeuren), uit de profielen. */
 export const avoidWords = (h = hid()) => [...new Set(listMembers(h).flatMap((m) => m.diet.split(/[,;\n]/).map((w) => w.trim().toLocaleLowerCase("tr")).filter((w) => w.length > 1)))];
 /** Welke te vermijden woorden in deze ingrediënten voorkomen. */
-export const dietHits = (ingredients: string, words = avoidWords()) => { const t = ingredients.toLocaleLowerCase("tr"); return words.filter((w) => t.includes(w)); };
+const wordRe = (w: string) => new RegExp(`(^|[^\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[^\\p{L}]|$)`, "iu");
+export const dietHits = (ingredients: string, words = avoidWords()) => { const t = ingredients.toLocaleLowerCase("tr"); return words.filter((w) => wordRe(w).test(t)); };

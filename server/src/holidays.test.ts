@@ -24,3 +24,9 @@ test("feestdagen in een periode, meerdaags feest per dag", () => {
   assert.ok(occ.every((o) => o.readOnly && o.allDay && o.source === "holiday"));
   assert.equal(holidaysBetween("2026-05-20", "2026-06-01", ["be"]).length, 1);
 });
+
+test("alle jaren binnen een lange periode", () => {
+  const titles = holidaysBetween("2026-12-01", "2028-02-01", ["be"]).map((h) => h.date);
+  assert.ok(titles.includes("2027-07-21"), "2027 zit ertussen");
+  assert.ok(titles.includes("2026-12-25") && titles.includes("2028-01-01"));
+});

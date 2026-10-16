@@ -43,8 +43,9 @@ const ISLAMIC: Holiday[] = [
 ];
 
 export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"]): Holiday[] {
-  const years = new Set([Number(from.slice(0, 4)), Number(to.slice(0, 4))]);
-  const all = [...[...years].flatMap(belgianHolidays), ...ISLAMIC].filter((h) => kinds.includes(h.kind));
+  const years: number[] = [];
+  for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) years.push(y);
+  const all = [...years.flatMap(belgianHolidays), ...ISLAMIC].filter((h) => kinds.includes(h.kind));
   return all.filter((h) => (h.endDate ?? h.date) >= from && h.date <= to).sort((a, b) => a.date.localeCompare(b.date));
 }
 

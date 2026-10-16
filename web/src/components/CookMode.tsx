@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTimers, fmtLeft } from "./Timers";
 
 /** Minuten in een stap: "20 dakika", "15-20 min", "een halfuur" → voor de kookwekker. */
@@ -20,15 +20,17 @@ export function CookMode({ title, ingredients, steps, onClose }: { title: string
   const mins = minutesIn(step);
   const own = timers.filter((t) => t.label === title);
 
-  // scherm wakker houden tijdens het koken
+  // scherm wakker houden tijdens het koken (één keer aanvragen, bij sluiten vrijgeven)
+  const latest = useRef({ onClose, n: steps.length });
+  latest.current = { onClose, n: steps.length };
   useEffect(() => {
-    let lock: { release: () => Promise<void> } | null = null;
+    let lock: { release: () => Promise<void> } | null = null; let closed = false;
     const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> } };
-    nav.wakeLock?.request("screen").then((l) => { lock = l; }).catch(() => {});
-    const onKey = (e: KeyboardEvent) => { if (e.key === "ArrowRight") setI((x) => Math.min(steps.length - 1, x + 1)); if (e.key === "ArrowLeft") setI((x) => Math.max(0, x - 1)); if (e.key === "Escape") onClose(); };
+    nav.wakeLock?.request("screen").then((l) => { if (closed) l.release().catch(() => {}); else lock = l; }).catch(() => {});
+    const onKey = (e: KeyboardEvent) => { if (e.key === "ArrowRight") setI((x) => Math.min(latest.current.n - 1, x + 1)); if (e.key === "ArrowLeft") setI((x) => Math.max(0, x - 1)); if (e.key === "Escape") latest.current.onClose(); };
     window.addEventListener("keydown", onKey);
-    return () => { lock?.release().catch(() => {}); window.removeEventListener("keydown", onKey); };
-  }, [steps.length, onClose]);
+    return () => { closed = true; lock?.release().catch(() => {}); window.removeEventListener("keydown", onKey); };
+  }, []);
 
   return (
     <div className="cook" role="dialog" aria-modal="true" aria-label={`Kookmodus: ${title}`}>

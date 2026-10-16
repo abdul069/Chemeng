@@ -79,7 +79,7 @@ function findInvite(token: string) {
 
 export function describeInvite(token: string) {
   const inv = findInvite(token);
-  if (!inv) return { valid: false as const, reason: "Deze uitnodiging bestaat niet." };
+  if (!inv || (inv.kind as string) === "reset") return { valid: false as const, reason: "Deze uitnodiging bestaat niet." };
   if (inv.used_at) return { valid: false as const, reason: "Deze uitnodiging is al gebruikt." };
   if (get("SELECT 1 WHERE datetime('now') > ?", inv.expires_at)) return { valid: false as const, reason: "Deze uitnodiging is verlopen. Vraag een nieuwe." };
   const from = get<{ name: string }>("SELECT name FROM users WHERE id=?", inv.created_by)?.name ?? "Iemand";
