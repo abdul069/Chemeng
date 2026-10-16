@@ -58,6 +58,11 @@ export function LibraryBrowser() {
       )}
       <div className="addrow">
         <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Zoek in ${ov.total} Turkse recepten (Nederlands of Turks)`} aria-label="Zoek in alle Turkse recepten" />
+        {ov.total > 0 && <button className="btn ghost small" title="Een willekeurig recept uit deze selectie" onClick={async () => {
+          const params = new URLSearchParams({ limit: "1", random: "1" }); if (cat) params.set("category", cat); if (q) params.set("q", q);
+          const r = await api.get<{ items: Row[] }>(`/library?${params}`).catch(() => null);
+          if (r?.items[0]) setOpen(r.items[0].id);
+        }}>🎲 Verras me</button>}
         {admin && !ov.crawl.running && ov.total > 0 && <button className="btn ghost small" title="Nieuwe recepten van de sites ophalen" onClick={() => act(() => api.post("/library/crawl"), "Bijwerken gestart").then(loadOverview)}>⟳</button>}
       </div>
       <div className="picks catrow">

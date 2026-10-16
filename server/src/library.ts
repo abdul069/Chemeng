@@ -78,7 +78,7 @@ export function libraryCategories() {
   return [...CATEGORIES.map((c) => ({ ...c, words: undefined, n: by[c.key] ?? 0 })), { key: "overig", name: "Overige", icon: "🍽️", n: by.overig ?? 0 }].filter((c) => c.n > 0);
 }
 
-export function libraryList(opts: { category?: string; q?: string; offset?: number; limit?: number; site?: string }) {
+export function libraryList(opts: { category?: string; q?: string; offset?: number; limit?: number; site?: string; random?: boolean }) {
   const where: string[] = []; const args: unknown[] = [];
   if (opts.category && (CAT_KEYS.has(opts.category) || opts.category === "overig")) { where.push("category=?"); args.push(opts.category); }
   if (opts.site) { where.push("site=?"); args.push(opts.site); }
@@ -87,7 +87,7 @@ export function libraryList(opts: { category?: string; q?: string; offset?: numb
   const total = get<{ n: number }>(`SELECT COUNT(*) AS n FROM library ${w}`, ...args)?.n ?? 0;
   const limit = Math.min(Math.max(opts.limit ?? 60, 1), 200);
   const rows = all<Record<string, unknown>>(
-    `SELECT id, source_url, site, category, title_tr, title_nl, image, minutes, servings, ingredients_nl FROM library ${w} ORDER BY (image IS NULL), COALESCE(title_nl, title_tr) LIMIT ? OFFSET ?`,
+    `SELECT id, source_url, site, category, title_tr, title_nl, image, minutes, servings, ingredients_nl FROM library ${w} ORDER BY ${opts.random ? "(image IS NULL), RANDOM()" : "(image IS NULL), COALESCE(title_nl, title_tr)"} LIMIT ? OFFSET ?`,
     ...args, limit, Math.max(opts.offset ?? 0, 0),
   );
   return { total, items: rows.map(toRow) };
