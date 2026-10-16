@@ -15,7 +15,8 @@ let cached: { key: string; client: Anthropic } | null = null;
 export function getClient(): Anthropic | null {
   const key = apiKey();
   if (!key) return null;
-  if (cached?.key !== key) cached = { key, client: process.env.ANTHROPIC_API_KEY === key ? new Anthropic() : new Anthropic({ apiKey: key }) };
+  // sleutel uit de omgeving: de SDK leest ze zelf (ook ANTHROPIC_AUTH_TOKEN als bearer-token)
+  if (cached?.key !== key) cached = { key, client: keySource() === "env" ? new Anthropic() : new Anthropic({ apiKey: key }) };
   return cached.client;
 }
 
@@ -34,3 +35,8 @@ export async function saveApiKey(key: string): Promise<{ ok: true } | { ok: fals
   return { ok: true };
 }
 export function clearApiKey() { run("DELETE FROM global_settings WHERE key='anthropic_key'"); cached = null; }
+
+/** Alleen de beheerders van het eerste gezin op deze server (de eigenaar) beheren de gedeelde sleutel. */
+export function operatorHousehold(): string | null {
+  return get<{ id: string }>("SELECT id FROM households ORDER BY created_at, rowid LIMIT 1")?.id ?? null;
+}

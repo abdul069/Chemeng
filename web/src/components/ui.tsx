@@ -123,7 +123,7 @@ export function MemberPicks({ value, onChange, all = true }: { value: string[]; 
 
 /** Afbeelding van een externe site: bij een laadfout (geblokkeerd, verdwenen) komt het placeholder-icoon in de plaats. */
 export function Pic({ src, className, phClass, ph = "🍲", alt = "", style }: { src: string | null | undefined; className: string; phClass: string; ph?: string; alt?: string; style?: React.CSSProperties }) {
-  const [broken, setBroken] = usePicState(false);
-  if (!src || broken) return <span className={phClass} style={style} aria-hidden>{ph}</span>;
-  return <img className={className} src={src} alt={alt} style={style} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
+  const [broken, setBroken] = usePicState<string | null>(null); // de src die niet laadde
+  if (!src || broken === src) return <span className={phClass} style={style} aria-hidden>{ph}</span>;
+  return <img className={className} src={src} alt={alt} style={style} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(src)} />;
 }

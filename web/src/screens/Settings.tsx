@@ -353,7 +353,6 @@ function Assistant() {
   const act = useAction();
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
-  const admin = data!.me.role === "beheerder";
   const save = async () => {
     setBusy(true);
     const ok = await act(() => api.put("/settings/api-key", { key: key.trim() }), "Sleutel gecontroleerd en bewaard. De assistent is actief; de receptenbibliotheek wordt nu vertaald.");
@@ -365,7 +364,7 @@ function Assistant() {
       {data!.assistant.available
         ? <p className="hint">De assistent is actief en gebruikt Claude ({data!.assistant.model}). Hij kan afspraken, maaltijden, taken, lijsten en recepten beheren, vertaalt de receptenbibliotheek en leest brieven en flyers. Tik op het figuurtje of op “Praat” en spreek je vraag in.</p>
         : <p className="hint">De assistent staat uit. Vul hieronder je Claude API-sleutel in (aanmaken op <b>console.anthropic.com</b> → API keys). Daarna werken de assistent, slim importeren en het vertalen van de receptenbibliotheek meteen.</p>}
-      {admin && data!.assistant.keySource !== "env" && (
+      {data!.assistant.canEditKey && data!.assistant.keySource !== "env" && (
         <form className="addrow" onSubmit={(e) => { e.preventDefault(); if (key.trim()) save(); }}>
           <input id="api-key" type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder={data!.assistant.available ? "Nieuwe sleutel (sk-ant-…)" : "sk-ant-…"} aria-label="Claude API-sleutel" autoComplete="off" />
           <button className="btn" type="submit" disabled={busy || key.trim().length < 10}>{busy ? "Controleren…" : "Bewaren"}</button>
@@ -373,7 +372,7 @@ function Assistant() {
         </form>
       )}
       {data!.assistant.keySource === "env" && <p className="hint">De sleutel staat in de omgeving van de server (ANTHROPIC_API_KEY).</p>}
-      {!admin && !data!.assistant.available && <p className="hint">Alleen een beheerder kan de sleutel invullen.</p>}
+      {!data!.assistant.canEditKey && !data!.assistant.available && <p className="hint">Alleen de beheerder van het eerste gezin op deze server kan de sleutel invullen.</p>}
     </Section>
   );
 }
@@ -404,7 +403,7 @@ function LibraryStatus() {
     <Section title="Receptenbibliotheek">
       <p className="hint">{ov.total} Turkse recepten in de gedeelde bibliotheek, verdeeld over {ov.categories.length} categorieën{ov.translated ? `, ${ov.translated} met Nederlandse naam` : ""}. Ze wordt elke dag aangevuld vanaf de receptsites.
         {ov.crawl.running ? ` Nu bezig: ${ov.crawl.site ?? "…"} (${ov.crawl.done}/${ov.crawl.total}, ${ov.crawl.added} nieuw).` : ov.crawl.finishedAt ? ` Laatste beurt: ${new Date(ov.crawl.finishedAt).toLocaleString("nl-BE", { dateStyle: "short", timeStyle: "short" })}.` : ""}
-        {!data!.assistant.available && " Vertalen naar het Nederlands start zodra de assistent (ANTHROPIC_API_KEY) ingesteld is."}</p>
+        {!data!.assistant.available && " Vertalen naar het Nederlands start zodra de Claude-sleutel ingevuld is (Instellingen → Assistent)."}</p>
       <div className="picks">{ov.categories.map((c) => <span key={c.key} className="badge">{c.icon} {c.name} {c.n}</span>)}</div>
       {admin && <div className="addrow">
         <button className="btn ghost small" disabled={ov.crawl.running} onClick={() => act(() => api.post("/library/crawl"), "Bijwerken gestart").then(() => setTimeout(reload, 1500))}>⟳ Nu bijwerken</button>

@@ -3,6 +3,7 @@
 import { all, get, run, newId, db } from "./db.js";
 import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable, recipeNodes } from "./recipes.js";
 import { createRecipe, listRecipes, recipeBySource, RecipeInput, type RecipeInputT } from "./store.js";
+import "./ai.js"; // maakt global_settings aan
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS library (
@@ -23,7 +24,6 @@ CREATE TABLE IF NOT EXISTS library (
 );
 CREATE INDEX IF NOT EXISTS library_cat ON library(category);
 CREATE TABLE IF NOT EXISTS library_seen (url TEXT PRIMARY KEY, status TEXT NOT NULL, at TEXT NOT NULL DEFAULT (datetime('now')));
-CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
 // zoekkolom zonder accenten/Turkse tekens, zodat "imam" ook "İmam" vindt en "corba" ook "çorba"
@@ -261,7 +261,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
       if (blocked >= 10) {
         // niet blijven kloppen: de rest van deze site krijgt een volgende beurt (de overgeslagen pagina's zijn niet als 'gezien' gemarkeerd)
         log(`${site}: de site blokkeert ons; de rest komt bij een volgende beurt aan bod`);
-        run("DELETE FROM library_seen WHERE url LIKE ? AND status LIKE 'fetch HTTP 4%'", `%${site}%`);
+        run("DELETE FROM library_seen WHERE url LIKE ? AND (status LIKE 'fetch HTTP 403%' OR status LIKE 'fetch HTTP 429%' OR status LIKE 'fetch HTTP 503%')", `%${site}%`);
       }
       log(`${site}: klaar, ${crawlStatus.added} recepten toegevoegd tot nu toe`);
     }
@@ -326,20 +326,20 @@ export async function probe(url: string) {
 }
 
 /** Recept uit de gedeelde bibliotheek in de bibliotheek van het gezin zetten (of het bestaande teruggeven). */
-export async function addToFamily(id: string, opts: { translate?: boolean } = {}) {
-  const r = await libraryRecipe(id, opts.translate ?? true);
+export async function addToFamily(id: string, opts: { translate?: boolean; loaded?: Awaited<ReturnType<typeof libraryRecipe>> } = {}) {
+  const r = opts.loaded ?? await libraryRecipe(id, opts.translate ?? true);
   if (!r) return null;
   const existing = recipeBySource(r.sourceUrl!);
   if (existing) return { id: existing.id, existing: true, title: existing.title, image: existing.image, recipe: existing };
   const { id: _i, category: _c, ...input } = r;
   const newId = createRecipe(RecipeInput.parse(input));
-  const recipe = listRecipes().find((x) => x.id === newId)!;
+  const recipe = recipeBySource(r.sourceUrl!)!;
   return { id: newId, existing: false, title: recipe.title, image: recipe.image, recipe };
 }
 
 /** Recepten die het meest gebruiken van wat in huis is (woorden uit de voorraad, als heel woord in de ingrediënten). */
 export function fromPantry(items: string[], limit = 30) {
-  const words = [...new Set(items.flatMap((t) => fold(t).split(/[^a-z0-9]+/)).filter((w) => w.length >= 3 && !STOP.has(w)))].slice(0, 25);
+  const words = [...new Set(items.flatMap((t) => fold(t).split(/[^a-z0-9]+/)).filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !STOP.has(w)))].slice(0, 25);
   if (!words.length) return { words, items: [] as LibraryRow[] };
   const score = words.map(() => "(CASE WHEN ' ' || search || ' ' LIKE ? THEN 1 ELSE 0 END)").join(" + ");
   const args = words.map((w) => `% ${w}%`);

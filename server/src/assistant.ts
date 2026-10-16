@@ -306,7 +306,7 @@ export interface ChatTurn { role: "user" | "assistant"; content: string }
 export async function chat(history: ChatTurn[]): Promise<{ reply: string; changes: Change[] }> {
   const client = getClient();
   if (!client) {
-    return { reply: "De assistent is nog niet ingesteld. Zet een ANTHROPIC_API_KEY in de serverinstellingen en herstart de server.", changes: [] };
+    return { reply: "De assistent is nog niet ingesteld. Een beheerder vult de Claude API-sleutel in bij Instellingen → Assistent.", changes: [] };
   }
   const changes: Change[] = [];
   const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));

@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { z, ZodError } from "zod";
-import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all } from "./db.js";
+import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all, tx } from "./db.js";
 import {
   EventInput, countdowns, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
 } from "./events.js";
@@ -25,7 +25,7 @@ import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./impor
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
-import { saveApiKey, clearApiKey, keySource } from "./ai.js";
+import { saveApiKey, clearApiKey, keySource, operatorHousehold } from "./ai.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -238,7 +238,11 @@ function withHolidayCountdowns(list: ReturnType<typeof countdowns>) {
   return [...list, ...hol].sort((a, b) => a.days - b.days).slice(0, 6);
 }
 /** Claude API-sleutel invullen in de app (beheerder). De sleutel wordt eerst gecontroleerd. */
-api.put("/settings/api-key", requireAdmin, async (req, res) => {
+const requireOperator = (req: Request, res: Response, next: NextFunction) => {
+  if (hid() !== operatorHousehold()) return void res.status(403).json({ error: "Alleen de beheerder van het eerste gezin op deze server kan de gedeelde sleutel wijzigen." });
+  requireAdmin(req, res, next);
+};
+api.put("/settings/api-key", requireOperator, async (req, res) => {
   const { key } = z.object({ key: z.string().min(10).max(300) }).parse(req.body);
   const r = await saveApiKey(key);
   if (!r.ok) return void res.status(400).json({ error: r.error });
@@ -247,7 +251,7 @@ api.put("/settings/api-key", requireAdmin, async (req, res) => {
   // de bibliotheek alvast van Nederlandse titels voorzien
   L.translateMissingTitles().catch(() => {});
 });
-api.delete("/settings/api-key", requireAdmin, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
+api.delete("/settings/api-key", requireOperator, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
   const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
@@ -256,7 +260,7 @@ api.get("/bootstrap", (req, res) => {
     members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
     chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
-    settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource() },
+    settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
   });
 });
@@ -460,7 +464,7 @@ api.post("/meals/autoplan", async (req, res) => {
         if (S.recipeBySource(it.sourceUrl)) continue;
         const r = await L.libraryRecipe(it.id, false); // vertalen gebeurt later, bij het openen
         if (!r || S.dietHits(r.ingredients, avoid).length) continue;
-        const added = await L.addToFamily(it.id, { translate: false });
+        const added = await L.addToFamily(it.id, { translate: false, loaded: r });
         if (added && !added.existing) pool.push(added.recipe);
       }
     }
@@ -666,12 +670,15 @@ api.post("/lists/:id/done-to-pantry", (req, res) => {
   const list = S.listLists().find((l) => l.id === p(req));
   const pantry = S.pantryList();
   if (!list || !pantry) return void res.status(400).json({ error: "Geen voorraadlijst gevonden." });
+  if (list.id === pantry.id) return void res.status(400).json({ error: "Dit is de voorraad zelf." });
   const have = new Set(pantry.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")));
   let moved = 0;
-  for (const it of list.items.filter((i) => i.done)) {
-    if (!have.has(it.text.toLocaleLowerCase("nl"))) { S.addItem(pantry.id, it.text, { qty: it.qty }); have.add(it.text.toLocaleLowerCase("nl")); moved++; }
-    S.deleteItem(it.id);
-  }
+  tx(() => {
+    for (const it of list.items.filter((i) => i.done)) {
+      if (!have.has(it.text.toLocaleLowerCase("nl"))) { S.addItem(pantry.id, it.text, { qty: it.qty }); have.add(it.text.toLocaleLowerCase("nl")); moved++; }
+      S.deleteItem(it.id);
+    }
+  });
   res.json({ moved, pantry: pantry.name });
   broadcast("lists");
 });

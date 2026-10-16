@@ -15,8 +15,9 @@ export function useNavParam(key: string, apply: (value: string) => void) {
 export function emitNav(extra: Record<string, string>) {
   try { for (const [k, v] of Object.entries(extra)) sessionStorage.setItem(`gb.${k}`, v); } catch { /* */ }
   // na de wissel van scherm: open schermen bijwerken en de bewaarde waarden opruimen
-  setTimeout(() => {
-    for (const [k, v] of Object.entries(extra)) window.dispatchEvent(new CustomEvent("gb:nav", { detail: { key: k, value: v } }));
-    try { for (const k of Object.keys(extra)) sessionStorage.removeItem(`gb.${k}`); } catch { /* */ }
-  }, 60);
+  const fire = () => { for (const [k, v] of Object.entries(extra)) window.dispatchEvent(new CustomEvent("gb:nav", { detail: { key: k, value: v } })); };
+  setTimeout(fire, 60);
+  setTimeout(fire, 400); // ook voor onderdelen die pas na de eerste wissel gemonteerd worden
+  // "meals" is het onthouden tabblad en blijft staan; de rest ruimen we na een tijdje op
+  setTimeout(() => { try { for (const k of Object.keys(extra)) if (k !== "meals") sessionStorage.removeItem(`gb.${k}`); } catch { /* */ } }, 2000);
 }

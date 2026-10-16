@@ -39,7 +39,7 @@ export interface Weather {
 export interface Bootstrap {
   members: Member[]; chores: Chore[]; rewards: Reward[]; points: Record<string, Points>;
   lists: List[]; recipes: Recipe[]; calendars: CalendarSub[]; photos: Photo[]; settings: Settings;
-  assistant: { available: boolean; model: string; keySource?: "env" | "app" | null };
+  assistant: { available: boolean; model: string; keySource?: "env" | "app" | null; canEditKey?: boolean };
   /** Mensen buiten het gezin die hun agenda met jou delen */
   shared: Member[];
   countdowns: Countdown[];
