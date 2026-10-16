@@ -57,6 +57,14 @@ function WeekMenu() {
           const r = await act(() => api.post<{ added: number; recipes: number; list: string }>("/meals/week-to-list", { from: start, to: end }));
           if (r) toast(r.recipes ? (r.added ? `${r.added} ingrediënten van ${r.recipes} recepten op ${r.list}` : "Alles stond al op de lijst") : "Geen recepten ingepland deze week");
         }}>🛒 Boodschappen voor de week</button>
+        <button className="iconbtn" aria-label="Weekmenu delen" title="Weekmenu delen (WhatsApp, sms…)" onClick={async () => {
+          const lines = Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((d) => {
+            const ms = SLOTS.map((s) => meals.find((x) => x.date === d && x.slot === s)).filter((m): m is Meal => !!m && !!m.title);
+            return `${DSHORT[weekday(d)]} ${Number(d.slice(8))}: ${ms.length ? ms.map((m) => `${m.slot}: ${m.title}`).join(" · ") : "—"}`;
+          });
+          const text = `Weekmenu ${Number(start.slice(8))} ${MSHORT[Number(start.slice(5, 7)) - 1]} – ${Number(end.slice(8))} ${MSHORT[Number(end.slice(5, 7)) - 1]}\n${lines.join("\n")}`;
+          try { if (navigator.share) await navigator.share({ title: "Weekmenu", text }); else { await navigator.clipboard.writeText(text); toast("Weekmenu gekopieerd"); } } catch { /* geannuleerd */ }
+        }}>↗</button>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
         <div className="mealweek">

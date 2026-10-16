@@ -20,6 +20,8 @@ Vergeleken: Skylight Calendar (2 / Max / Pro), Hearth Display, Cozyla Calendar+ 
 | **Weekmenu automatisch vullen + weekboodschappen** | Samsung Food (betaald) | Gebouwd: "Week vullen" en "Boodschappen voor de week" |
 | **Allergieën/voorkeuren per gezinslid** | Samsung Food, Mealime | Gebouwd: waarschuwing in elk recept, "Week vullen" slaat ze over, de assistent houdt er rekening mee |
 | **Feestdagen automatisch** (Belgisch + islamitisch) | Skylight (alleen nationale) | Gebouwd, aan/uit per soort, ook bij het aftellen |
+| **Koken met wat in huis is** | Samsung Food, SuperCook | Gebouwd: de bibliotheek gerangschikt op hoeveel van je voorraad een recept gebruikt |
+| **Delen** (lijst, recept, weekmenu via WhatsApp) | Cozi, Bring! | Gebouwd |
 | **Wachtwoord vergeten / back-up** | alle apps | Gebouwd: herstel-link van de beheerder, back-up als JSON |
 | **Slaapstand** (scherm 's nachts uit) | Skylight | Gebouwd: nachtrust in Instellingen |
 | **Meldingen op de telefoon** voor afspraken en taken | gevraagd door Skylight-gebruikers | Gebouwd: pushmeldingen (Web Push) |
