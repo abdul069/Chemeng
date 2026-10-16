@@ -158,6 +158,8 @@ export async function discoverUrls(site: string, max: number, log: (s: string) =
   const found = new Set<string>();
   const queue = [...roots]; const seen = new Set<string>();
   const test = RECIPE_URL[site];
+  // alleen pagina's tellen die we nog niet hebben (anders komen we nooit voorbij de eerste sitemaps)
+  const known = (u: string) => !!get("SELECT 1 FROM library WHERE source_url=?", u) || !!get("SELECT 1 FROM library_seen WHERE url=? AND at > datetime('now','-30 days')", u);
   while (queue.length && found.size < max && seen.size < 400) {
     const u = queue.shift()!;
     if (seen.has(u)) continue;
@@ -169,7 +171,7 @@ export async function discoverUrls(site: string, max: number, log: (s: string) =
     let n = 0;
     for (const loc of locs) {
       if (isIndex || /sitemap[^/]*\.xml(\.gz)?$/i.test(loc)) { if (!/(image|video|news|tag|category|kategori|author|page)/i.test(loc)) queue.push(loc); }
-      else if (test ? test.test(loc) && !SKIP.test(loc) : !SKIP.test(loc)) { found.add(loc); n++; if (found.size >= max) break; }
+      else if (test ? test.test(loc) && !SKIP.test(loc) : !SKIP.test(loc)) { if (known(loc)) continue; found.add(loc); n++; if (found.size >= max) break; }
     }
     log(`${site}: ${u.replace(/^https?:\/\/(www\.)?/, "")} → ${n} recept-URL's (${found.size} totaal)`);
   }
@@ -227,7 +229,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
   try {
     for (const site of sites) {
       crawlStatus.site = site;
-      const urls = (await discoverUrls(site, max, log)).filter((u) => !get("SELECT 1 FROM library WHERE source_url=?", u) && !get("SELECT 1 FROM library_seen WHERE url=? AND at > datetime('now','-30 days')", u));
+      const urls = await discoverUrls(site, max, log);
       crawlStatus.total += urls.length;
       log(`${site}: ${urls.length} nieuwe pagina's ophalen`);
       let i = 0;
