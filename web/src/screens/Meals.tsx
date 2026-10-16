@@ -32,7 +32,8 @@ export function MealsScreen({ header }: { header: React.ReactNode }) {
 }
 
 function WeekMenu() {
-  const { data } = useData();
+  const { data, toast } = useData();
+  const act = useAction();
   const [start, setStart] = useState(() => startOfWeek(todayIso(), Number(data?.settings.week_start ?? 1)));
   const end = addDays(start, 6);
   const [meals] = useRemote<Meal[]>(`/meals?from=${start}&to=${end}`, ["meals", "recipes"], []);
@@ -46,6 +47,10 @@ function WeekMenu() {
         <button className="iconbtn" onClick={() => setStart(addDays(start, -7))} aria-label="Vorige week"><Icon.left /></button>
         <span className="range">{Number(start.slice(8))} {MSHORT[Number(start.slice(5, 7)) - 1]} – {Number(end.slice(8))} {MSHORT[Number(end.slice(5, 7)) - 1]}</span>
         <button className="iconbtn" onClick={() => setStart(addDays(start, 7))} aria-label="Volgende week"><Icon.right /></button>
+        <button className="pill" title="Lege avonden krijgen een recept uit je bibliotheek" onClick={async () => {
+          const r = await act(() => api.post<{ planned: { date: string }[] }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
+          if (r) toast(r.planned.length ? `${r.planned.length} avondmalen ingepland` : "Alle avonden waren al ingevuld");
+        }}>✨ Week vullen</button>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
         <div className="mealweek">

@@ -238,6 +238,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
   } finally {
     crawlStatus.running = false; crawlStatus.site = null; crawlStatus.finishedAt = new Date().toISOString();
     log(`klaar: ${crawlStatus.added} toegevoegd, ${crawlStatus.failed} mislukt`);
+    if (crawlStatus.done > 0 || libraryCount() > 0) run("INSERT INTO global_settings(key, value) VALUES('library_crawled', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", new Date().toISOString());
   }
 }
 
@@ -269,7 +270,10 @@ export const libraryCount = () => get<{ n: number }>("SELECT COUNT(*) AS n FROM 
 export function startLibraryScheduler() {
   if (process.env.LIBRARY_AUTOCRAWL === "0") return;
   const kick = () => crawl().catch((e) => console.warn("[library]", e));
-  if (libraryCount() === 0) setTimeout(kick, 30_000).unref();
+  // bij het opstarten: opbouwen zolang de bibliotheek klein is of de laatste beurt lang geleden (of onderbroken) was
+  const last = get<{ value: string }>("SELECT value FROM global_settings WHERE key='library_crawled'")?.value ?? "";
+  const stale = !last || Date.now() - Date.parse(last) > 6 * 24 * 3600_000;
+  if (libraryCount() < 500 || stale) setTimeout(kick, 30_000).unref();
   setInterval(kick, 7 * 24 * 3600_000).unref();
   // titels vertalen zodra een sleutel aanwezig is
   setTimeout(() => translateMissingTitles().catch(() => {}), 120_000).unref();

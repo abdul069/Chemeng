@@ -414,6 +414,45 @@ api.put("/meals", (req, res) => {
   autoPhotos();
 });
 
+/** Week vullen: lege avondmaal-vakjes krijgen een recept uit de eigen bibliotheek (gevarieerd, niet wat vorige week al stond),
+ *  aangevuld uit de gedeelde bibliotheek als er te weinig eigen recepten zijn. */
+api.post("/meals/autoplan", async (req, res) => {
+  const b = z.object({ from: day, days: z.number().int().min(1).max(14).default(7), slot: z.enum(S.SLOTS).default("diner"), overwrite: z.boolean().default(false) }).parse(req.body ?? {});
+  const to = addDays(b.from, b.days - 1);
+  const current = S.mealsBetween(b.from, to);
+  const recent = new Set(S.mealsBetween(addDays(b.from, -14), addDays(b.from, -1)).map((m) => m.recipeId).filter(Boolean));
+  let pool = S.listRecipes().filter((r) => !recent.has(r.id));
+  const needed = Array.from({ length: b.days }, (_, i) => addDays(b.from, i)).filter((d) => b.overwrite || !current.some((m) => m.date === d && m.slot === b.slot && m.title));
+  // te weinig eigen recepten: hoofdgerechten uit de gedeelde bibliotheek erbij halen
+  if (pool.length < needed.length) {
+    const cats = ["kip", "vlees", "groente", "peulvruchten", "vis", "rijst", "kebap", "borek", "aardappel"];
+    for (const c of cats) {
+      if (pool.length >= needed.length + 3) break;
+      const { items } = L.libraryList({ category: c, limit: 40 });
+      const pick = items.filter((i) => i.image).sort(() => Math.random() - 0.5).slice(0, 2);
+      for (const it of pick) {
+        if (S.recipeBySource(it.sourceUrl)) continue;
+        const r = await L.libraryRecipe(it.id);
+        if (!r) continue;
+        const { id: _i, category: _c, ...input } = r;
+        const id = S.createRecipe(S.RecipeInput.parse(input));
+        pool.push({ ...input, id, minutes: input.minutes ?? null, image: input.image ?? null, sourceUrl: input.sourceUrl ?? null, original: input.original ?? null } as S.Recipe);
+      }
+    }
+  }
+  pool = pool.sort(() => Math.random() - 0.5);
+  const planned: { date: string; title: string }[] = [];
+  needed.forEach((d, i) => {
+    const r = pool[i % Math.max(pool.length, 1)];
+    if (!r) return;
+    S.setMeal(d, b.slot, r.title, r.id);
+    planned.push({ date: d, title: r.title });
+  });
+  res.json({ planned, fromLibrary: pool.length });
+  broadcast("meals", "recipes");
+  autoPhotos();
+});
+
 // ---------- foto's van gerechten ----------
 /** Zoekt op de achtergrond foto's voor gerechten die er nog geen hebben. */
 function autoPhotos() {
