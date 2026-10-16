@@ -6,23 +6,27 @@ import { Confirm } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { PhotosScreen } from "./Photos";
 import { fmtLeft, useTimers, type Alarm } from "../components/Timers";
+import { BrandIcon, OWN_ICONS } from "../components/AppIcons";
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 
 export type AppView = "grid" | "photos" | "weather" | "clock" | "memos";
 
-interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals" }
+interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals"; domain?: string }
 const TILES: Tile[] = [
   { id: "photos", label: "Foto's", icon: "🖼️", color: "#e9f6f4", view: "photos" },
   { id: "weather", label: "Weer", icon: "⛅", color: "#eaf2fd", view: "weather" },
   { id: "clock", label: "Klok & timers", icon: "⏰", color: "#fdf1e6", view: "clock" },
   { id: "memos", label: "Spraakmemo's", icon: "🎙️", color: "#f4edfb", view: "memos" },
   { id: "recipes", label: "Recepten", icon: "🍲", color: "#fdecea", goto: "meals" },
-  { id: "yt", label: "YouTube", icon: "▶️", color: "#fdeaea", href: "https://www.youtube.com" },
-  { id: "ytm", label: "YouTube Music", icon: "🎵", color: "#fdeaf2", href: "https://music.youtube.com" },
-  { id: "spotify", label: "Spotify", icon: "🎧", color: "#e7f8ec", href: "https://open.spotify.com" },
-  { id: "gphotos", label: "Google Foto's", icon: "📷", color: "#fff6e0", href: "https://photos.google.com" },
-  { id: "gcal", label: "Google Agenda", icon: "📆", color: "#e8effd", href: "https://calendar.google.com" },
-  { id: "maps", label: "Google Maps", icon: "🗺️", color: "#e8f6ee", href: "https://maps.google.com" },
+  { id: "yt", label: "YouTube", icon: "▶️", color: "#fff", href: "https://www.youtube.com", domain: "youtube.com" },
+  { id: "ytm", label: "YouTube Music", icon: "🎵", color: "#fff", href: "https://music.youtube.com", domain: "music.youtube.com" },
+  { id: "spotify", label: "Spotify", icon: "🎧", color: "#fff", href: "https://open.spotify.com", domain: "open.spotify.com" },
+  { id: "gphotos", label: "Google Foto's", icon: "📷", color: "#fff", href: "https://photos.google.com", domain: "photos.google.com" },
+  { id: "gcal", label: "Google Agenda", icon: "📆", color: "#fff", href: "https://calendar.google.com", domain: "calendar.google.com" },
+  { id: "maps", label: "Google Maps", icon: "🗺️", color: "#fff", href: "https://maps.google.com", domain: "maps.google.com" },
+  { id: "netflix", label: "Netflix", icon: "🎬", color: "#fff", href: "https://www.netflix.com", domain: "netflix.com" },
+  { id: "disney", label: "Disney+", icon: "✨", color: "#fff", href: "https://www.disneyplus.com", domain: "disneyplus.com" },
+  { id: "whatsapp", label: "WhatsApp", icon: "💬", color: "#fff", href: "https://web.whatsapp.com", domain: "whatsapp.com" },
   { id: "news", label: "Nieuws", icon: "📰", color: "#eef0f3", href: "https://www.vrt.be/vrtnws/nl/" },
 ];
 
@@ -41,11 +45,11 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
         <div className="appgrid">
           {TILES.map((t) => t.href ? (
             <a key={t.id} className="app" href={t.href} target="_blank" rel="noreferrer">
-              <span className="app-ic" style={{ background: t.color }}>{t.icon}</span><span>{t.label}</span>
+              <span className="app-ic">{t.domain ? <BrandIcon domain={t.domain} fallback={t.icon} /> : OWN_ICONS[t.id] ?? t.icon}</span><span>{t.label}</span>
             </a>
           ) : (
             <button key={t.id} className="app" onClick={() => (t.goto ? gotoMeals() : setView(t.view!))}>
-              <span className="app-ic" style={{ background: t.color }}>{t.icon}</span><span>{t.label}</span>
+              <span className="app-ic">{OWN_ICONS[t.id] ?? t.icon}</span><span>{t.label}</span>
             </button>
           ))}
         </div>

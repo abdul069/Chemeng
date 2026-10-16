@@ -458,10 +458,13 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 }
 
 /* ---------- apps ---------- */
-.appgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 18px 12px; padding: 6px 2px; }
-.app { display: flex; flex-direction: column; align-items: center; gap: 8px; border: 0; background: none; text-decoration: none; color: var(--fg); font-weight: 600; font-size: 14px; text-align: center; padding: 6px; border-radius: 18px; }
-.app:hover { background: var(--surface-2); }
-.app-ic { width: 76px; height: 76px; border-radius: 24px; display: grid; place-items: center; font-size: 36px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04); }
+.appgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 22px 10px; padding: 10px 2px; }
+.app { display: flex; flex-direction: column; align-items: center; gap: 9px; border: 0; background: none; text-decoration: none; color: var(--fg); font-weight: 600; font-size: 13.5px; text-align: center; padding: 6px; border-radius: 18px; transition: transform .12s ease; }
+.app:active { transform: scale(.94); }
+.app-ic { width: 66px; height: 66px; border-radius: 17px; display: grid; place-items: center; font-size: 30px; background: #fff; box-shadow: 0 1px 2px rgba(30,38,50,.08), 0 8px 20px rgba(30,38,50,.12), inset 0 0 0 1px rgba(30,38,50,.05); overflow: hidden; }
+.app-ic svg { width: 66px; height: 66px; display: block; }
+.app-ic .brand { width: 42px; height: 42px; object-fit: contain; border-radius: 9px; }
+.brand-fallback { font-size: 30px; }
 .backbtn { border: 0; background: none; display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-weight: 600; padding: 0; font-size: 14px; }
 .backbtn svg { width: 18px; height: 18px; }
 .weather-now-big { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; background: radial-gradient(90% 140% at 100% 0%, color-mix(in srgb, var(--glow-c) 22%, transparent), transparent 70%), var(--surface); }
