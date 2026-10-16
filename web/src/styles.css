@@ -625,3 +625,19 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 .badge.servings { display: inline-flex; align-items: center; gap: 6px; }
 .badge.servings button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-weight: 800; line-height: 1; padding: 0; }
 .badge.servings button:disabled { opacity: 0.4; }
+
+/* Kookmodus */
+.cook { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; animation: fade .15s ease; }
+.cook-h { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.cook-h b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; }
+.cook-progress { height: 6px; background: var(--surface-2); }
+.cook-progress i { display: block; height: 100%; background: var(--accent); transition: width .3s ease; }
+.cook-body { flex: 1; min-height: 0; display: flex; }
+.cook-ingr { width: min(320px, 40%); border-right: 1px solid var(--line); overflow: auto; padding: 16px 18px; font-size: 16px; }
+.cook-ingr ul { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.cook-step { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 24px clamp(18px, 6vw, 80px); text-align: center; cursor: pointer; }
+.cook-step p { font-size: clamp(22px, 3.2vw, 40px); line-height: 1.35; font-weight: 600; max-width: 22ch; }
+.cook-timer { font-size: 20px; font-variant-numeric: tabular-nums; }
+.cook-f { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.cook-f .btn { min-width: 140px; min-height: 52px; font-size: 17px; }
+@media (max-width: 640px) { .cook-body { flex-direction: column; } .cook-ingr { width: auto; max-height: 40%; border-right: 0; border-bottom: 1px solid var(--line); } }

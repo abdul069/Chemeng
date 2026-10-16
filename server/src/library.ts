@@ -146,6 +146,7 @@ const SKIP = /\/(kategori|category|etiket|tag|yazar|author|page|sayfa|arama|sear
 export async function discoverUrls(site: string, max: number, log: (s: string) => void): Promise<string[]> {
   const roots = new Set<string>();
   const robots = await getText(`https://www.${site}/robots.txt`, 10_000) ?? await getText(`https://${site}/robots.txt`, 10_000);
+  if (!robots) log(`${site}: robots.txt niet opgehaald (${lastFetchError}); sitemap op de gebruikelijke plaatsen proberen`);
   for (const m of robots?.matchAll(/^sitemap:\s*(\S+)/gim) ?? []) roots.add(m[1]);
   if (!roots.size) for (const p of ["sitemap.xml", "sitemap_index.xml", "sitemap-index.xml", "sitemaps.xml", "post-sitemap.xml"]) roots.add(`https://www.${site}/${p}`);
   const found = new Set<string>();
@@ -156,7 +157,7 @@ export async function discoverUrls(site: string, max: number, log: (s: string) =
     if (seen.has(u)) continue;
     seen.add(u);
     const xml = await getText(u);
-    if (!xml) continue;
+    if (!xml) { if (seen.size <= 6) log(`${site}: ${u.replace(/^https?:\/\/(www\.)?/, "")} niet opgehaald (${lastFetchError})`); continue; }
     const locs = [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1].trim());
     const isIndex = /<sitemapindex/i.test(xml);
     let n = 0;
@@ -192,7 +193,7 @@ export async function ingestUrl(url: string, site: string, html?: string): Promi
     run("INSERT OR REPLACE INTO library_seen(url, status) VALUES (?, ?)", url, `norecipe ${why}`);
     noteFailure(url, `${why} (${page.length} tekens, ld+json: ${/application\/ld\+json/.test(page) ? "ja" : "nee"})`);
     // structuur van het receptblok in het logboek, zodat de parser verbeterd kan worden
-    if (failuresLogged <= 3) for (const n of recipeNodes(page).slice(0, 2)) {
+    if ((failuresLogged.get(new URL(url).hostname.replace(/^www\./, "")) ?? 0) <= 2) for (const n of recipeNodes(page).slice(0, 2)) {
       const ins = n.recipeInstructions;
       log(`  recept-sleutels: ${Object.keys(n).join(",")} · instructies: ${Array.isArray(ins) ? `array[${ins.length}] ${JSON.stringify(ins[0]).slice(0, 300)}` : JSON.stringify(ins).slice(0, 300)}`);
     }
@@ -200,9 +201,12 @@ export async function ingestUrl(url: string, site: string, html?: string): Promi
   }
 }
 // de eerste paar mislukkingen per run in het logboek, zodat we op de server kunnen zien wat er misgaat
-let failuresLogged = 0;
+const failuresLogged = new Map<string, number>();
 function noteFailure(url: string, why: string) {
-  if (failuresLogged++ < 8) log(`mislukt ${url}: ${why}`);
+  const site = new URL(url).hostname.replace(/^www\./, "");
+  const n = (failuresLogged.get(site) ?? 0) + 1;
+  failuresLogged.set(site, n);
+  if (n <= 6) log(`mislukt ${url}: ${why}`);
 }
 
 /** Haalt de recepten van alle (of één) sites op, met een paar pagina's tegelijk en een kleine pauze. */
@@ -212,7 +216,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
   const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 1500);
   const conc = opts.concurrency ?? 3;
   Object.assign(crawlStatus, { running: true, done: 0, added: 0, failed: 0, total: 0, log: [], startedAt: new Date().toISOString(), finishedAt: null });
-  failuresLogged = 0;
+  failuresLogged.clear();
   try {
     for (const site of sites) {
       crawlStatus.site = site;
@@ -259,7 +263,7 @@ export async function translateMissingTitles(limit = 2000) {
 }
 
 /** Bij een verbeterde parser worden eerder mislukte pagina's opnieuw geprobeerd. */
-const PARSER_VERSION = "3";
+const PARSER_VERSION = "4";
 if (get<{ value: string }>("SELECT value FROM global_settings WHERE key='library_parser'")?.value !== PARSER_VERSION) {
   run("DELETE FROM library_seen WHERE status LIKE 'norecipe%' OR status LIKE 'fetch%'");
   run("INSERT INTO global_settings(key, value) VALUES('library_parser', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", PARSER_VERSION);

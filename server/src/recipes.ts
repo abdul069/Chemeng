@@ -93,6 +93,7 @@ function stepsOf(v: unknown): string[] {
   const out: string[] = [];
   for (const x of asArray(v as unknown)) {
     if (typeof x === "string") out.push(...x.split(/\n+/).map(decode).filter(Boolean));
+    else if (Array.isArray(x)) out.push(...stepsOf(x)); // yemek.com: een array in een array
     else if (x && typeof x === "object") {
       const o = x as Json;
       if (o.itemListElement) {

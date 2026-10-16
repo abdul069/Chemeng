@@ -43,3 +43,9 @@ test("neemt de hoofdfoto van de pagina als het recept zelf geen foto heeft", () 
   assert.equal(r.image, "https://cdn.site/mercimek.jpg");
   assert.equal(r.lang, "tr");
 });
+
+test("leest stappen die als geneste array staan (yemek.com)", () => {
+  const html = `<html><script type="application/ld+json">${JSON.stringify({ "@type": "Recipe", name: "Aşure", recipeIngredient: ["250 g buğday", "1 l su"], recipeInstructions: [["Buğdayı yıkayın.", "Suyu ekleyin ve pişirin."]] })}</script></html>`;
+  const r = parseRecipeHtml(html, "https://yemek.com/tarif/asure/");
+  assert.equal(r.instructions, "1. Buğdayı yıkayın.\n2. Suyu ekleyin ve pişirin.");
+});

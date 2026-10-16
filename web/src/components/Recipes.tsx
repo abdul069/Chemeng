@@ -6,6 +6,7 @@ import { Confirm, Modal } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 import { parseServings, scaleLine } from "../portions";
+import { CookMode } from "./CookMode";
 
 const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: "Deutsch" };
 const FLAG: Record<string, string> = { tr: "🇹🇷", nl: "🇳🇱", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪" };
@@ -66,6 +67,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState(false);
+  const [cook, setCook] = useState(false);
   const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
   const missing = ingredients.filter((_, i) => !have.has(i));
   const toggle = (i: number) => setHave((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
@@ -113,6 +115,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
       </div>
       <div className="actions" style={{ justifyContent: "flex-start" }}>
         <button className="btn accent" onClick={() => setPlan(true)}>📅 Inplannen</button>
+        {steps.length > 0 && <button className="btn" onClick={() => setCook(true)}>👩‍🍳 Kookmodus</button>}
         <button className="btn" onClick={toList} disabled={!missing.length}>🛒 {missing.length === ingredients.length ? "Alles" : `${missing.length} ontbrekende`} op {shop?.name ?? "de boodschappenlijst"}</button>
         {data?.assistant.available && notTranslated && <button className="btn ghost" onClick={translate} disabled={busy}>{busy ? "Vertalen…" : "Vertaal naar Nederlands"}</button>}
       </div>
@@ -138,6 +141,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         <button className="btn ghost" onClick={() => setEdit(true)}>Bewerken</button>
       </div>
       {plan && <PlanRecipe recipe={recipe} onClose={() => setPlan(false)} />}
+      {cook && <CookMode title={version.title} ingredients={ingredients} steps={steps.filter((s) => !s.startsWith("—"))} onClose={() => setCook(false)} />}
       {photo && <PhotoPicker title={(recipe.original?.title ?? recipe.title).replace(/\s*(tarifi|\(.*\))\s*/gi, " ").trim()} current={recipe.image}
         onPick={(image) => act(() => api.put(`/recipes/${recipe.id}/image`, { image }), image ? "Foto bewaard" : "Foto weggehaald")} onClose={() => setPhoto(false)} />}
       {confirm && <Confirm title="Recept verwijderen?" onClose={() => setConfirm(false)}
