@@ -62,7 +62,7 @@ export function recipeNodes(html: string): Json[] {
 }
 /** Sommige sites geven alle ingrediënten als één regel met komma's; die splitsen we (maar "1,5 kg" blijft heel). */
 export function splitJoined(lines: string[]): string[] {
-  return lines.flatMap((l) => (l.split(/,(?!\d)/).length >= 3 && l.length > 40 ? l.split(/,(?!\d)/).map((x) => x.trim()).filter(Boolean) : [l]));
+  return lines.flatMap((l) => (l.split(/(?<!\d),|,(?!\d)/).length >= 3 && l.length > 40 ? l.split(/(?<!\d),|,(?!\d)/).map((x) => x.trim()).filter(Boolean) : [l]));
 }
 /** Ingrediënten of stappen uit de HTML zelf, als het ld+json ze niet (volledig) heeft. */
 function fromHtml(html: string, kind: "ingredient" | "step"): string[] {
