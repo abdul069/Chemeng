@@ -336,3 +336,17 @@ export async function addToFamily(id: string, opts: { translate?: boolean } = {}
   const recipe = listRecipes().find((x) => x.id === newId)!;
   return { id: newId, existing: false, title: recipe.title, image: recipe.image, recipe };
 }
+
+/** Recepten die het meest gebruiken van wat in huis is (woorden uit de voorraad, als heel woord in de ingrediënten). */
+export function fromPantry(items: string[], limit = 30) {
+  const words = [...new Set(items.flatMap((t) => fold(t).split(/[^a-z0-9]+/)).filter((w) => w.length >= 3 && !STOP.has(w)))].slice(0, 25);
+  if (!words.length) return { words, items: [] as LibraryRow[] };
+  const score = words.map(() => "(CASE WHEN ' ' || search || ' ' LIKE ? THEN 1 ELSE 0 END)").join(" + ");
+  const args = words.map((w) => `% ${w}%`);
+  const rows = all<Record<string, unknown> & { score: number }>(
+    `SELECT id, source_url, site, category, title_tr, title_nl, image, minutes, servings, ingredients_nl, (${score}) AS score FROM library WHERE score > 0 ORDER BY score DESC, (image IS NULL), RANDOM() LIMIT ?`,
+    ...args, limit,
+  );
+  return { words, items: rows.map((r) => ({ ...toRow(r), score: r.score })) };
+}
+const STOP = new Set(["adet", "gram", "paket", "stuks", "pak", "pot", "fles", "blik", "liter", "kilo", "stuk", "zak", "doos", "bakje", "verse", "vers", "grote", "kleine", "biologische"]);

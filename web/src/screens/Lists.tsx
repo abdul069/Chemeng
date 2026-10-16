@@ -7,6 +7,7 @@ import { Confirm, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { diffDays, shortDate, todayIso } from "../dates";
 import { AISLES, AISLE_INFO, aisleOf } from "../aisles";
+import { PantryCook } from "../components/LibraryBrowser";
 
 /** Houdbaarheid van een voorraad-item: "verlopen", "vandaag", "nog 3 dagen" … */
 function expiry(i: ListItem): { label: string; cls: string } | null {
@@ -29,6 +30,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   const [newList, setNewList] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [edit, setEdit] = useState<ListItem | null>(null);
+  const [cook, setCook] = useState(false);
   const [grouped, setGrouped] = useState(() => { try { return localStorage.getItem("gb.aisles") !== "0"; } catch { return true; } });
   if (!data) return null;
   const list = data.lists.find((l) => l.id === sel) ?? data.lists[0];
@@ -95,6 +97,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                 <button className="iconbtn" aria-label="Lijst verwijderen" onClick={() => setConfirm(true)}><Icon.trash /></button>
               </div>
             </div>
+            {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>🍳 Koken met wat in huis is</button>}
             {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is en zet het met 🛒 op de boodschappenlijst.</p>}
             <form className="addrow" onSubmit={(e) => { e.preventDefault(); add(); }}>
               <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? "bv. yoghurt" : "Toevoegen… (meerdere met komma's)"} aria-label="Nieuw item" />
@@ -128,6 +131,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
       </div>
       {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} />}
       {edit && <ItemEditor item={edit} onClose={() => setEdit(null)} />}
+      {cook && <PantryCook onClose={() => setCook(false)} />}
       {confirm && list && <Confirm title={`${list.name} verwijderen?`} text="Alle items op deze lijst verdwijnen." onClose={() => setConfirm(false)}
         actions={[{ label: "Verwijderen", run: () => { act(() => api.del(`/lists/${list.id}`), "Lijst verwijderd"); setSel(null); } }]} />}
     </>

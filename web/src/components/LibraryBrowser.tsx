@@ -88,7 +88,7 @@ export function LibraryBrowser() {
   );
 }
 
-function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: () => void; onAdded: () => void }) {
+export function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: () => void; onAdded: () => void }) {
   const { data, toast } = useData();
   const act = useAction();
   const [r, setR] = useState<Full | null>(null);
@@ -131,6 +131,30 @@ function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: () => vo
           </div>
         </>
       )}
+    </Modal>
+  );
+}
+
+/** "Koken met wat in huis is": recepten die de meeste voorraad-items gebruiken. */
+export function PantryCook({ onClose }: { onClose: () => void }) {
+  const [r, setR] = useState<{ words: string[]; items: (Row & { score: number })[]; pantryCount: number } | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => { api.get<{ words: string[]; items: (Row & { score: number })[]; pantryCount: number }>("/library/from-pantry").then(setR).catch(() => setR({ words: [], items: [], pantryCount: 0 })); }, []);
+  return (
+    <Modal title="Koken met wat in huis is" onClose={onClose} wide>
+      {!r && <p className="hint">Even kijken wat er in de voorraad staat…</p>}
+      {r && !r.pantryCount && <p className="empty">De voorraad is leeg. Zet erin wat je in huis hebt (Lijsten → Voorraad), dan zoeken we er recepten bij.</p>}
+      {r && r.pantryCount > 0 && <p className="hint">Gezocht op: {r.words.join(", ")}. Hoe meer van je voorraad een recept gebruikt, hoe hoger het staat.</p>}
+      {r && r.pantryCount > 0 && !r.items.length && <p className="empty">Nog geen recepten gevonden met deze ingrediënten.</p>}
+      <div className="rgrid">
+        {r?.items.map((x) => (
+          <button className="rcard" key={x.id} onClick={() => setOpen(x.id)}>
+            {x.image ? <img src={x.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="rcard-ph" aria-hidden>🍲</span>}
+            <span className="rcard-body"><b>{x.title}</b><small>✓ {x.score} uit je voorraad{x.minutes ? ` · ${x.minutes} min` : ""}{x.inLibrary ? " · in je bibliotheek" : ""}</small></span>
+          </button>
+        ))}
+      </div>
+      {open && <LibraryDetail id={open} onClose={() => setOpen(null)} onAdded={() => {}} />}
     </Modal>
   );
 }

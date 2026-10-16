@@ -379,11 +379,11 @@ function HolidayToggles() {
 function LibraryStatus() {
   const { data } = useData();
   const act = useAction();
-  const [ov, reload] = useRemote<{ categories: { key: string; name: string; icon: string; n: number }[]; total: number; crawl: { running: boolean; site: string | null; done: number; total: number; added: number; finishedAt: string | null } }>("/library/categories", ["recipes"], { categories: [], total: 0, crawl: { running: false, site: null, done: 0, total: 0, added: 0, finishedAt: null } });
+  const [ov, reload] = useRemote<{ categories: { key: string; name: string; icon: string; n: number }[]; total: number; translated?: number; crawl: { running: boolean; site: string | null; done: number; total: number; added: number; finishedAt: string | null } }>("/library/categories", ["recipes"], { categories: [], total: 0, crawl: { running: false, site: null, done: 0, total: 0, added: 0, finishedAt: null } });
   const admin = data!.me.role === "beheerder";
   return (
     <Section title="Receptenbibliotheek">
-      <p className="hint">{ov.total} Turkse recepten in de gedeelde bibliotheek, verdeeld over {ov.categories.length} categorieën. Ze wordt elke dag aangevuld vanaf de receptsites.
+      <p className="hint">{ov.total} Turkse recepten in de gedeelde bibliotheek, verdeeld over {ov.categories.length} categorieën{ov.translated ? `, ${ov.translated} met Nederlandse naam` : ""}. Ze wordt elke dag aangevuld vanaf de receptsites.
         {ov.crawl.running ? ` Nu bezig: ${ov.crawl.site ?? "…"} (${ov.crawl.done}/${ov.crawl.total}, ${ov.crawl.added} nieuw).` : ov.crawl.finishedAt ? ` Laatste beurt: ${new Date(ov.crawl.finishedAt).toLocaleString("nl-BE", { dateStyle: "short", timeStyle: "short" })}.` : ""}
         {!data!.assistant.available && " Vertalen naar het Nederlands start zodra de assistent (ANTHROPIC_API_KEY) ingesteld is."}</p>
       <div className="picks">{ov.categories.map((c) => <span key={c.key} className="badge">{c.icon} {c.name} {c.n}</span>)}</div>

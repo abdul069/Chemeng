@@ -573,12 +573,20 @@ api.get("/search", (req, res) => {
 });
 
 // ---------- gedeelde receptenbibliotheek (alle recepten van de Turkse sites, per categorie) ----------
-api.get("/library/categories", (_req, res) => { res.json({ categories: L.libraryCategories(), total: L.libraryCount(), crawl: { running: L.crawlStatus.running, site: L.crawlStatus.site, done: L.crawlStatus.done, total: L.crawlStatus.total, added: L.crawlStatus.added, finishedAt: L.crawlStatus.finishedAt } }); });
+api.get("/library/categories", (_req, res) => { res.json({ categories: L.libraryCategories(), total: L.libraryCount(), translated: get<{ n: number }>("SELECT COUNT(*) AS n FROM library WHERE title_nl IS NOT NULL")?.n ?? 0, crawl: { running: L.crawlStatus.running, site: L.crawlStatus.site, done: L.crawlStatus.done, total: L.crawlStatus.total, added: L.crawlStatus.added, finishedAt: L.crawlStatus.finishedAt } }); });
 api.get("/library", (req, res) => {
   const q = z.object({ category: z.string().max(30).optional(), q: z.string().max(80).optional(), site: z.string().max(60).optional(), offset: z.coerce.number().int().min(0).default(0), limit: z.coerce.number().int().min(1).max(200).default(60), random: z.coerce.boolean().optional() }).parse(req.query);
   const mine = new Set(S.listRecipes().map((r) => r.sourceUrl).filter(Boolean));
   const r = L.libraryList(q);
   res.json({ ...r, items: r.items.map((i) => ({ ...i, inLibrary: mine.has(i.sourceUrl) })) });
+});
+/** Koken met wat in huis is: recepten die de meeste voorraad-items gebruiken. */
+api.get("/library/from-pantry", (_req, res) => {
+  const pantry = S.pantryList();
+  const items = pantry?.items.filter((i) => !i.done).map((i) => i.text) ?? [];
+  const mine = new Set(S.listRecipes().map((r) => r.sourceUrl).filter(Boolean));
+  const r = L.fromPantry(items);
+  res.json({ ...r, items: r.items.map((i) => ({ ...i, inLibrary: mine.has(i.sourceUrl) })), pantryCount: items.length });
 });
 api.get("/library/:id", async (req, res) => {
   const r = await L.libraryRecipe(p(req), z.object({ translate: z.string().optional() }).parse(req.query).translate !== "0");

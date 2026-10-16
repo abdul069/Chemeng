@@ -65,3 +65,11 @@ test("vermijden-woorden gelden als heel woord", async () => {
   assert.deepEqual(dietHits("250 g suiker\nkruiden\nfruit", ["ui"]), []);
   assert.deepEqual(dietHits("100 g fındık\n2 yumurta", ["fındık", "ei"]), ["fındık"]);
 });
+
+test("koken met wat in huis is: recepten gerangschikt op voorraad-woorden", async () => {
+  const { fromPantry } = await import("./library.js");
+  const r = fromPantry(["Patlıcan", "250 g kıyma", "Yoghurt"]);
+  assert.ok(r.words.includes("patlican") && r.words.includes("kiyma"));
+  assert.ok(r.items.length >= 1);
+  assert.ok(r.items[0].score >= 2, "het recept met aubergine én gehakt staat bovenaan");
+});
