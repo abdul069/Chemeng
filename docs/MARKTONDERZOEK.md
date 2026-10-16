@@ -14,6 +14,10 @@ Vergeleken: Skylight Calendar (2 / Max / Pro), Hearth Display, Cozyla Calendar+ 
 | **Voorraadkast** (wat is er in huis, vervaldatums) | Cozyla | Gebouwd: Voorraad met aantal en houdbaarheidsdatum, waarschuwing en "→ Boodschappen" |
 | **Receptenbibliotheek met duizenden recepten per categorie** | Samsung Food, Cookpad (geen gezinsscherm heeft het) | Gebouwd: alle recepten van de Turkse sites automatisch opgehaald, per categorie, Nederlands met Turks origineel |
 | **Zoeken in alles** (gebruikers missen het bij Cozi en Skylight) | — | Gebouwd: één zoekvak voor afspraken, recepten, lijsten, taken en bibliotheek |
+| **Kookmodus** (stap per stap, scherm blijft aan) | Cozyla, Samsung Food | Gebouwd, met kookwekker uit de stap ("20 dakika" → wekker) |
+| **Portiecalculator** | Samsung Food, Cookpad | Gebouwd: hoeveelheden rekenen mee met − / + porties |
+| **Boodschappen per afdeling** | Bring!, Cozi | Gebouwd: automatisch per winkelafdeling, Nederlands en Turks |
+| **Weekmenu automatisch vullen + weekboodschappen** | Samsung Food (betaald) | Gebouwd: "Week vullen" en "Boodschappen voor de week" |
 | **Wachtwoord vergeten / back-up** | alle apps | Gebouwd: herstel-link van de beheerder, back-up als JSON |
 | **Slaapstand** (scherm 's nachts uit) | Skylight | Gebouwd: nachtrust in Instellingen |
 | **Meldingen op de telefoon** voor afspraken en taken | gevraagd door Skylight-gebruikers | Gebouwd: pushmeldingen (Web Push) |
