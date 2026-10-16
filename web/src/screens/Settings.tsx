@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { CalendarSub, Member } from "../types";
-import { AVATARS, Avatar, Confirm, EmojiPicker, MemberPicks, Modal } from "../components/ui";
+import { Avatar, Confirm, MemberPicks, Modal, cvar } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 
@@ -113,9 +113,10 @@ function Family() {
 
 function MemberEditor({ member, onClose }: { member?: Member; onClose: () => void }) {
   const act = useAction();
-  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "🙂", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "", diet: member?.diet ?? "" });
+  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "", diet: member?.diet ?? "" });
   const [confirm, setConfirm] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  const gallery = useRef<HTMLInputElement>(null);
   const upload = async (fl: FileList | null) => {
     if (!fl?.[0]) return;
     const fd = new FormData();
@@ -129,14 +130,25 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
     if (await act(() => (member ? api.put(`/members/${member.id}`, body) : api.post("/members", body)), "Gezinslid bewaard")) onClose();
   };
   const preview: Member = { id: "p", sort: 0, ...f, name: f.name || "?" };
+  const [busyPhoto, setBusyPhoto] = useState(false);
+  const pickPhoto = async (fl: FileList | null) => { setBusyPhoto(true); try { await upload(fl); } finally { setBusyPhoto(false); } };
   return (
     <Modal title={member ? member.name : "Nieuw gezinslid"} onClose={onClose}>
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        <Avatar m={preview} size={72} dot={false} />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button className="btn ghost small" onClick={() => file.current?.click()}><Icon.upload /> Foto</button>
-          {f.photo && <button className="btn ghost small" onClick={() => setF({ ...f, photo: null })}>Foto weghalen</button>}
-          <input ref={file} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files)} />
+      <div className="photo-prompt" style={cvar(f.color)}>
+        <button type="button" className="photo-circle" onClick={() => (f.photo ? gallery : camera).current?.click()} aria-label={f.photo ? "Andere foto kiezen" : "Foto nemen"}>
+          <Avatar m={preview} size={96} dot={false} />
+          <span className="photo-cam" aria-hidden><Icon.camera /></span>
+        </button>
+        <div className="photo-prompt-txt">
+          <b>{f.photo ? "Mooi zo!" : "Voeg een foto toe"}</b>
+          <p className="hint">{f.photo ? "Zo herkent iedereen je meteen op het bord." : "Een echt gezicht in de kalender en bij de taken. Zonder foto tonen we je initiaal."}</p>
+          <div className="photo-btns">
+            <button type="button" className="btn small" onClick={() => camera.current?.click()} disabled={busyPhoto}><Icon.camera /> {busyPhoto ? "Even geduld…" : "Foto nemen"}</button>
+            <button type="button" className="btn ghost small" onClick={() => gallery.current?.click()} disabled={busyPhoto}><Icon.upload /> Kiezen</button>
+            {f.photo && <button type="button" className="btn ghost small" onClick={() => setF({ ...f, photo: null })}>Weghalen</button>}
+          </div>
+          <input ref={camera} type="file" accept="image/*" capture="user" hidden onChange={(e) => pickPhoto(e.target.files)} />
+          <input ref={gallery} type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files)} />
         </div>
       </div>
       <div className="row2">
@@ -146,13 +158,12 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
       </div>
       <div className="field"><span>Rol</span>
         <div className="picks">
-          {(["ouder", "kind", "huisdier"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r, avatar: r === "huisdier" && f.avatar === "🙂" ? "🐶" : f.avatar })}>{r === "ouder" ? "Ouder" : r === "kind" ? "Kind" : "🐾 Huisdier"}</button>)}
+          {(["ouder", "kind", "huisdier"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r })}>{r === "ouder" ? "Ouder" : r === "kind" ? "Kind" : "Huisdier"}</button>)}
         </div>
       </div>
       <div className="field"><span>Kleur</span>
         <div className="picks">{COLORS.map((c) => <button key={c} type="button" className="pick" aria-label={c} aria-pressed={f.color === c} style={{ "--c": c, width: 40, height: 40, padding: 0 } as React.CSSProperties} onClick={() => setF({ ...f, color: c })} />)}</div>
       </div>
-      {!f.photo && <div className="field"><span>Figuurtje</span><EmojiPicker value={f.avatar} onChange={(avatar) => setF({ ...f, avatar })} options={AVATARS} /></div>}
       <div className="actions">
         {member && <button className="btn danger left" onClick={() => setConfirm(true)}>Verwijderen</button>}
         <button className="btn ghost" onClick={onClose}>Annuleren</button>

@@ -20,7 +20,7 @@ import { cap, clock, longDate, todayIso } from "./dates";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
-  { id: "today", label: "Vandaag", icon: "home", title: "Vandaag" },
+  { id: "today", label: "Bord", icon: "home", title: "Bord" },
   { id: "calendar", label: "Kalender", icon: "calendar", title: "Kalender" },
   { id: "chores", label: "Taken", icon: "tasks", title: "Taken" },
   { id: "meals", label: "Maaltijden", icon: "meals", title: "Maaltijden" },
@@ -122,8 +122,8 @@ export function App() {
         <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label="Zoeken in alles"><Icon.search />Zoeken</button>
         <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />Instellingen</button>
       </nav>
-      <main className="page">
-        {screen === "today" && <TodayScreen header={header} openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} />}
+      <main className={`page${screen === "today" ? " page-bord" : ""}`}>
+        {screen === "today" && <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />}
         {screen === "calendar" && <CalendarScreen header={header} openEditor={openEditor} />}
         {screen === "chores" && <ChoresScreen header={header} />}
         {screen === "meals" && <MealsScreen header={header} />}

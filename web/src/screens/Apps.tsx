@@ -38,12 +38,26 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   if (view === "weather") return <><div className="topbar">{header("Weer", back)}</div><WeatherApp /></>;
   if (view === "clock") return <><div className="topbar">{header("Klok & timers", back)}</div><ClockApp /></>;
   if (view === "memos") return <><div className="topbar">{header("Spraakmemo's", back)}</div><MemosApp /></>;
+  return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
+}
+
+const fold = (s: string) => s.toLocaleLowerCase("nl").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function AppGrid({ header, setView, gotoMeals }: { header: (title: string) => React.ReactNode; setView: (v: AppView) => void; gotoMeals: () => void }) {
+  const [q, setQ] = useState("");
+  const tiles = q.trim() ? TILES.filter((t) => fold(t.label).includes(fold(q.trim()))) : TILES;
   return (
     <>
       <div className="topbar">{header("Apps")}</div>
+      <label className="appsearch glass">
+        <Icon.search />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek een app" aria-label="Zoek een app" />
+        {q && <button type="button" className="iconbtn" onClick={() => setQ("")} aria-label="Wissen"><Icon.close /></button>}
+      </label>
       <div className="page-scroll" style={{ flex: 1, minHeight: 0 }}>
+        {!tiles.length && <p className="empty">Geen app gevonden voor “{q}”.</p>}
         <div className="appgrid">
-          {TILES.map((t) => t.href ? (
+          {tiles.map((t) => t.href ? (
             <a key={t.id} className="app" href={t.href} target="_blank" rel="noreferrer">
               <span className="app-ic">{t.domain ? <BrandIcon domain={t.domain} fallback={t.icon} /> : OWN_ICONS[t.id] ?? t.icon}</span><span>{t.label}</span>
             </a>

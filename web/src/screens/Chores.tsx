@@ -106,7 +106,7 @@ function ChoreEditor({ chore, memberId, onClose }: { chore?: Chore; memberId: st
       <label className="field"><span>Taak</span><input id="ch-title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="bv. Tafel afruimen" /></label>
       <div className="field"><span>Icoon</span><EmojiPicker value={f.icon} onChange={(icon) => setF({ ...f, icon })} /></div>
       <div className="field"><span>Voor wie</span>
-        <div className="picks">{data?.members.map((m: Member) => <button type="button" key={m.id} className="pick" style={cvar(m.color)} aria-pressed={f.memberId === m.id} onClick={() => setF({ ...f, memberId: m.id })}>{m.avatar} {m.name}</button>)}</div>
+        <div className="picks">{data?.members.map((m: Member) => <button type="button" key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={f.memberId === m.id} onClick={() => setF({ ...f, memberId: m.id })}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}</div>
       </div>
       <div className="field"><span>Op welke dagen</span>
         <div className="picks">{ALL_DAYS.map((d) => (
@@ -141,7 +141,7 @@ function Rewards({ onClose }: { onClose: () => void }) {
     <Modal title="Beloningen" onClose={onClose} wide>
       <p className="hint">Elke afgevinkte taak levert sterren op. Kies wie een beloning inruilt.</p>
       <div className="picks">{data.members.map((m) => (
-        <button key={m.id} className="pick" style={cvar(m.color)} aria-pressed={who === m.id} onClick={() => setWho(m.id)}>{m.avatar} {m.name} · ⭐ {data.points[m.id]?.balance ?? 0}</button>
+        <button key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={who === m.id} onClick={() => setWho(m.id)}><Avatar m={m} size={22} dot={false} /> {m.name} · ⭐ {data.points[m.id]?.balance ?? 0}</button>
       ))}</div>
       <div className="rewards">
         {data.rewards.map((r) => (

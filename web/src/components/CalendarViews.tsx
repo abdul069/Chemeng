@@ -68,7 +68,7 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
         <div className="colhead corner" />
         {cols.map((m) => (
           <div className="colhead" key={m.id}>
-            {!compact && <Avatar m={m} size={38} dot={false} />}
+            <Avatar m={m} size={compact ? 34 : 40} dot={false} />
             <span>{m.name}</span>
           </div>
         ))}
@@ -118,14 +118,16 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
   );
 }
 
+/** Afspraak als compacte gekleurde tegel: tijd, titel en de gezichtjes van wie meegaat. */
 function Chip({ e, onOpen }: { e: Occurrence; onOpen: (o: Occurrence) => void }) {
   const { member } = useData();
-  const multi = e.members.length > 1;
   return (
-    <button className={`chip${multi ? " multi" : ""}${e.readOnly ? " ext" : ""}`} style={cvar(occColor(e, member))} onClick={() => onOpen(e)}>
-      <b>{e.title}</b>
-      <small>{fmtRange(e)}</small>
-      {multi && <MemberDots ids={e.members} />}
+    <button className={`chip tile${e.readOnly ? " ext" : ""}`} style={cvar(occColor(e, member))} onClick={() => onOpen(e)}>
+      <span className="tile-body">
+        <small>{e.allDay ? "hele dag" : fmtRange(e)}</small>
+        <b>{e.title}</b>
+      </span>
+      {e.members.length > 0 && <MemberDots ids={e.members} max={3} />}
     </button>
   );
 }
@@ -197,8 +199,9 @@ export function MonthView({ month, events, weekStart, onDay }: { month: string; 
             <button key={d} className={`mcell${d.slice(0, 7) !== month.slice(0, 7) ? " out" : ""}${d === t ? " today" : ""}`} onClick={() => onDay(d)} aria-label={`${longDate(d)}, ${list.length} afspraken`}>
               <span className="mnum"><span className="datebadge">{Number(d.slice(8))}</span>{list.length > 0 && <span className="c">{list.length}</span>}</span>
               {list.slice(0, 3).map((e) => (
-                <span key={e.key} className={`mchip${e.members.length > 1 ? " multi" : ""}`} style={cvar(occColor(e, member))}>
-                  {e.members.length > 1 ? "● " : ""}{!e.allDay && e.on === d ? `${fmtTime(e.startTime)} ` : ""}{e.title}
+                <span key={e.key} className="mchip" style={cvar(occColor(e, member))}>
+                  {e.members.length > 0 && <MemberDots ids={e.members} max={2} />}
+                  <span className="mchip-txt">{!e.allDay && e.on === d ? <small>{fmtTime(e.startTime)} </small> : null}{e.title}</span>
                 </span>
               ))}
               {list.length > 3 && <span className="more">+{list.length - 3} meer</span>}

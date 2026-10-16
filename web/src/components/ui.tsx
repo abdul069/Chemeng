@@ -15,13 +15,21 @@ export function Avatar({ m, size = 52, dot = true }: { m: Member; size?: number;
       </span>
     );
   }
+  // Zonder foto: een nette initiaal op de eigen kleur (geen figuurtjes).
   return (
-    <span className="avatar" style={style} aria-hidden>
-      {m.avatar || m.name.charAt(0).toUpperCase()}
+    <span className="avatar initial" style={style} aria-hidden>
+      {m.id === "__gezin" ? <Icon.home /> : initials(m.name)}
       {dot && <span className="dot" />}
     </span>
   );
 }
+
+/** "Lina" → "L", "Jan Peeters" → "JP". */
+export const initials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return (parts.length === 1 ? parts[0].charAt(0) : parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toLocaleUpperCase("nl");
+};
 
 /** Kleine profielfotootjes van wie meedoet aan een afspraak. */
 export function MemberDots({ ids, max = 6 }: { ids: string[]; max?: number }) {
@@ -109,9 +117,9 @@ export function MemberPicks({ value, onChange, all = true }: { value: string[]; 
   return (
     <div className="picks">
       {members.map((m) => (
-        <button type="button" key={m.id} className="pick" style={cvar(m.color)} aria-pressed={set.has(m.id)}
+        <button type="button" key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={set.has(m.id)}
           onClick={() => onChange(set.has(m.id) ? value.filter((x) => x !== m.id) : [...value, m.id])}>
-          {m.avatar} {m.name}
+          <Avatar m={m} size={22} dot={false} /> {m.name}
         </button>
       ))}
       {all && members.length > 1 && (

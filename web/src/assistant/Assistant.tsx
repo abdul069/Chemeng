@@ -5,7 +5,7 @@ import type { Change, Weather } from "../types";
 import { Icon } from "../components/Icons";
 import { MemberDots } from "../components/ui";
 import { RecipeThumb, openRecipe } from "../components/Recipes";
-import { SUGGESTIONS } from "../screens/Today";
+import { useSuggestions } from "../screens/Today";
 import { canListen, listen, speak, stopSpeaking } from "./speech";
 import { cap, fmtRange, greeting, longDate, todayIso } from "../dates";
 
@@ -47,6 +47,7 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
   convo: Msg[]; setConvo: (fn: (c: Msg[]) => Msg[]) => void; initial?: string; onClose: () => void;
 }) {
   const { data } = useData();
+  const suggestions = useSuggestions();
   const [weather] = useRemote<Weather | null>("/weather", ["settings"], null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -154,7 +155,7 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
         )}
         {!convo.length && (
           <div className="suggest">
-            {SUGGESTIONS.map((s) => <button key={s} onClick={() => send(stripEmoji(s))}>{s} <Icon.send /></button>)}
+            {suggestions.map((s) => <button key={s} onClick={() => send(stripEmoji(s))}>{s} <Icon.send /></button>)}
           </div>
         )}
         <div className="convo" ref={scroller} aria-live="polite">

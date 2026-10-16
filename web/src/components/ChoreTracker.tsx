@@ -1,6 +1,6 @@
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
-import { cvar } from "./ui";
+import { Avatar, cvar } from "./ui";
 import { weekday } from "../dates";
 
 /** "Taken vandaag": per gezinslid de icoontjes om af te vinken. */
@@ -8,7 +8,7 @@ const MOMENT_LABEL: Record<string, string> = { ochtend: "🌅 Ochtendroutine", m
 const currentMoment = () => { const h = new Date().getHours(); return h < 12 ? "ochtend" : h < 17 ? "middag" : "avond"; };
 
 /** "Taken vandaag": per gezinslid de icoontjes om af te vinken, gegroepeerd per dagdeel (het huidige eerst). */
-export function ChoreTracker({ date, grouped = true }: { date: string; grouped?: boolean }) {
+export function ChoreTracker({ date, grouped = true, compact = false }: { date: string; grouped?: boolean; compact?: boolean }) {
   const { data } = useData();
   const act = useAction();
   const [done, reload] = useRemote<string[]>(`/chores/done?from=${date}&to=${date}`, ["chores"], []);
@@ -28,7 +28,7 @@ export function ChoreTracker({ date, grouped = true }: { date: string; grouped?:
     .map((m) => ({ m, chores: todays.filter((c) => c.memberId === m.id && (moment === "alles" || c.moment === moment)) }))
     .filter((r) => r.chores.length);
   return (
-    <div className="routines">
+    <div className={`routines${compact ? " compact" : ""}`}>
       {order.map((moment) => {
         const rs = rows(moment);
         if (!rs.length) return null;
@@ -41,7 +41,7 @@ export function ChoreTracker({ date, grouped = true }: { date: string; grouped?:
               const dn = chores.filter((c) => set.has(`${date}|${c.id}`)).length;
               return (
                 <div className="trow" key={m.id} style={cvar(m.color)}>
-                  <div className="who">{m.name}<small>{dn}/{chores.length}</small></div>
+                  <div className="who">{compact ? <Avatar m={m} size={30} dot={false} /> : m.name}<small>{dn}/{chores.length}</small></div>
                   <div className="ticons">
                     {chores.map((c) => (
                       <button key={c.id} className="tico" title={`${c.title}${c.streak >= 2 ? ` · ${c.streak} dagen op rij` : ""}`} aria-label={`${c.title} (${m.name})`} aria-pressed={set.has(`${date}|${c.id}`)} onClick={() => toggle(c)}>
