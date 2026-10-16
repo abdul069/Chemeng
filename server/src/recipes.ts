@@ -15,9 +15,9 @@ export const TURKISH_SITES = [
   "mutfaksirlari.com",
 ];
 
-const client = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : null;
+import { getClient, aiReady } from "./ai.js";
 const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
-export const aiAvailable = () => client !== null;
+export const aiAvailable = () => aiReady();
 
 export class RecipeError extends Error {}
 
@@ -166,7 +166,8 @@ export interface RecipeHit { title: string; original: string; url: string; site:
 
 /** Laat Claude op Turkse receptsites zoeken en geeft de gevonden receptpagina's terug. */
 export async function searchTurkishRecipes(query: string, opts: { translate?: boolean; max?: number } = {}): Promise<RecipeHit[]> {
-  if (!client) throw new RecipeError("Zoeken naar recepten gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server. Een recept toevoegen via een link werkt wel.");
+  const client = getClient();
+  if (!client) throw new RecipeError("Zoeken naar recepten gebruikt de assistent. Vul eerst de Claude API-sleutel in bij Instellingen → Assistent. Een recept toevoegen via een link werkt wel.");
   const messages: Anthropic.MessageParam[] = [{
     role: "user",
     content: `Zoek Turkse recepten voor: "${query}". Zoek in het Turks (vertaal de vraag zo nodig, bv. "kip" → "tavuk"). Zoek naar pagina's van individuele recepten, geen overzichtspagina's. Doe hoogstens drie zoekopdrachten en antwoord daarna kort.`,
@@ -213,6 +214,7 @@ const Translated = z.object({
 });
 
 export async function translateRecipe(r: RecipeInputT): Promise<RecipeInputT> {
+  const client = getClient();
   if (!client || r.lang === "nl") return r;
   const res = await client.messages.parse({
     model: MODEL,
@@ -247,6 +249,7 @@ ${r.instructions}`,
 /** Korte vertalingen (titels van de bibliotheek) mogen met een sneller, goedkoper model. */
 const LIBRARY_MODEL = process.env.LIBRARY_MODEL ?? "claude-haiku-5-5";
 export async function translateTitles(titles: string[]): Promise<string[]> {
+  const client = getClient();
   if (!client || !titles.length) return titles;
   try {
     const res = await client.messages.parse({

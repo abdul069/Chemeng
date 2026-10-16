@@ -25,6 +25,7 @@ import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./impor
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
+import { saveApiKey, clearApiKey, keySource } from "./ai.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -236,6 +237,17 @@ function withHolidayCountdowns(list: ReturnType<typeof countdowns>) {
   const hol = holidaysBetween(t, addDays(t, 120), kinds).slice(0, 2).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
   return [...list, ...hol].sort((a, b) => a.days - b.days).slice(0, 6);
 }
+/** Claude API-sleutel invullen in de app (beheerder). De sleutel wordt eerst gecontroleerd. */
+api.put("/settings/api-key", requireAdmin, async (req, res) => {
+  const { key } = z.object({ key: z.string().min(10).max(300) }).parse(req.body);
+  const r = await saveApiKey(key);
+  if (!r.ok) return void res.status(400).json({ error: r.error });
+  res.json({ ok: true });
+  broadcast("settings", "recipes");
+  // de bibliotheek alvast van Nederlandse titels voorzien
+  L.translateMissingTitles().catch(() => {});
+});
+api.delete("/settings/api-key", requireAdmin, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
   const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
@@ -244,7 +256,7 @@ api.get("/bootstrap", (req, res) => {
     members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
     chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
-    settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL },
+    settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
   });
 });
@@ -351,7 +363,7 @@ api.delete("/events/:id", (req, res) => {
 // ---------- slim importeren ----------
 const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|gif|webp)$/.test(f.mimetype)) });
 api.post("/import/extract", memUpload.single("image"), async (req, res) => {
-  if (!importAvailable()) return void res.status(400).json({ error: "Importeren gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server." });
+  if (!importAvailable()) return void res.status(400).json({ error: "Importeren gebruikt de assistent. Vul eerst de Claude API-sleutel in bij Instellingen → Assistent." });
   const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 20000) : "";
   const hint = typeof req.body?.hint === "string" ? req.body.hint.slice(0, 500) : "";
   if (!text.trim() && !req.file) return void res.status(400).json({ error: "Plak tekst of kies een foto." });
@@ -381,7 +393,7 @@ api.post("/import/commit", (req, res) => {
 });
 api.post("/events/quick", async (req, res) => {
   const text = z.object({ text: z.string().trim().min(2).max(300) }).parse(req.body).text;
-  if (!importAvailable()) return void res.status(400).json({ error: "Snel toevoegen met tekst gebruikt de assistent. Gebruik het formulier, of zet een ANTHROPIC_API_KEY op de server." });
+  if (!importAvailable()) return void res.status(400).json({ error: "Snel toevoegen met tekst gebruikt de assistent. Gebruik het formulier, of vul de Claude API-sleutel in bij Instellingen → Assistent." });
   const p = await parseQuickAdd(text);
   if (!p) return void res.status(400).json({ error: "Ik kon daar geen afspraak van maken. Probeer bv. “zwemles dinsdag 17u Lina”." });
   res.json(p);
@@ -623,7 +635,7 @@ api.post("/recipes/search", async (req, res) => {
 api.post("/recipes/:id/translate", async (req, res) => {
   const r = S.listRecipes().find((x) => x.id === p(req));
   if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
-  if (!aiAvailable()) return void res.status(400).json({ error: "Vertalen gebruikt de assistent. Zet eerst een ANTHROPIC_API_KEY op de server." });
+  if (!aiAvailable()) return void res.status(400).json({ error: "Vertalen gebruikt de assistent. Vul eerst de Claude API-sleutel in bij Instellingen → Assistent." });
   const t = await translateRecipe(S.RecipeInput.parse({ ...r, lang: r.lang === "nl" && r.cuisine === "Turks" && !r.original ? "tr" : r.lang }));
   S.saveTranslation(r.id, t);
   res.json({ ok: true });

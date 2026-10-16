@@ -5,9 +5,9 @@ import { z } from "zod";
 import { listMembers } from "./store.js";
 import { today, weekday } from "./dates.js";
 
-const client = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : null;
+import { getClient, aiReady } from "./ai.js";
 const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
-export const importAvailable = () => client !== null;
+export const importAvailable = () => aiReady();
 
 const DAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
 
@@ -34,7 +34,8 @@ export type ImportResult = z.infer<typeof Result>;
 export type ImageInput = { data: string; mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" };
 
 export async function extractEvents(input: { text?: string; image?: ImageInput; hint?: string }): Promise<ImportResult> {
-  if (!client) throw new Error("De assistent is niet ingesteld (ANTHROPIC_API_KEY).");
+  const client = getClient();
+  if (!client) throw new Error("De assistent is niet ingesteld: vul de Claude API-sleutel in bij Instellingen → Assistent.");
   const t = today();
   const members = listMembers().map((m) => `${m.name} (${m.role})`).join(", ");
   const instructions = `Je leest documenten voor een gezinskalender: schoolbrieven, flyers, uitnodigingen, e-mails, lesroosters, sportkalenders.

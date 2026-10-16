@@ -50,5 +50,5 @@ for (const h of all<{ id: string }>("SELECT id FROM households WHERE id NOT IN (
 
 server.listen(PORT, () => {
   console.log(`[gezinsbord] luistert op http://localhost:${PORT}`);
-  if (!assistantAvailable()) console.log("[gezinsbord] Geen ANTHROPIC_API_KEY: de assistent staat uit.");
+  if (!assistantAvailable()) console.log("[gezinsbord] Nog geen Claude API-sleutel: de assistent staat uit (in te vullen bij Instellingen → Assistent).");
 });

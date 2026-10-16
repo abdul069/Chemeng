@@ -349,12 +349,31 @@ function Security() {
 }
 
 function Assistant() {
-  const { data } = useData();
+  const { data, toast } = useData();
+  const act = useAction();
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const admin = data!.me.role === "beheerder";
+  const save = async () => {
+    setBusy(true);
+    const ok = await act(() => api.put("/settings/api-key", { key: key.trim() }), "Sleutel gecontroleerd en bewaard. De assistent is actief; de receptenbibliotheek wordt nu vertaald.");
+    setBusy(false);
+    if (ok) setKey("");
+  };
   return (
     <Section title="Assistent">
       {data!.assistant.available
-        ? <p className="hint">De assistent is actief en gebruikt Claude ({data!.assistant.model}). Hij kan afspraken, maaltijden, taken en lijsten beheren. Tik op het figuurtje of op “Praat” en spreek je vraag in.</p>
-        : <p className="hint">De assistent staat uit. Zet <code>ANTHROPIC_API_KEY</code> in de omgeving van de server en herstart hem. Zie de README.</p>}
+        ? <p className="hint">De assistent is actief en gebruikt Claude ({data!.assistant.model}). Hij kan afspraken, maaltijden, taken, lijsten en recepten beheren, vertaalt de receptenbibliotheek en leest brieven en flyers. Tik op het figuurtje of op “Praat” en spreek je vraag in.</p>
+        : <p className="hint">De assistent staat uit. Vul hieronder je Claude API-sleutel in (aanmaken op <b>console.anthropic.com</b> → API keys). Daarna werken de assistent, slim importeren en het vertalen van de receptenbibliotheek meteen.</p>}
+      {admin && data!.assistant.keySource !== "env" && (
+        <form className="addrow" onSubmit={(e) => { e.preventDefault(); if (key.trim()) save(); }}>
+          <input id="api-key" type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder={data!.assistant.available ? "Nieuwe sleutel (sk-ant-…)" : "sk-ant-…"} aria-label="Claude API-sleutel" autoComplete="off" />
+          <button className="btn" type="submit" disabled={busy || key.trim().length < 10}>{busy ? "Controleren…" : "Bewaren"}</button>
+          {data!.assistant.available && data!.assistant.keySource === "app" && <button type="button" className="btn ghost" onClick={async () => { if (await act(() => api.del("/settings/api-key"), "Sleutel verwijderd")) toast("De assistent staat nu uit"); }}>Verwijderen</button>}
+        </form>
+      )}
+      {data!.assistant.keySource === "env" && <p className="hint">De sleutel staat in de omgeving van de server (ANTHROPIC_API_KEY).</p>}
+      {!admin && !data!.assistant.available && <p className="hint">Alleen een beheerder kan de sleutel invullen.</p>}
     </Section>
   );
 }

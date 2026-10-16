@@ -16,8 +16,8 @@ import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
 
 export const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
-const client = process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN ? new Anthropic() : null;
-export const assistantAvailable = () => client !== null;
+import { getClient, aiReady } from "./ai.js";
+export const assistantAvailable = () => aiReady();
 
 export type Change =
   | { kind: "event_added"; event: CalEvent }
@@ -304,6 +304,7 @@ function context(): string {
 export interface ChatTurn { role: "user" | "assistant"; content: string }
 
 export async function chat(history: ChatTurn[]): Promise<{ reply: string; changes: Change[] }> {
+  const client = getClient();
   if (!client) {
     return { reply: "De assistent is nog niet ingesteld. Zet een ANTHROPIC_API_KEY in de serverinstellingen en herstart de server.", changes: [] };
   }

@@ -234,7 +234,7 @@ const PACE: Record<string, { concurrency: number; delayMs: number }> = { "nefisy
 export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concurrency?: number } = {}) {
   if (crawlStatus.running) return;
   const sites = opts.sites ?? TURKISH_SITES;
-  const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 4000);
+  const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 20000);
   const conc = opts.concurrency ?? 3;
   Object.assign(crawlStatus, { running: true, done: 0, added: 0, failed: 0, total: 0, log: [], startedAt: new Date().toISOString(), finishedAt: null });
   failuresLogged.clear();
