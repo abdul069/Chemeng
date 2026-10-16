@@ -34,7 +34,7 @@ export function LibraryBrowser() {
     const t = setInterval(loadOverview, 5000);
     return () => clearInterval(t);
   }, [ov?.crawl.running]);
-  useEffect(() => { const t = setTimeout(() => setQ(typed.trim()), 300); return () => clearTimeout(t); }, [typed]);
+  useEffect(() => { const t = setTimeout(() => { setQ(typed.trim()); if (typed.trim()) setCat(null); }, 300); return () => clearTimeout(t); }, [typed]); // zoeken gaat over alle categorieën
 
   const load = async (offset: number) => {
     setBusy(true);

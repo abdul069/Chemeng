@@ -46,6 +46,9 @@ test("haalt de recepten op, zet ze per categorie in de bibliotheek en slaat pagi
   assert.equal(soep.total, 1);
   assert.equal(soep.items[0].titleTr, "Mercimek Çorbası", "'tarifi' wordt weggelaten");
   assert.equal(libraryList({ q: "patlıcan" }).total, 3);
+  assert.equal(libraryList({ q: "patlican" }).total, 3, "zonder Turkse tekens");
+  assert.equal(libraryList({ q: "CORBA" }).total, 1, "hoofdletters en ç");
+  assert.equal(libraryList({ q: "mercimek corba" }).total, 1, "meerdere woorden");
   const r = await libraryRecipe(soep.items[0].id, false);
   assert.equal(r?.lang, "tr");
   assert.equal(r?.minutes, 45);

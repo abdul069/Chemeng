@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS library_seen (url TEXT PRIMARY KEY, status TEXT NOT N
 CREATE TABLE IF NOT EXISTS global_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
+// zoekkolom zonder accenten/Turkse tekens, zodat "imam" ook "İmam" vindt en "corba" ook "çorba"
+try { db.exec("ALTER TABLE library ADD COLUMN search TEXT"); } catch { /* bestaat al */ }
+export const fold = (s: string) => s.toLocaleLowerCase("tr").replace(/ı/g, "i").replace(/İ/g, "i").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ş/g, "s").replace(/ğ/g, "g").replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u");
+const searchText = (r: { title_tr: string; title_nl?: string | null; ingredients_tr: string; ingredients_nl?: string | null }) => fold([r.title_tr, r.title_nl ?? "", r.ingredients_tr, r.ingredients_nl ?? ""].join(" | "));
+for (const r of all<{ id: string; title_tr: string; title_nl: string | null; ingredients_tr: string; ingredients_nl: string | null }>("SELECT id, title_tr, title_nl, ingredients_tr, ingredients_nl FROM library WHERE search IS NULL")) run("UPDATE library SET search=? WHERE id=?", searchText(r), r.id);
+
 /** Categorieën met Nederlandse naam, icoon en Turkse/Nederlandse trefwoorden om een recept in te delen. */
 export const CATEGORIES: { key: string; name: string; icon: string; words: RegExp }[] = [
   { key: "soep", name: "Soepen", icon: "🍲", words: /çorba|soep|soup/i },
@@ -76,7 +82,7 @@ export function libraryList(opts: { category?: string; q?: string; offset?: numb
   const where: string[] = []; const args: unknown[] = [];
   if (opts.category && (CAT_KEYS.has(opts.category) || opts.category === "overig")) { where.push("category=?"); args.push(opts.category); }
   if (opts.site) { where.push("site=?"); args.push(opts.site); }
-  if (opts.q) { const q = `%${opts.q.toLocaleLowerCase("tr")}%`; where.push("(lower(title_tr) LIKE ? OR lower(COALESCE(title_nl,'')) LIKE ? OR lower(ingredients_tr) LIKE ? OR lower(COALESCE(ingredients_nl,'')) LIKE ?)"); args.push(q, q, q, q); }
+  if (opts.q) for (const w of fold(opts.q).split(/\s+/).filter(Boolean)) { where.push("search LIKE ?"); args.push(`%${w}%`); }
   const w = where.length ? `WHERE ${where.join(" AND ")}` : "";
   const total = get<{ n: number }>(`SELECT COUNT(*) AS n FROM library ${w}`, ...args)?.n ?? 0;
   const limit = Math.min(Math.max(opts.limit ?? 60, 1), 200);
@@ -102,7 +108,7 @@ export async function libraryRecipe(id: string, translate = true): Promise<(Reci
     try {
       const t = await translateRecipe(tr);
       if (t.lang === "nl") {
-        run("UPDATE library SET title_nl=?, ingredients_nl=?, instructions_nl=?, servings=? WHERE id=?", t.title, t.ingredients, t.instructions, t.servings, id);
+        run("UPDATE library SET title_nl=?, ingredients_nl=?, instructions_nl=?, servings=?, search=? WHERE id=?", t.title, t.ingredients, t.instructions, t.servings, searchText({ title_tr: tr.title, title_nl: t.title, ingredients_tr: tr.ingredients, ingredients_nl: t.ingredients }), id);
         return { ...t, id, category: r.category as string };
       }
     } catch (e) { console.warn("[library] vertalen mislukt", (e as Error).message); }
@@ -182,10 +188,11 @@ export async function ingestUrl(url: string, site: string, html?: string): Promi
   try {
     const r = parseRecipeHtml(page.slice(0, 3_000_000), url);
     if (!r.ingredients.trim() || !r.instructions.trim()) throw new Error(`recept zonder ${!r.ingredients.trim() ? "ingrediënten" : "bereiding"}`);
+    const title = r.title.replace(/\s*tarifi\s*$/i, "").trim() || r.title;
     const siteCat = page.match(/"recipeCategory"\s*:\s*"([^"]+)"/)?.[1] ?? page.match(/"articleSection"\s*:\s*"([^"]+)"/)?.[1] ?? "";
     run(
-      "INSERT OR IGNORE INTO library(id, source_url, site, category, title_tr, image, minutes, servings, ingredients_tr, instructions_tr) VALUES (?,?,?,?,?,?,?,?,?,?)",
-      newId(), url, site, classify(r.title, url, siteCat), r.title.replace(/\s*tarifi\s*$/i, "").trim() || r.title, r.image ?? null, r.minutes ?? null, r.servings, r.ingredients, r.instructions,
+      "INSERT OR IGNORE INTO library(id, source_url, site, category, title_tr, image, minutes, servings, ingredients_tr, instructions_tr, search) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      newId(), url, site, classify(r.title, url, siteCat), title, r.image ?? null, r.minutes ?? null, r.servings, r.ingredients, r.instructions, searchText({ title_tr: title, ingredients_tr: r.ingredients }),
     );
     return "added";
   } catch (e) {
@@ -256,7 +263,7 @@ export async function translateMissingTitles(limit = 2000) {
     if (!rows.length) break;
     const nl = await translateTitles(rows.map((r) => r.title_tr));
     if (nl.every((t, i) => t === rows[i].title_tr)) break; // vertalen werkt niet (bv. geen sleutel)
-    for (let i = 0; i < rows.length; i++) run("UPDATE library SET title_nl=? WHERE id=?", nl[i], rows[i].id);
+    for (let i = 0; i < rows.length; i++) run("UPDATE library SET title_nl=?, search=search || ' | ' || ? WHERE id=?", nl[i], fold(nl[i]), rows[i].id);
     n += rows.length;
   }
   if (n) log(`${n} titels vertaald`);
