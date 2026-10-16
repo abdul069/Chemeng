@@ -96,7 +96,12 @@ export async function tick() {
       const todays = occ.filter((o) => o.source !== "shared").sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""));
       const chores = get<{ n: number }>("SELECT COUNT(*) AS n FROM chores WHERE household_id=?", h.id)?.n ?? 0;
       const lines = todays.slice(0, 4).map((o) => `${o.allDay ? "hele dag" : o.startTime} ${o.title}`);
-      const body = (lines.length ? lines.join("\n") : "Geen afspraken vandaag.") + (todays.length > 4 ? `\n+${todays.length - 4} meer` : "") + (chores ? `\n${chores} taken staan klaar.` : "");
+      // voorraad die vandaag of morgen over datum gaat
+      const expiring = all<{ text: string; expires: string }>(
+        "SELECT i.text, i.expires FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? AND l.kind='pantry' AND i.done=0 AND i.expires IS NOT NULL AND i.expires <= ? ORDER BY i.expires LIMIT 4", h.id, addDays(t, 1),
+      );
+      const expLine = expiring.length ? `\n🥫 Op eten: ${expiring.map((e) => `${e.text}${e.expires < t ? " (over datum)" : e.expires === t ? " (vandaag)" : ""}`).join(", ")}` : "";
+      const body = (lines.length ? lines.join("\n") : "Geen afspraken vandaag.") + (todays.length > 4 ? `\n+${todays.length - 4} meer` : "") + (chores ? `\n${chores} taken staan klaar.` : "") + expLine;
       await pushToUsers(usersFor(h.id, []), { title: "Goeiemorgen! Dit staat er vandaag op", body, url: "/#today", tag: "morning" });
     }
   }
@@ -112,4 +117,3 @@ export function startPushScheduler() {
 /** Voor meldingen over een nieuwe memo of een nieuwe afspraak van iemand anders. */
 export const notifyHousehold = (householdId: string, msg: PushMessage, exceptUser?: string) =>
   pushToUsers(usersFor(householdId, []).filter((u) => u !== exceptUser), msg);
-void addDays;
