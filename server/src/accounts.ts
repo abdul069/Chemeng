@@ -31,6 +31,7 @@ export function createHousehold(userId: string, name: string) {
     run("INSERT INTO household_users(household_id, user_id, role, member_id) VALUES (?,?,?,?)", hid, userId, "beheerder", m.id);
     createList("Boodschappen", "🛒", hid);
     createList("To-do", "✅", hid);
+    createList("Voorraad", "🥫", hid, "pantry");
   });
   return hid;
 }
@@ -124,10 +125,25 @@ export function acceptInvite(token: string, userId: string): { householdId: stri
   });
 }
 
+/** Herstel-link voor een gezinslid dat zijn wachtwoord vergat (maakt de beheerder aan). */
+export function createResetLink(adminId: string, householdId: string, userId: string) {
+  if (!get("SELECT 1 FROM household_users WHERE household_id=? AND user_id=?", householdId, userId)) throw new UserError("Deze persoon hoort niet bij je gezin.");
+  const token = randomToken();
+  run("INSERT INTO invites(id, token_hash, kind, created_by, household_id, used_by, expires_at) VALUES (?,?,?,?,?,?, datetime('now','+1 day'))", newId(), sha256(token), "reset", adminId, householdId, userId);
+  return token;
+}
+export function resetTarget(token: string): { userId: string; name: string } | null {
+  const inv = get<{ used_by: string; used_at: string | null; expires_at: string }>("SELECT used_by, used_at, expires_at FROM invites WHERE token_hash=? AND kind='reset'", sha256(token));
+  if (!inv || inv.used_at || get("SELECT 1 WHERE datetime('now') > ?", inv.expires_at)) return null;
+  const u = get<{ name: string }>("SELECT name FROM users WHERE id=?", inv.used_by);
+  return u ? { userId: inv.used_by, name: u.name } : null;
+}
+export const consumeReset = (token: string) => run("UPDATE invites SET used_at=datetime('now') WHERE token_hash=?", sha256(token));
+
 export function pendingInvites(userId: string, householdId: string | null) {
   return all<{ id: string; kind: string; member_id: string | null; role: string; label: string; expires_at: string }>(
     `SELECT id, kind, member_id, role, label, expires_at FROM invites
-     WHERE used_at IS NULL AND expires_at > datetime('now') AND created_by=? AND (kind='agenda' OR household_id=?)
+     WHERE used_at IS NULL AND expires_at > datetime('now') AND created_by=? AND kind<>'reset' AND (kind='agenda' OR household_id=?)
      ORDER BY created_at DESC`, userId, householdId,
   ).map((i) => ({ id: i.id, kind: i.kind, memberId: i.member_id, role: i.role, label: i.label, expiresAt: i.expires_at }));
 }

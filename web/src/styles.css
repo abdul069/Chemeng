@@ -595,3 +595,16 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 .tico { overflow: visible; }
 .tico .streak { position: absolute; left: -6px; bottom: -8px; font-size: 10px; font-style: normal; font-weight: 800; background: var(--surface); border-radius: 999px; padding: 0 4px; box-shadow: var(--shadow); }
 .sleep { position: fixed; inset: 0; z-index: 96; background: #000; color: #2a2f38; display: grid; place-items: center; font-family: var(--f-body); font-weight: 700; font-size: clamp(48px, 10vw, 120px); cursor: none; }
+
+/* Voorraad: houdbaarheid */
+.exp { color: var(--muted); font-size: 13px; }
+.exp.warn { color: #9a6700; }
+.exp.bad { color: #b42318; font-weight: 600; }
+.list-nav .n i { font-style: normal; font-size: 12px; }
+
+/* Gedeelde receptenbibliotheek */
+.recipe-cols { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
+.recipe-cols h3 { margin-bottom: 6px; }
+.recipe-cols ul, .recipe-cols ol { padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+@media (max-width: 640px) { .recipe-cols { grid-template-columns: 1fr; } }
+.seg.lib { align-self: flex-start; }

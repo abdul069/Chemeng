@@ -5,6 +5,7 @@ import type { Meal, Slot } from "../types";
 import { Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe } from "../components/Recipes";
+import { LibraryBrowser } from "../components/LibraryBrowser";
 import { PhotoPicker } from "../components/PhotoPicker";
 import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../dates";
 
@@ -125,6 +126,7 @@ function Library() {
   const [q, setQ] = useState("");
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
+  const [view, setView] = useState<"mine" | "all">(() => ((data?.recipes.length ?? 0) ? "mine" : "all"));
   const recipes = data?.recipes ?? [];
   const cuisines = [...new Set(recipes.map((r) => r.cuisine).filter(Boolean))];
   const shown = recipes.filter((r) =>
@@ -132,6 +134,11 @@ function Library() {
     (!q || `${r.title}\n${r.ingredients}`.toLocaleLowerCase("tr").includes(q.toLocaleLowerCase("tr"))));
   return (
     <div className="page-scroll" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="seg lib" role="tablist" aria-label="Bibliotheek">
+        <button role="tab" aria-pressed={view === "mine"} onClick={() => setView("mine")}>Mijn recepten{recipes.length ? ` (${recipes.length})` : ""}</button>
+        <button role="tab" aria-pressed={view === "all"} onClick={() => setView("all")}>🇹🇷 Alle Turkse recepten</button>
+      </div>
+      {view === "all" ? <LibraryBrowser /> : <>
       <div className="lib-actions">
         <button className="btn accent" onClick={() => setModal("search")}>🔎 Turkse recepten zoeken</button>
         <button className="btn ghost" onClick={() => setModal("import")}>🔗 Via link toevoegen</button>
@@ -148,8 +155,9 @@ function Library() {
         </div>
       )}
       <div className="rgrid">{shown.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => openRecipe(r.id)} />)}</div>
-      {!recipes.length && <p className="empty">Je bibliotheek is nog leeg. Zoek Turkse recepten of plak de link van een recept dat je lekker vindt.</p>}
+      {!recipes.length && <p className="empty">Je eigen bibliotheek is nog leeg. Blader door <button className="linkbtn" onClick={() => setView("all")}>alle Turkse recepten</button> of plak de link van een recept dat je lekker vindt.</p>}
       {recipes.length > 0 && !shown.length && <p className="empty">Geen recepten gevonden voor “{q}”.</p>}
+      </>}
       {modal === "search" && <RecipeSearch onClose={() => setModal(null)} />}
       {modal === "import" && <RecipeImport onClose={() => setModal(null)} />}
       {modal === "new" && <RecipeEditor onClose={() => setModal(null)} />}

@@ -3,6 +3,7 @@ import { api, ApiError, reconnectRealtime } from "../api";
 import type { InviteInfo } from "../types";
 
 export const inviteTokenFromUrl = () => location.pathname.match(/^\/uitnodiging\/([\w-]+)/)?.[1] ?? null;
+export const resetTokenFromUrl = () => location.pathname.match(/^\/herstel\/([\w-]+)/)?.[1] ?? null;
 const clearInviteUrl = () => history.replaceState(null, "", "/");
 
 export function InviteCard({ info }: { info: InviteInfo }) {
@@ -80,6 +81,7 @@ export function AuthScreen({ onDone }: { onDone: () => void }) {
           <button type="button" className="linkbtn" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErr(null); }}>{mode === "login" ? "Account maken" : "Aanmelden"}</button>
         </p>
         {mode === "register" && !token && <p className="hint">Je krijgt meteen je eigen gezin, waarin je daarna je partner en kinderen kunt toevoegen of uitnodigen.</p>}
+        {mode === "login" && <p className="hint">Wachtwoord vergeten? Vraag de beheerder van je gezin om een herstel-link (Instellingen → Toegang tot het gezin).</p>}
       </form>
     </div>
   );
@@ -132,6 +134,47 @@ export function NoHousehold({ onDone }: { onDone: () => void }) {
         <button className="btn" disabled={!name.trim()} onClick={create}>Gezin maken</button>
         <button className="linkbtn" onClick={() => api.post("/auth/logout").then(() => location.reload())}>Afmelden</button>
       </div>
+    </div>
+  );
+}
+
+/** Nieuw wachtwoord kiezen via een herstel-link van de beheerder (/herstel/:token). */
+export function ResetPassword({ token, onDone }: { token: string; onDone: () => void }) {
+  const [info, setInfo] = useState<{ valid: boolean; name?: string; reason?: string } | null>(null);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.get<{ valid: boolean; name?: string; reason?: string }>(`/reset/${token}`).then(setInfo).catch(() => setInfo({ valid: false, reason: "De link kon niet gecontroleerd worden." })); }, [token]);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pw !== pw2) return setErr("De twee wachtwoorden zijn niet gelijk.");
+    setBusy(true); setErr(null);
+    try {
+      await api.post(`/reset/${token}`, { password: pw });
+      history.replaceState(null, "", "/");
+      reconnectRealtime();
+      onDone();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Er ging iets mis."); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="center">
+      <form className="card auth" onSubmit={submit}>
+        <div className="mascot" />
+        <h1>Nieuw wachtwoord</h1>
+        {!info && <p className="hint">Link controleren…</p>}
+        {info && !info.valid && <div className="invite-card"><b>Link niet geldig</b><p className="hint">{info.reason}</p><button type="button" className="linkbtn" onClick={() => { history.replaceState(null, "", "/"); onDone(); }}>Naar aanmelden</button></div>}
+        {info?.valid && (
+          <>
+            <p className="hint">Hallo {info.name}, kies een nieuw wachtwoord. Je wordt daarna meteen aangemeld; op andere toestellen moet je opnieuw aanmelden.</p>
+            <label className="field"><span>Nieuw wachtwoord (minstens 8 tekens)</span><input id="rp-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" minLength={8} required /></label>
+            <label className="field"><span>Nog eens</span><input id="rp-pw2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" minLength={8} required /></label>
+            {err && <p className="error">{err}</p>}
+            <button className="btn" type="submit" disabled={busy || pw.length < 8}>{busy ? "Even geduld…" : "Wachtwoord bewaren"}</button>
+          </>
+        )}
+      </form>
     </div>
   );
 }

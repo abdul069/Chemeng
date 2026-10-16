@@ -340,6 +340,7 @@ function Security() {
         <button className="btn" disabled={pin.length < 4} onClick={async () => { await save({ settings_pin: pin }, "Pincode ingesteld"); setPin(""); }}>Instellen</button>
         {data!.settings.has_pin && <button className="btn ghost" onClick={() => save({ settings_pin: "" }, "Pincode verwijderd")}>Verwijderen</button>}
       </div>
+      <p className="hint" style={{ marginTop: 8 }}>Back-up: download alle gegevens van je gezin (afspraken, taken, recepten, lijsten) als bestand. <a className="btn ghost small" href="/api/export" download>⬇️ Back-up downloaden</a></p>
     </Section>
   );
 }

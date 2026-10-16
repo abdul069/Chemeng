@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createEvent, deleteEvent, eventsBetween, getEvent, skipOccurrence, type CalEvent } from "./events.js";
 import {
   addItem, choresOn, createChore, createList, createRecipe, doneBetween, findList, listLists, listMembers, listRecipes, mealsBetween,
-  memberByName, recipeBySource, setChoreDone, setMeal, SLOTS,
+  memberByName, pantryList, recipeBySource, setChoreDone, setMeal, SLOTS,
 } from "./store.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError } from "./recipes.js";
 import { getSettings, hid } from "./db.js";
@@ -233,6 +233,17 @@ function buildTools(changes: Change[]) {
         } catch (e) {
           return e instanceof RecipeError ? e.message : "Importeren lukte niet.";
         }
+      },
+    }),
+    betaZodTool({
+      name: "voorraad_bekijken",
+      description: "Toont wat er in de voorraadkast ligt, met vervaldatums. Handig om te weten wat er al in huis is voor je iets op de boodschappenlijst zet.",
+      inputSchema: z.object({}),
+      run: async () => {
+        const pl = pantryList();
+        if (!pl || !pl.items.length) return "De voorraad is leeg of nog niet ingevuld.";
+        const t = today();
+        return pl.items.filter((i) => !i.done).map((i) => `${i.text}${i.qty ? ` (${i.qty})` : ""}${i.expires ? (i.expires < t ? " VERLOPEN" : ` vervalt ${i.expires}`) : ""}`).join("\n");
       },
     }),
     betaZodTool({

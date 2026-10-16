@@ -9,6 +9,7 @@ import { attachRealtime, broadcastTo } from "./realtime.js";
 import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
 import { startPushScheduler } from "./push.js";
+import { startLibraryScheduler } from "./library.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8080);
@@ -17,6 +18,13 @@ const WEB_DIR = path.resolve(process.env.WEB_DIR ?? path.join(here, "../../web/d
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()");
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", api);
 
@@ -34,6 +42,7 @@ const doSync = () => syncAll((h) => broadcastTo(h, ["calendars", "events"])).cat
 setTimeout(doSync, 5_000).unref();
 setInterval(doSync, SYNC_MIN * 60_000).unref();
 startPushScheduler();
+startLibraryScheduler();
 
 server.listen(PORT, () => {
   console.log(`[gezinsbord] luistert op http://localhost:${PORT}`);

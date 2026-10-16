@@ -130,6 +130,12 @@ export function HouseholdAccess() {
                   {u.role === "beheerder" ? "Maak lid" : "Maak beheerder"}
                 </button>
               )}
+              {admin && u.id !== data!.me.id && (
+                <button className="btn ghost small" title="Herstel-link voor een nieuw wachtwoord" onClick={async () => {
+                  const r = await act(() => api.post<{ url: string }>(`/household/users/${u.id}/reset-link`));
+                  if (r) setLink({ url: r.url, text: `Hallo ${u.name}, met deze link kies je een nieuw wachtwoord voor Gezinsbord (1 dag geldig).` });
+                }}>🔑 Wachtwoord</button>
+              )}
               {(admin || u.id === data!.me.id) && <button className="iconbtn" aria-label={u.id === data!.me.id ? "Gezin verlaten" : `${u.name} verwijderen`} onClick={() => setRemove(u)}><Icon.trash /></button>}
             </div>
           );

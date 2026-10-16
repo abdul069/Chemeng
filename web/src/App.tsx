@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { connectRealtime, onConnection } from "./api";
-import { AcceptInvite, AuthScreen, NoHousehold, inviteTokenFromUrl } from "./components/Auth";
+import { AcceptInvite, AuthScreen, NoHousehold, ResetPassword, inviteTokenFromUrl, resetTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
 import { Icon } from "./components/Icons";
 import { EventEditor, type EditorState } from "./components/EventEditor";
@@ -29,6 +29,7 @@ const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }
 export function App() {
   const { data, error, errorCode, reload } = useData();
   const [inviteToken, setInviteToken] = useState(inviteTokenFromUrl);
+  const [resetToken, setResetToken] = useState(resetTokenFromUrl);
   const [screen, setScreenState] = useState<Screen>(() => { const h = location.hash.slice(1); return (h === "photos" ? "apps" : h as Screen) || "today"; });
   const [appView, setAppView] = useState<AppView>("grid");
   const setScreen = (s: Screen) => { setScreenState(s); if (s === "apps") setAppView("grid"); };
@@ -87,6 +88,7 @@ export function App() {
 
   const openAssistant = useCallback((prompt?: string) => setAssist({ prompt, key: Date.now() }), []);
 
+  if (resetToken) return <ResetPassword token={resetToken} onDone={() => { setResetToken(null); reload(); }} />;
   if (errorCode === "login") return <AuthScreen onDone={() => { setInviteToken(null); reload(); }} />;
   if (errorCode === "no_household" && !inviteToken) return <NoHousehold onDone={reload} />;
   if (errorCode === "no_household" && inviteToken) return <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />;

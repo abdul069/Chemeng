@@ -12,8 +12,8 @@ export interface Chore { id: string; memberId: string; title: string; icon: stri
 export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" }
 export interface Reward { id: string; title: string; icon: string; cost: number }
 export interface Points { earned: number; spent: number; balance: number }
-export interface ListItem { id: string; text: string; done: boolean }
-export interface List { id: string; name: string; icon: string; items: ListItem[] }
+export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string }
+export interface List { id: string; name: string; icon: string; kind: "list" | "pantry"; items: ListItem[] }
 export interface Recipe {
   id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string;
   /** taal van de getoonde versie */ lang: string;

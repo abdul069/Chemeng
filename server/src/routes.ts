@@ -20,6 +20,7 @@ import * as A from "./accounts.js";
 import { seedDemo } from "./seed.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
 import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
+import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate } from "./dates.js";
@@ -30,6 +31,18 @@ const p = (req: Request) => req.params.id as string;
 const inviteUrl = (req: Request, token: string) => `${req.protocol}://${req.get("host")}/uitnodiging/${token}`;
 
 api.get("/health", (_req, res) => { res.json({ ok: true }); });
+
+// eenvoudige rem op aanmaken van accounts per adres
+const regHits = new Map<string, { n: number; until: number }>();
+api.use("/auth/register", (req, res, next) => {
+  const a = regHits.get(req.ip ?? "") ?? { n: 0, until: Date.now() + 3600_000 };
+  if (a.until < Date.now()) { a.n = 0; a.until = Date.now() + 3600_000; }
+  if (++a.n > 20) return void res.status(429).json({ error: "Te veel accounts in korte tijd. Probeer het later opnieuw." });
+  regHits.set(req.ip ?? "", a);
+  next();
+});
+
+
 
 // ---------- aanmelden ----------
 api.post("/auth/register", (req, res) => {
@@ -69,6 +82,21 @@ api.post("/auth/login", (req, res) => {
 api.post("/auth/logout", (req, res) => { endSession(req, res); res.json({ ok: true }); });
 
 api.get("/invites/:token", (req, res) => { res.json(A.describeInvite(req.params.token as string)); });
+
+api.get("/reset/:token", (req, res) => {
+  const t = A.resetTarget(req.params.token as string);
+  res.json(t ? { valid: true, name: t.name } : { valid: false, reason: "Deze herstel-link is niet (meer) geldig. Vraag de beheerder van je gezin om een nieuwe." });
+});
+api.post("/reset/:token", (req, res) => {
+  const t = A.resetTarget(req.params.token as string);
+  if (!t) return void res.status(400).json({ error: "Deze herstel-link is niet (meer) geldig." });
+  const pw = z.object({ password: z.string().min(8, "Kies een wachtwoord van minstens 8 tekens").max(200) }).parse(req.body).password;
+  run("UPDATE users SET password_hash=? WHERE id=?", hashPassword(pw), t.userId);
+  run("DELETE FROM sessions WHERE user_id=?", t.userId);
+  A.consumeReset(req.params.token as string);
+  startSession(res, req, t.userId, A.householdsOf(t.userId)[0]?.id ?? null);
+  res.json({ ok: true });
+});
 
 api.use(requireUser);
 
@@ -242,6 +270,23 @@ api.delete("/household/users/:id", (req, res) => {
   res.json({ ok: true });
   broadcast("access", "members");
   notifyUsers([p(req)], ["access"]);
+});
+api.post("/household/users/:id/reset-link", requireAdmin, (req, res) => {
+  const token = A.createResetLink(ctx().userId, hid(), p(req));
+  res.json({ url: `${req.protocol}://${req.get("host")}/herstel/${token}` });
+});
+/** Back-up van alle gegevens van dit gezin. */
+api.get("/export", (_req, res) => {
+  const h = hid();
+  const data = {
+    exportedAt: new Date().toISOString(), household: get("SELECT id, name, created_at FROM households WHERE id=?", h),
+    members: S.listMembers(), events: all("SELECT * FROM events WHERE household_id=?", h), chores: S.listChores(),
+    choreDone: all("SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=?", h),
+    rewards: S.listRewards(), recipes: S.listRecipes(), meals: all("SELECT date, slot, title, recipe_id, image FROM meals WHERE household_id=?", h),
+    lists: S.listLists(), calendars: S.listCalendars().map(({ url, ...c }) => ({ ...c, url: url.replace(/private-[^/]+/, "private-…") })), settings: publicSettings(),
+  };
+  res.setHeader("content-disposition", `attachment; filename="gezinsbord-backup-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.json(data);
 });
 api.post("/household/demo", requireAdmin, (_req, res) => {
   if (get("SELECT 1 FROM events WHERE household_id=? LIMIT 1", hid())) return void res.status(400).json({ error: "Voorbeeldgegevens kunnen alleen in een leeg gezin." });
@@ -438,6 +483,39 @@ api.post("/recipes/import", async (req, res) => {
     throw e;
   }
 });
+// ---------- gedeelde receptenbibliotheek (alle recepten van de Turkse sites, per categorie) ----------
+api.get("/library/categories", (_req, res) => { res.json({ categories: L.libraryCategories(), total: L.libraryCount(), crawl: { running: L.crawlStatus.running, site: L.crawlStatus.site, done: L.crawlStatus.done, total: L.crawlStatus.total, added: L.crawlStatus.added, finishedAt: L.crawlStatus.finishedAt } }); });
+api.get("/library", (req, res) => {
+  const q = z.object({ category: z.string().max(30).optional(), q: z.string().max(80).optional(), site: z.string().max(60).optional(), offset: z.coerce.number().int().min(0).default(0), limit: z.coerce.number().int().min(1).max(200).default(60) }).parse(req.query);
+  const mine = new Set(S.listRecipes().map((r) => r.sourceUrl).filter(Boolean));
+  const r = L.libraryList(q);
+  res.json({ ...r, items: r.items.map((i) => ({ ...i, inLibrary: mine.has(i.sourceUrl) })) });
+});
+api.get("/library/:id", async (req, res) => {
+  const r = await L.libraryRecipe(p(req), z.object({ translate: z.string().optional() }).parse(req.query).translate !== "0");
+  if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
+  res.json({ ...r, inLibraryId: S.recipeBySource(r.sourceUrl!)?.id ?? null });
+});
+/** Zet een recept uit de gedeelde bibliotheek in de bibliotheek van het gezin (in het Nederlands als dat kan). */
+api.post("/library/:id/add", async (req, res) => {
+  const r = await L.libraryRecipe(p(req));
+  if (!r) return void res.status(404).json({ error: "Recept niet gevonden." });
+  const existing = S.recipeBySource(r.sourceUrl!);
+  if (existing) return void res.json({ id: existing.id, existing: true });
+  const { id: _id, category: _c, ...input } = r;
+  const id = S.createRecipe(S.RecipeInput.parse(input));
+  res.json({ id, existing: false });
+  broadcast("recipes");
+});
+api.post("/library/crawl", requireAdmin, (req, res) => {
+  const b = z.object({ sites: z.array(z.string()).optional(), maxPerSite: z.number().int().min(10).max(20000).optional() }).parse(req.body ?? {});
+  if (L.crawlStatus.running) return void res.json({ ok: true, running: true });
+  L.crawl(b).catch((e) => console.warn("[library]", e));
+  res.json({ ok: true, running: true });
+});
+api.get("/library/crawl/status", (_req, res) => { res.json(L.crawlStatus); });
+api.post("/library/translate-titles", requireAdmin, async (_req, res) => { res.json({ translated: await L.translateMissingTitles() }); });
+
 api.post("/recipes/search", async (req, res) => {
   const q = z.object({ query: z.string().trim().min(2, "Typ minstens twee letters.").max(100) }).parse(req.body).query;
   try {
@@ -460,22 +538,31 @@ api.post("/recipes/:id/translate", async (req, res) => {
 
 // ---------- lijsten ----------
 api.post("/lists", (req, res) => {
-  const b = z.object({ name: z.string().trim().min(1).max(60), icon: z.string().max(16).default("📝") }).parse(req.body);
-  res.json({ id: S.createList(b.name, b.icon) });
+  const b = z.object({ name: z.string().trim().min(1).max(60), icon: z.string().max(16).default("📝"), kind: z.enum(["list", "pantry"]).default("list") }).parse(req.body);
+  res.json({ id: S.createList(b.name, b.icon, hid(), b.kind) });
   broadcast("lists");
 });
 api.delete("/lists/:id", (req, res) => { S.deleteList(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.post("/lists/:id/items", (req, res) => {
-  const text = z.object({ text: z.string().trim().min(1).max(200) }).parse(req.body).text;
-  res.json({ id: S.addItem(p(req), text) });
+  const b = z.object({ text: z.string().trim().min(1).max(200), expires: day.nullable().optional(), qty: z.string().max(40).optional() }).parse(req.body);
+  res.json({ id: S.addItem(p(req), b.text, { expires: b.expires ?? null, qty: b.qty }) });
   broadcast("lists");
 });
 api.post("/lists/:id/clear-done", (req, res) => { S.clearDone(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.patch("/items/:id", (req, res) => {
-  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional() }).parse(req.body);
-  if (b.done !== undefined) S.setItemDone(p(req), b.done);
-  if (b.text) S.updateItemText(p(req), b.text);
+  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional() }).parse(req.body);
+  S.updateItem(p(req), b);
   res.json({ ok: true });
+  broadcast("lists");
+});
+/** Voorraad-item op de boodschappenlijst zetten (het item blijft in de voorraad staan). */
+api.post("/items/:id/to-shopping", (req, res) => {
+  const it = get<{ text: string }>("SELECT i.text FROM list_items i JOIN lists l ON l.id = i.list_id WHERE i.id=? AND l.household_id=?", p(req), hid());
+  const shop = S.shoppingList();
+  if (!it || !shop) return void res.status(400).json({ error: "Geen boodschappenlijst gevonden." });
+  const open = shop.items.some((x) => !x.done && x.text.toLocaleLowerCase("nl") === it.text.toLocaleLowerCase("nl"));
+  if (!open) S.addItem(shop.id, it.text);
+  res.json({ ok: true, list: shop.name, existed: open });
   broadcast("lists");
 });
 api.delete("/items/:id", (req, res) => { S.deleteItem(p(req)); res.json({ ok: true }); broadcast("lists"); });
