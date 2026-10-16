@@ -622,3 +622,6 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 .search-top { display: none; width: 38px; height: 38px; }
 @media (max-width: 760px) { .nav-search { display: none; } .search-top { display: grid; } }
 .aisle-h { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; color: var(--muted); padding: 8px 4px 2px; }
+.badge.servings { display: inline-flex; align-items: center; gap: 6px; }
+.badge.servings button { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); font-weight: 800; line-height: 1; padding: 0; }
+.badge.servings button:disabled { opacity: 0.4; }

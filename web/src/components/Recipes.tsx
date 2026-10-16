@@ -5,6 +5,7 @@ import type { Recipe, RecipeHit, Slot } from "../types";
 import { Confirm, Modal } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
+import { parseServings, scaleLine } from "../portions";
 
 const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: "Deutsch" };
 const FLAG: Record<string, string> = { tr: "🇹🇷", nl: "🇳🇱", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪" };
@@ -52,7 +53,10 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   // Nederlands is de standaard; het origineel (bv. Turks) is één tik verder
   const [showOrig, setShowOrig] = useState(false);
   const version = showOrig && recipe.original ? recipe.original : recipe;
-  const ingredients = useMemo(() => lines(version.ingredients), [version.ingredients]);
+  const baseServings = parseServings(recipe.servings) ?? 4;
+  const [servings, setServings] = useState(baseServings);
+  const factor = servings / baseServings;
+  const ingredients = useMemo(() => lines(version.ingredients).map((l) => scaleLine(l, factor)), [version.ingredients, factor]);
   const steps = lines(version.instructions);
   const notTranslated = recipe.lang !== "nl" && !recipe.original;
   const origLang = LANG[recipe.original?.lang ?? recipe.lang] ?? (recipe.original?.lang ?? recipe.lang);
@@ -98,7 +102,12 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
       </div>
       <div className="rmeta">
         {recipe.minutes && <span className="badge">⏱ {recipe.minutes} min</span>}
-        {recipe.servings && <span className="badge">🍽 {recipe.servings}</span>}
+        <span className="badge servings" title="Aantal porties: de hoeveelheden rekenen mee">🍽
+          <button aria-label="Minder porties" onClick={() => setServings((n) => Math.max(1, n - 1))} disabled={servings <= 1}>−</button>
+          <b className="num">{servings}</b>
+          <button aria-label="Meer porties" onClick={() => setServings((n) => Math.min(50, n + 1))}>+</button>
+          {servings !== baseServings && <small className="muted">(recept: {baseServings})</small>}
+        </span>
         {recipe.cuisine && <span className="badge">{recipe.cuisine}</span>}
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>
