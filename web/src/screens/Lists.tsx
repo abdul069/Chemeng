@@ -81,6 +81,11 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               <div style={{ display: "flex", gap: 6 }}>
                 {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? "Opgebruikte items gewist" : "Afgevinkte items gewist")}>{pantry ? "Opgebruikte wissen" : "Afgevinkte wissen"}</button>}
                 {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? "Per afdeling ✓" : "Per afdeling"}</button>}
+                <button className="iconbtn" aria-label="Lijst delen" title="Lijst delen (WhatsApp, sms…)" onClick={async () => {
+                  const open = list.items.filter((i) => !i.done);
+                  const text = `${list.icon} ${list.name}\n${open.map((i) => `• ${i.text}${i.qty ? ` (${i.qty})` : ""}`).join("\n")}`;
+                  try { if (navigator.share) await navigator.share({ title: list.name, text }); else { await navigator.clipboard.writeText(text); toast("Lijst gekopieerd"); } } catch { /* geannuleerd */ }
+                }}>↗</button>
                 <button className="iconbtn" aria-label="Lijst verwijderen" onClick={() => setConfirm(true)}><Icon.trash /></button>
               </div>
             </div>

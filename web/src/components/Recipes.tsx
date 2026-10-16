@@ -116,6 +116,10 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
       <div className="actions" style={{ justifyContent: "flex-start" }}>
         <button className="btn accent" onClick={() => setPlan(true)}>📅 Inplannen</button>
         {steps.length > 0 && <button className="btn" onClick={() => setCook(true)}>👩‍🍳 Kookmodus</button>}
+        <button className="btn ghost" title="Recept delen (WhatsApp, sms…)" onClick={async () => {
+          const text = `${version.title}\n\nIngrediënten:\n${ingredients.map((x) => `• ${x}`).join("\n")}\n\nBereiding:\n${steps.map((x, i) => `${i + 1}. ${x.replace(/^\d+[.)]\s*/, "")}`).join("\n")}${recipe.sourceUrl ? `\n\n${recipe.sourceUrl}` : ""}`;
+          try { if (navigator.share) await navigator.share({ title: version.title, text }); else { await navigator.clipboard.writeText(text); toast("Recept gekopieerd"); } } catch { /* geannuleerd */ }
+        }}>↗ Delen</button>
         <button className="btn" onClick={toList} disabled={!missing.length}>🛒 {missing.length === ingredients.length ? "Alles" : `${missing.length} ontbrekende`} op {shop?.name ?? "de boodschappenlijst"}</button>
         {data?.assistant.available && notTranslated && <button className="btn ghost" onClick={translate} disabled={busy}>{busy ? "Vertalen…" : "Vertaal naar Nederlands"}</button>}
       </div>
