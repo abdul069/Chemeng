@@ -8,6 +8,7 @@ import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 import { parseServings, scaleLine } from "../portions";
 import { CookMode } from "./CookMode";
 import { avoidWords, dietHits } from "../diet";
+import { CATS, catLabel } from "../categories";
 
 const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: "Deutsch" };
 const FLAG: Record<string, string> = { tr: "🇹🇷", nl: "🇳🇱", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪" };
@@ -40,8 +41,8 @@ export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen: () => void }) {
     <button className="rcard" onClick={onOpen}>
       <Pic src={r.image} className="rcard-img" phClass="rcard-ph" />
       <span className="rcard-body">
-        <b>{r.title}</b>
-        <small>{[r.minutes ? `${r.minutes} min` : null, `${lines(r.ingredients).length} ingrediënten`, r.cuisine || null].filter(Boolean).join(" · ")}</small>
+        <b>{r.favorite ? "★ " : ""}{r.title}</b>
+        <small>{[r.minutes ? `${r.minutes} min` : null, r.category ? catLabel(r.category) : null, r.cooked ? `${r.cooked}× gekookt` : null].filter(Boolean).join(" · ")}</small>
       </span>
     </button>
   );
@@ -112,7 +113,9 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
           <button aria-label="Meer porties" onClick={() => setServings((n) => Math.min(50, n + 1))}>+</button>
           {servings !== baseServings && <small className="muted">(recept: {baseServings})</small>}
         </span>
-        {recipe.cuisine && <span className="badge">{recipe.cuisine}</span>}
+        {recipe.category && <span className="badge">{catLabel(recipe.category)}</span>}
+        {recipe.cooked > 0 && <span className="badge">🍳 {recipe.cooked}× gekookt</span>}
+        <button className={`badge favbtn${recipe.favorite ? " on" : ""}`} aria-pressed={recipe.favorite} onClick={() => act(() => api.put(`/recipes/${recipe.id}/favorite`, { favorite: !recipe.favorite }), recipe.favorite ? "Uit favorieten" : "Favoriet ★")}>{recipe.favorite ? "★ Favoriet" : "☆ Favoriet"}</button>
         {warnings.length > 0 && <span className="badge warn" title="Volgens de profielen vermijdt iemand dit">⚠️ Bevat: {warnings.join(", ")}</span>}
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>
@@ -184,7 +187,7 @@ export function RecipeEditor({ recipe, onClose }: { recipe?: Recipe; onClose: ()
   const [f, setF] = useState({
     title: recipe?.title ?? "", ingredients: recipe?.ingredients ?? "", instructions: recipe?.instructions ?? "",
     minutes: recipe?.minutes ?? (null as number | null), image: recipe?.image ?? null, sourceUrl: recipe?.sourceUrl ?? null,
-    servings: recipe?.servings ?? "", cuisine: recipe?.cuisine ?? "", lang: recipe?.lang ?? "nl",
+    servings: recipe?.servings ?? "", cuisine: recipe?.cuisine ?? "", lang: recipe?.lang ?? "nl", category: recipe?.category ?? "", favorite: recipe?.favorite ?? false,
   });
   const save = async () => {
     if (!f.title.trim()) return;
@@ -195,6 +198,12 @@ export function RecipeEditor({ recipe, onClose }: { recipe?: Recipe; onClose: ()
       <div className="row2">
         <label className="field"><span>Naam</span><input id="rc-title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></label>
         <label className="field"><span>Keuken</span><input id="rc-cuisine" value={f.cuisine} onChange={(e) => setF({ ...f, cuisine: e.target.value })} placeholder="bv. Turks" /></label>
+        <label className="field"><span>Categorie</span>
+          <select id="rc-cat" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>
+            <option value="">— geen —</option>
+            {Object.entries(CATS).map(([k, c]) => <option key={k} value={k}>{c.icon} {c.name}</option>)}
+          </select>
+        </label>
       </div>
       <div className="row2">
         <label className="field"><span>Bereidingstijd (minuten)</span><input id="rc-min" type="number" min={0} value={f.minutes ?? ""} onChange={(e) => setF({ ...f, minutes: e.target.value ? Number(e.target.value) : null })} /></label>

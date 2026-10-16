@@ -7,6 +7,7 @@ import { Icon } from "../components/Icons";
 import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe } from "../components/Recipes";
 import { LibraryBrowser } from "../components/LibraryBrowser";
 import { useNavParam } from "../nav";
+import { CATS } from "../categories";
 import { PhotoPicker } from "../components/PhotoPicker";
 import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../dates";
 
@@ -143,15 +144,17 @@ function Library() {
   const { data } = useData();
   const act = useAction();
   const [q, setQ] = useState("");
-  const [cuisine, setCuisine] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string | null>(null); // "fav" | "often" | categorie
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
   const [view, setView] = useState<"mine" | "all">(() => { try { if (sessionStorage.getItem("gb.lib") !== null) return "all"; } catch { /* */ } return (data?.recipes.length ?? 0) ? "mine" : "all"; });
   useNavParam("lib", () => setView("all"));
   const recipes = data?.recipes ?? [];
-  const cuisines = [...new Set(recipes.map((r) => r.cuisine).filter(Boolean))];
+  const cats = [...new Set(recipes.map((r) => r.category).filter(Boolean))];
+  const hasFav = recipes.some((r) => r.favorite), hasOften = recipes.some((r) => r.cooked >= 2);
   const shown = recipes.filter((r) =>
-    (!cuisine || r.cuisine === cuisine) &&
-    (!q || `${r.title}\n${r.ingredients}`.toLocaleLowerCase("tr").includes(q.toLocaleLowerCase("tr"))));
+    (!filter || (filter === "fav" ? r.favorite : filter === "often" ? r.cooked >= 2 : r.category === filter)) &&
+    (!q || `${r.title}\n${r.ingredients}`.toLocaleLowerCase("tr").includes(q.toLocaleLowerCase("tr"))))
+    .sort((a, b) => (filter === "often" ? b.cooked - a.cooked : Number(b.favorite) - Number(a.favorite) || a.title.localeCompare(b.title)));
   return (
     <div className="page-scroll" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="seg lib" role="tablist" aria-label="Bibliotheek">
@@ -168,10 +171,12 @@ function Library() {
       <div className="addrow">
         <input id="lib-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Zoek in je ${recipes.length} recepten, ook op ingrediënt`} aria-label="Zoek in de bibliotheek" />
       </div>
-      {cuisines.length > 1 && (
-        <div className="picks">
-          <button className="pick" aria-pressed={!cuisine} onClick={() => setCuisine(null)}>Alles</button>
-          {cuisines.map((c) => <button key={c} className="pick" aria-pressed={cuisine === c} onClick={() => setCuisine(c)}>{c}</button>)}
+      {(hasFav || hasOften || cats.length > 0) && (
+        <div className="picks catrow">
+          <button className="pick" aria-pressed={!filter} onClick={() => setFilter(null)}>Alles <small className="muted">{recipes.length}</small></button>
+          {hasFav && <button className="pick" aria-pressed={filter === "fav"} onClick={() => setFilter("fav")}>★ Favorieten</button>}
+          {hasOften && <button className="pick" aria-pressed={filter === "often"} onClick={() => setFilter("often")}>🔥 Vaak gekookt</button>}
+          {cats.map((c) => <button key={c} className="pick" aria-pressed={filter === c} onClick={() => setFilter(c)}>{CATS[c]?.icon} {CATS[c]?.name ?? c} <small className="muted">{recipes.filter((r) => r.category === c).length}</small></button>)}
         </div>
       )}
       <div className="rgrid">{shown.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => openRecipe(r.id)} />)}</div>

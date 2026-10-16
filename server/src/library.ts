@@ -100,6 +100,7 @@ export async function libraryRecipe(id: string, translate = true): Promise<(Reci
   const tr: RecipeInputT = {
     title: r.title_tr as string, ingredients: splitJoined((r.ingredients_tr as string).split("\n")).join("\n"), instructions: r.instructions_tr as string, minutes: r.minutes as number | null,
     image: r.image as string | null, sourceUrl: r.source_url as string, servings: r.servings as string, cuisine: "Turks", lang: "tr", original: null,
+    category: r.category as string, favorite: false,
   };
   if (r.ingredients_nl) {
     return { ...tr, id, category: r.category as string, title: (r.title_nl as string) || tr.title, ingredients: r.ingredients_nl as string, instructions: r.instructions_nl as string, lang: "nl", original: { title: tr.title, ingredients: tr.ingredients, instructions: tr.instructions, lang: "tr" } };
@@ -344,7 +345,7 @@ export async function addToFamily(id: string, opts: { translate?: boolean; loade
   if (!r) return null;
   const existing = recipeBySource(r.sourceUrl!);
   if (existing) return { id: existing.id, existing: true, title: existing.title, image: existing.image, recipe: existing };
-  const { id: _i, category: _c, ...input } = r;
+  const { id: _i, ...input } = r; // categorie gaat mee naar het gezin
   const newId = createRecipe(RecipeInput.parse(input));
   const recipe = recipeBySource(r.sourceUrl!)!;
   return { id: newId, existing: false, title: recipe.title, image: recipe.image, recipe };

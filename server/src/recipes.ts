@@ -146,6 +146,7 @@ export function parseRecipeHtml(html: string, url: string): RecipeInputT {
       cuisine: TURKISH_SITES.some((d) => url.includes(d)) || /türk/i.test(String(r.recipeCuisine ?? "")) ? "Turks" : decode(String(asArray(r.recipeCuisine as string | string[])[0] ?? "")).slice(0, 60),
       lang: detectLang(html, url, r),
       original: null,
+      category: "", favorite: false,
     };
   }
   throw new RecipeError("Op deze pagina staat geen recept dat we kunnen lezen. Probeer de link van één specifiek recept.");

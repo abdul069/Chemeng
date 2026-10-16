@@ -262,13 +262,20 @@ api.put("/settings/api-workspace", requireOperator, async (req, res) => {
 /** Controle: werkt de assistent echt? */
 api.get("/settings/api-check", requireAdmin, async (_req, res) => { res.json({ ...(await checkAi()), workspace: !!workspaceId() }); });
 api.delete("/settings/api-key", requireOperator, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
+/** Sterren van vandaag en van deze week erbij (voor het profiel en het klassement). */
+function withPeriods(pts: ReturnType<typeof S.points>) {
+  const t = today();
+  const weekStart = addDays(t, -((new Date(t + "T12:00:00").getDay() + 6) % 7));
+  const td = S.pointsBetween(t, t), wk = S.pointsBetween(weekStart, t);
+  return Object.fromEntries(Object.entries(pts).map(([id, p]) => [id, { ...p, today: td[id] ?? 0, week: wk[id] ?? 0 }]));
+}
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
   const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
   const members = S.listMembers();
   res.json({
     members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
-    chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
+    chores: S.listChores(), rewards: S.listRewards(), points: withPeriods(S.points()),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
@@ -529,6 +536,7 @@ api.put("/meals/image", (req, res) => {
 api.post("/dish-photos/fill", (_req, res) => { autoPhotos(); res.json({ ok: true }); });
 api.post("/recipes", (req, res) => { res.json({ id: S.createRecipe(S.RecipeInput.parse(req.body)) }); broadcast("recipes"); autoPhotos(); });
 api.put("/recipes/:id", (req, res) => { S.updateRecipe(p(req), S.RecipeInput.parse(req.body)); res.json({ ok: true }); broadcast("recipes"); });
+api.put("/recipes/:id/favorite", (req, res) => { S.setRecipeFavorite(p(req), z.object({ favorite: z.boolean() }).parse(req.body).favorite); res.json({ ok: true }); broadcast("recipes"); });
 api.delete("/recipes/:id", (req, res) => { S.deleteRecipe(p(req)); res.json({ ok: true }); broadcast("recipes", "meals"); });
 api.post("/recipes/:id/to-list", (req, res) => {
   const recipe = S.listRecipes().find((r) => r.id === p(req));
@@ -664,13 +672,13 @@ api.post("/lists", (req, res) => {
 });
 api.delete("/lists/:id", (req, res) => { S.deleteList(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.post("/lists/:id/items", (req, res) => {
-  const b = z.object({ text: z.string().trim().min(1).max(200), expires: day.nullable().optional(), qty: z.string().max(40).optional() }).parse(req.body);
-  res.json({ id: S.addItem(p(req), b.text, { expires: b.expires ?? null, qty: b.qty }) });
+  const b = z.object({ text: z.string().trim().min(1).max(200), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional() }).parse(req.body);
+  res.json({ id: S.addItem(p(req), b.text, { expires: b.expires ?? null, qty: b.qty, memberId: b.memberId ?? null }) });
   broadcast("lists");
 });
 api.post("/lists/:id/clear-done", (req, res) => { S.clearDone(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.patch("/items/:id", (req, res) => {
-  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional() }).parse(req.body);
+  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional() }).parse(req.body);
   S.updateItem(p(req), b);
   res.json({ ok: true });
   broadcast("lists");

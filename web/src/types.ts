@@ -1,4 +1,4 @@
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null; diet?: string }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null; diet?: string }
 export type Repeat = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;
@@ -11,13 +11,14 @@ export type Moment = "ochtend" | "middag" | "avond" | "altijd";
 export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number; moment: Moment; streak: number }
 export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" | "holiday" }
 export interface Reward { id: string; title: string; icon: string; cost: number }
-export interface Points { earned: number; spent: number; balance: number }
-export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string }
+export interface Points { earned: number; spent: number; balance: number; today: number; week: number }
+export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string; /** persoonlijke to-do van dit gezinslid */ memberId?: string | null }
 export interface List { id: string; name: string; icon: string; kind: "list" | "pantry"; items: ListItem[] }
 export interface Recipe {
   id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string;
   /** taal van de getoonde versie */ lang: string;
   /** het origineel, bv. Turks */ original: { title: string; ingredients: string; instructions: string; lang: string } | null;
+  category: string; favorite: boolean; cooked: number;
 }
 export interface RecipeHit { title: string; original: string; url: string; site: string; image: string | null; minutes: number | null }
 export interface Memo { id: string; title: string; filename: string; seconds: number; createdAt: string; by: string | null }

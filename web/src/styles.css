@@ -643,3 +643,30 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 @media (max-width: 640px) { .cook-body { flex-direction: column; } .cook-ingr { width: auto; max-height: 40%; border-right: 0; border-bottom: 1px solid var(--line); } }
 @media (max-width: 760px) { .catrow { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; } .catrow .pick { white-space: nowrap; flex: none; } }
 .badge.warn { background: #fff3cd; color: #7a4b00; }
+
+/* Profiel, viering, klassement */
+.profile-head { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--c) 14%, var(--surface)); }
+.profile-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .profile-cols { grid-template-columns: 1fr; } }
+.prof-chore { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; border: 0; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin-bottom: 6px; font-size: 16px; }
+.prof-chore span { flex: 1; } .prof-chore small { color: var(--muted); }
+.prof-chore i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--accent); display: grid; place-items: center; font-style: normal; font-weight: 800; color: #05302c; }
+.prof-chore.done { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); } .prof-chore.done i { background: var(--accent); }
+.prof-rewards { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.reward-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); text-align: center; }
+.reward-card .ic { font-size: 40px; } .reward-card b { font-size: 14px; } .reward-card small { color: var(--muted); }
+.celebrate { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(255,255,255,.55); animation: fade .2s ease; overflow: hidden; }
+.celebrate-card { background: var(--surface); border-radius: 24px; padding: 28px 34px; text-align: center; box-shadow: var(--shadow-lg); font-size: 20px; }
+.celebrate-card b { font-size: 34px; display: block; margin-bottom: 8px; font-family: "Young Serif", serif; }
+.confetti { position: absolute; top: -12px; width: 10px; height: 16px; border-radius: 2px; animation: fall 2.8s linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); opacity: .8; } }
+.ranking { min-width: 220px; }
+.rank-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; } .rank-row b { flex: 1; } .rank-row .medal { width: 26px; text-align: center; }
+.chores-layout { display: grid; grid-template-columns: 1fr 240px; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .chores-layout { grid-template-columns: 1fr; } .ranking { min-width: 0; } }
+.member-card header button.who { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; }
+.saver .widgets { position: absolute; right: 24px; top: 24px; display: flex; flex-direction: column; gap: 10px; max-width: 280px; }
+.saver .widget { background: rgba(255,255,255,.82); color: #111; border-radius: 16px; padding: 10px 14px; backdrop-filter: blur(8px); font-size: 15px; }
+.saver .widget b { display: block; margin-bottom: 4px; font-size: 14px; } .saver .widget div { padding: 2px 0; }
+@media (max-width: 640px) { .saver .widgets { display: none; } }
+.favbtn { border: 1px solid var(--line); background: var(--surface); cursor: pointer; } .favbtn.on { background: #fff3cd; color: #7a4b00; }

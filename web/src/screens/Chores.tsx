@@ -5,6 +5,7 @@ import type { Chore, Member } from "../types";
 import { Avatar, Confirm, EmojiPicker, Modal, cvar } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { DSHORT, addDays, relDay, todayIso, weekday } from "../dates";
+import { Celebration, ProfileModal, StarsRanking } from "../components/Profile";
 
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
 
@@ -15,6 +16,8 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
   const [done, reload] = useRemote<string[]>(`/chores/done?from=${date}&to=${date}`, ["chores"], []);
   const [edit, setEdit] = useState<{ chore?: Chore; memberId: string } | null>(null);
   const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [profile, setProfile] = useState<Member | null>(null);
+  const [celebrate, setCelebrate] = useState<string | null>(null);
   if (!data) return null;
   const set = new Set(done);
   const wd = weekday(date);
@@ -23,6 +26,9 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
     const now = !set.has(`${date}|${c.id}`);
     await act(() => api.put(`/chores/${c.id}/done`, { date, done: now }), now ? `+${c.points} ⭐` : undefined);
     reload();
+    // laatste taak van de dag afgevinkt → vieren
+    const todays = data.chores.filter((x) => x.memberId === c.memberId && x.days.includes(wd));
+    if (now && date === todayIso()) { const fresh = new Set(await api.get<string[]>(`/chores/done?from=${date}&to=${date}`).catch(() => [])); if (todays.every((x) => fresh.has(`${date}|${x.id}`))) setCelebrate(data.members.find((m) => m.id === c.memberId)?.name ?? ""); }
   };
 
   return (
@@ -37,6 +43,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
         </div>
       </div>
       <div className="page-scroll" style={{ flex: 1, minHeight: 0 }}>
+        <div className="chores-layout">
         <div className="grid-cards">
           {data.members.map((m) => {
             const all = data.chores.filter((c) => c.memberId === m.id);
@@ -45,9 +52,11 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
             return (
               <section className="member-card" key={m.id} style={cvar(m.color)}>
                 <header>
-                  <Avatar m={m} size={44} dot={false} />
-                  <h2>{m.name}</h2>
-                  <span className="stars" title="Sterren om in te ruilen">⭐ {data.points[m.id]?.balance ?? 0}</span>
+                  <button className="who" onClick={() => setProfile(m)} title={`Profiel van ${m.name}`}>
+                    <Avatar m={m} size={44} dot={false} />
+                    <h2>{m.name}</h2>
+                  </button>
+                  <span className="stars" title="Sterren om in te ruilen">⭐ {data.points[m.id]?.balance ?? 0}{data.points[m.id]?.today ? <small className="muted"> +{data.points[m.id].today}</small> : null}</span>
                 </header>
                 <div className="progress" role="progressbar" aria-valuenow={n} aria-valuemax={today.length} aria-label={`${n} van ${today.length} taken gedaan`}>
                   <i style={{ width: `${today.length ? (n / today.length) * 100 : 0}%` }} />
@@ -64,14 +73,18 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                     </div>
                   );
                 })}
-                {!today.length && <p className="empty">Geen taken op deze dag.</p>}
+                {!today.length && <p className="empty">Vrije dag! Geen taken vandaag. 🎈</p>}
                 {all.length > today.length && <p className="hint">{all.length - today.length} andere taak/taken op andere dagen.</p>}
                 <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus /> Taak</button>
               </section>
             );
           })}
         </div>
+        <StarsRanking />
+        </div>
       </div>
+      {profile && <ProfileModal member={profile} onClose={() => setProfile(null)} />}
+      {celebrate !== null && <Celebration name={celebrate} onDone={() => setCelebrate(null)} />}
       {edit && <ChoreEditor chore={edit.chore} memberId={edit.memberId} onClose={() => setEdit(null)} />}
       {rewardsOpen && <Rewards onClose={() => setRewardsOpen(false)} />}
     </>

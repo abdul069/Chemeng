@@ -22,6 +22,9 @@ Vergeleken: Skylight Calendar (2 / Max / Pro), Hearth Display, Cozyla Calendar+ 
 | **Feestdagen automatisch** (Belgisch + islamitisch) | Skylight (alleen nationale) | Gebouwd, aan/uit per soort, ook bij het aftellen |
 | **Koken met wat in huis is** | Samsung Food, SuperCook | Gebouwd: de bibliotheek gerangschikt op hoeveel van je voorraad een recept gebruikt |
 | **Delen** (lijst, recept, weekmenu via WhatsApp) | Cozi, Bring! | Gebouwd |
+| **Profielpagina per gezinslid** (sterren vandaag, beloningen, eigen to-do's, viering) | Cozyla | Gebouwd, plus sterrenklassement van de week |
+| **Favorieten & vaak gekookt in de receptenbox** | Cozyla | Gebouwd, met categorieën |
+| **Widgets op de fotolijst** (boodschappen, to-do) | Cozyla | Gebouwd |
 | **Wachtwoord vergeten / back-up** | alle apps | Gebouwd: herstel-link van de beheerder, back-up als JSON |
 | **Slaapstand** (scherm 's nachts uit) | Skylight | Gebouwd: nachtrust in Instellingen |
 | **Meldingen op de telefoon** voor afspraken en taken | gevraagd door Skylight-gebruikers | Gebouwd: pushmeldingen (Web Push) |

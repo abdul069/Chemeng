@@ -96,7 +96,7 @@ function Family() {
         {data!.members.map((m, i) => (
           <div className="item" key={m.id}>
             <Avatar m={m} size={40} dot={false} />
-            <span style={{ flex: 1 }}><b>{m.name}</b><small>{m.role === "ouder" ? "Ouder" : "Kind"}{m.userId ? " · heeft een account" : ""}</small></span>
+            <span style={{ flex: 1 }}><b>{m.name}</b><small>{m.role === "ouder" ? "Ouder" : m.role === "huisdier" ? "Huisdier" : "Kind"}{m.userId ? " · heeft een account" : ""}</small></span>
             <button className="iconbtn" aria-label={`${m.name} omhoog`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
             <button className="iconbtn" aria-label={`${m.name} omlaag`} disabled={i === data!.members.length - 1} onClick={() => move(i, 1)}>↓</button>
             <button className="btn ghost small" onClick={() => setEdit(m)}>Bewerken</button>
@@ -146,7 +146,7 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
       </div>
       <div className="field"><span>Rol</span>
         <div className="picks">
-          {(["ouder", "kind"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r })}>{r === "ouder" ? "Ouder" : "Kind"}</button>)}
+          {(["ouder", "kind", "huisdier"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r, avatar: r === "huisdier" && f.avatar === "🙂" ? "🐶" : f.avatar })}>{r === "ouder" ? "Ouder" : r === "kind" ? "Kind" : "🐾 Huisdier"}</button>)}
         </div>
       </div>
       <div className="field"><span>Kleur</span>

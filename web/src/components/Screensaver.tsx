@@ -33,6 +33,19 @@ export function Screensaver({ onWake }: { onWake: () => void }) {
           <img className={k === order ? "on" : ""} src={photoUrl(p.filename)} alt="" loading={Math.abs(k - order) <= 1 ? "eager" : "lazy"} />
         </span>
       ))}
+      <div className="widgets" aria-hidden>
+        {(() => {
+          const shop = data?.lists.find((l) => l.kind === "list" && /boodschap/i.test(l.name));
+          const todo = data?.lists.find((l) => l.kind === "list" && /to-?do/i.test(l.name));
+          return [shop, todo].filter((l): l is NonNullable<typeof l> => !!l && l.items.some((i) => !i.done)).map((l) => (
+            <div className="widget" key={l.id}>
+              <b>{l.icon} {l.name}</b>
+              {l.items.filter((i) => !i.done).slice(0, 5).map((i) => <div key={i.id}>· {i.text}</div>)}
+              {l.items.filter((i) => !i.done).length > 5 && <div style={{ opacity: .6 }}>+{l.items.filter((i) => !i.done).length - 5} meer</div>}
+            </div>
+          ));
+        })()}
+      </div>
       <div className="info">
         <div>
           <div className="time">{time}</div>

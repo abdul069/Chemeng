@@ -1,0 +1,127 @@
+import { useEffect, useState } from "react";
+import { api } from "../api";
+import { useAction, useData, useRemote } from "../store";
+import type { Member } from "../types";
+import { Avatar, Modal, cvar } from "./ui";
+import { todayIso, weekday } from "../dates";
+
+/** Viering als alle taken van vandaag af zijn ("Ta-da!"). */
+export function Celebration({ name, onDone }: { name: string; onDone: () => void }) {
+  useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
+  return (
+    <div className="celebrate" onPointerDown={onDone} role="status">
+      {Array.from({ length: 28 }, (_, i) => <i key={i} className="confetti" style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 7) * 0.12}s`, background: ["#f6c343", "#e45b5b", "#4f9e5b", "#4a7ad8", "#b26ad8"][i % 5] }} />)}
+      <div className="celebrate-card"><b>Ta-da! 🎉</b><p>{name} heeft alles gedaan voor vandaag.<br />Tijd om te vieren!</p></div>
+    </div>
+  );
+}
+
+/** Persoonlijke pagina van een gezinslid: sterren, beloningen, taken van vandaag en eigen to-do's. */
+export function ProfileModal({ member, onClose }: { member: Member; onClose: () => void }) {
+  const { data, toast } = useData();
+  const act = useAction();
+  const t = todayIso();
+  const [done, reload] = useRemote<string[]>(`/chores/done?from=${t}&to=${t}`, ["chores"], []);
+  const [celebrate, setCelebrate] = useState(false);
+  const [todo, setTodo] = useState("");
+  if (!data) return null;
+  const set = new Set(done);
+  const chores = data.chores.filter((c) => c.memberId === member.id && c.days.includes(weekday(t)));
+  const n = chores.filter((c) => set.has(`${t}|${c.id}`)).length;
+  const pts = data.points[member.id] ?? { balance: 0, today: 0, week: 0, earned: 0, spent: 0 };
+  const todoList = data.lists.find((l) => l.kind === "list" && /to-?do/i.test(l.name));
+  const mine = todoList?.items.filter((i) => i.memberId === member.id) ?? [];
+  const toggle = async (c: { id: string; points: number }) => {
+    const now = !set.has(`${t}|${c.id}`);
+    await act(() => api.put(`/chores/${c.id}/done`, { date: t, done: now }), now ? `+${c.points} ⭐` : undefined);
+    reload();
+    // vers van de server kijken of alles van vandaag af is
+    if (now) { const fresh = new Set(await api.get<string[]>(`/chores/done?from=${t}&to=${t}`).catch(() => [])); if (chores.length && chores.every((x) => fresh.has(`${t}|${x.id}`))) setCelebrate(true); }
+  };
+  const addTodo = async () => {
+    if (!todoList || !todo.trim()) return;
+    if (await act(() => api.post(`/lists/${todoList.id}/items`, { text: todo.trim(), memberId: member.id }))) setTodo("");
+  };
+  return (
+    <Modal title={`${member.name}`} onClose={onClose} wide>
+      <div className="profile-head" style={cvar(member.color)}>
+        <Avatar m={member} size={64} dot={false} />
+        <div>
+          <div className="num" style={{ fontSize: 28, fontWeight: 800 }}>⭐ {pts.balance}</div>
+          <small className="muted">{pts.today ? `+${pts.today} vandaag · ` : ""}{pts.week} deze week · {pts.earned} ooit verdiend</small>
+        </div>
+      </div>
+      <div className="profile-cols">
+        <section>
+          <div className="section-title"><h3>Taken van vandaag</h3><span className="muted num">{n}/{chores.length}</span></div>
+          {!chores.length && <p className="empty">Vrije dag! Geen taken vandaag.</p>}
+          {chores.map((c) => {
+            const d = set.has(`${t}|${c.id}`);
+            return (
+              <button key={c.id} className={`prof-chore${d ? " done" : ""}`} onClick={() => toggle(c)} aria-pressed={d}>
+                <span>{c.icon} {c.title}</span><small>⭐ {c.points}</small><i>{d ? "✓" : ""}</i>
+              </button>
+            );
+          })}
+          {chores.length > 0 && n === chores.length && <p className="hint">🎉 Alles gedaan voor vandaag!</p>}
+        </section>
+        <section>
+          <div className="section-title"><h3>Beloningen</h3></div>
+          <div className="prof-rewards">
+            {data.rewards.map((r) => (
+              <div className="reward-card" key={r.id}>
+                <span className="ic">{r.icon}</span>
+                <b>{r.title}</b>
+                <small>⭐ {r.cost}</small>
+                <button className={`btn small${pts.balance >= r.cost ? " accent" : ""}`} disabled={pts.balance < r.cost} onClick={() => act(() => api.post(`/rewards/${r.id}/claim`, { memberId: member.id }), "Beloning ingeruild 🎉")}>Inruilen</button>
+              </div>
+            ))}
+            {!data.rewards.length && <p className="empty">Nog geen beloningen. Een ouder voegt ze toe bij Taken → Beloningen.</p>}
+          </div>
+        </section>
+      </div>
+      {todoList && (
+        <section>
+          <div className="section-title"><h3>Mijn to-do's</h3></div>
+          <form className="addrow" onSubmit={(e) => { e.preventDefault(); addTodo(); }}>
+            <input value={todo} onChange={(e) => setTodo(e.target.value)} placeholder={`Iets voor ${member.name}…`} aria-label="Nieuwe to-do" />
+            <button className="btn" type="submit" disabled={!todo.trim()}>Toevoegen</button>
+          </form>
+          <div className="items">
+            {mine.map((i) => (
+              <div className={`item${i.done ? " done" : ""}`} key={i.id}>
+                <button className="check" aria-pressed={i.done} onClick={() => act(() => api.patch(`/items/${i.id}`, { done: !i.done }))}>{i.done ? "✓" : ""}</button>
+                <span className="txt">{i.text}</span>
+                <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label="Verwijderen" onClick={() => act(() => api.del(`/items/${i.id}`))}>🗑</button>
+              </div>
+            ))}
+            {!mine.length && <p className="hint">Nog niets op de lijst. Zet hier wat {member.name} zelf wil onthouden.</p>}
+          </div>
+        </section>
+      )}
+      {celebrate && <Celebration name={member.name} onDone={() => { setCelebrate(false); toast("Alles gedaan! 🎉"); }} />}
+    </Modal>
+  );
+}
+
+/** Sterrenklassement van de week. */
+export function StarsRanking() {
+  const { data } = useData();
+  if (!data) return null;
+  const rows = data.members.filter((m) => m.role !== "huisdier").map((m) => ({ m, week: data.points[m.id]?.week ?? 0, balance: data.points[m.id]?.balance ?? 0 })).sort((a, b) => b.week - a.week || b.balance - a.balance);
+  const medals = ["🥇", "🥈", "🥉"];
+  return (
+    <aside className="ranking card card-pad">
+      <div className="section-title"><h3>Sterren deze week</h3></div>
+      {rows.map((r, i) => (
+        <div className="rank-row" key={r.m.id} style={cvar(r.m.color)}>
+          <span className="medal">{medals[i] ?? `${i + 1}.`}</span>
+          <Avatar m={r.m} size={34} dot={false} />
+          <b>{r.m.name}</b>
+          <span className="num">⭐ {r.week}</span>
+        </div>
+      ))}
+      {!rows.length && <p className="hint">Nog geen gezinsleden.</p>}
+    </aside>
+  );
+}

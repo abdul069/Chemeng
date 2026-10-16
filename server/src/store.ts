@@ -3,13 +3,13 @@ import { all, get, run, newId, tx, hid } from "./db.js";
 import { weekday, today as todayStr, addDays as addDaysStr } from "./dates.js";
 
 // ---------- gezinsleden ----------
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string }
 export const MemberInput = z.object({
   name: z.string().trim().min(1).max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   avatar: z.string().max(16).default(""),
   photo: z.string().nullable().optional(),
-  role: z.enum(["ouder", "kind"]).default("kind"),
+  role: z.enum(["ouder", "kind", "huisdier"]).default("kind"),
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   diet: z.string().max(200).default(""),
 });
@@ -121,6 +121,13 @@ export function createReward(i: z.infer<typeof RewardInput>) {
   run("INSERT INTO rewards(id, household_id, title, icon, cost) VALUES (?,?,?,?,?)", newId(), hid(), i.title, i.icon, i.cost);
 }
 export const deleteReward = (id: string) => run("DELETE FROM rewards WHERE id=? AND household_id=?", id, hid());
+/** Sterren verdiend in een periode, per gezinslid (voor "vandaag" en het weekklassement). */
+export function pointsBetween(from: string, to: string): Record<string, number> {
+  const rows = all<{ member_id: string; n: number }>(
+    "SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date BETWEEN ? AND ? GROUP BY c.member_id", hid(), from, to,
+  );
+  return Object.fromEntries(rows.map((r) => [r.member_id, r.n]));
+}
 export function points(): Record<string, { earned: number; spent: number; balance: number }> {
   const h = hid();
   const earned = all<{ member_id: string; n: number }>(
@@ -157,6 +164,9 @@ export const RecipeInput = z.object({
   sourceUrl: z.string().max(2000).nullable().optional(),
   servings: z.string().max(60).default(""),
   cuisine: z.string().max(60).default(""),
+  /** categorie (soep, kip, dessert …), zoals in de gedeelde bibliotheek */
+  category: z.string().max(30).default(""),
+  favorite: z.boolean().default(false),
   /** taal van title/ingredients/instructions */
   lang: z.string().max(8).default("nl"),
   original: z.object({ title: z.string(), ingredients: z.string(), instructions: z.string(), lang: z.string().max(8) }).nullable().optional(),
@@ -165,23 +175,25 @@ export type RecipeInputT = z.infer<typeof RecipeInput>;
 export interface Recipe {
   id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null;
   servings: string; cuisine: string; lang: string; original: { title: string; ingredients: string; instructions: string; lang: string } | null;
+  category: string; favorite: boolean; /** hoe vaak ingepland (ooit) */ cooked: number;
 }
-type RecipeRow = Omit<Recipe, "sourceUrl" | "original"> & { source_url: string | null; orig_title: string | null; orig_ingredients: string | null; orig_instructions: string | null; orig_lang: string | null };
+type RecipeRow = Omit<Recipe, "sourceUrl" | "original" | "favorite"> & { source_url: string | null; orig_title: string | null; orig_ingredients: string | null; orig_instructions: string | null; orig_lang: string | null; favorite: number };
 export const listRecipes = (): Recipe[] =>
   all<RecipeRow>(
-    `SELECT id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine, lang, orig_title, orig_ingredients, orig_instructions, orig_lang
-     FROM recipes WHERE household_id=? ORDER BY title`, hid(),
-  ).map(({ source_url, orig_title, orig_ingredients, orig_instructions, orig_lang, ...r }) => ({
-    ...r, sourceUrl: source_url,
+    `SELECT r.id, r.title, r.ingredients, r.instructions, r.minutes, r.image, r.source_url, r.servings, r.cuisine, r.lang, r.orig_title, r.orig_ingredients, r.orig_instructions, r.orig_lang,
+            r.category, r.favorite, (SELECT COUNT(*) FROM meals m WHERE m.recipe_id = r.id AND m.date <= date('now')) AS cooked
+     FROM recipes r WHERE r.household_id=? ORDER BY r.title`, hid(),
+  ).map(({ source_url, orig_title, orig_ingredients, orig_instructions, orig_lang, favorite, ...r }) => ({
+    ...r, favorite: !!favorite, sourceUrl: source_url,
     original: orig_title ? { title: orig_title, ingredients: orig_ingredients ?? "", instructions: orig_instructions ?? "", lang: orig_lang ?? "tr" } : null,
   }));
 export function createRecipe(i: RecipeInputT) {
   const id = newId();
   run(
-    `INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine, lang, orig_title, orig_ingredients, orig_instructions, orig_lang)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO recipes(id, household_id, title, ingredients, instructions, minutes, image, source_url, servings, cuisine, lang, orig_title, orig_ingredients, orig_instructions, orig_lang, category, favorite)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id, hid(), i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine, i.lang,
-    i.original?.title ?? null, i.original?.ingredients ?? null, i.original?.instructions ?? null, i.original?.lang ?? null,
+    i.original?.title ?? null, i.original?.ingredients ?? null, i.original?.instructions ?? null, i.original?.lang ?? null, i.category, i.favorite ? 1 : 0,
   );
   return id;
 }
@@ -197,9 +209,10 @@ export function saveTranslation(id: string, t: RecipeInputT) {
 }
 export const updateRecipe = (id: string, i: RecipeInputT) =>
   run(
-    "UPDATE recipes SET title=?, ingredients=?, instructions=?, minutes=?, image=?, source_url=?, servings=?, cuisine=? WHERE id=? AND household_id=?",
-    i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine, id, hid(),
+    "UPDATE recipes SET title=?, ingredients=?, instructions=?, minutes=?, image=?, source_url=?, servings=?, cuisine=?, category=? WHERE id=? AND household_id=?",
+    i.title, i.ingredients, i.instructions, i.minutes ?? null, i.image ?? null, i.sourceUrl ?? null, i.servings, i.cuisine, i.category, id, hid(),
   );
+export const setRecipeFavorite = (id: string, fav: boolean) => run("UPDATE recipes SET favorite=? WHERE id=? AND household_id=?", fav ? 1 : 0, id, hid());
 export const deleteRecipe = (id: string) => run("DELETE FROM recipes WHERE id=? AND household_id=?", id, hid());
 export const recipeBySource = (url: string) => listRecipes().find((r) => r.sourceUrl === url);
 
@@ -231,10 +244,10 @@ export type ListKind = "list" | "pantry";
 export const listLists = () => {
   const h = hid();
   const lists = all<{ id: string; name: string; icon: string; kind: ListKind }>("SELECT id, name, icon, kind FROM lists WHERE household_id=? ORDER BY sort, name", h);
-  const items = all<{ id: string; list_id: string; text: string; done: number; expires: string | null; qty: string }>(
-    "SELECT i.id, i.list_id, i.text, i.done, i.expires, i.qty FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? ORDER BY i.done, COALESCE(i.expires, '9999'), i.created_at", h,
+  const items = all<{ id: string; list_id: string; text: string; done: number; expires: string | null; qty: string; member_id: string | null }>(
+    "SELECT i.id, i.list_id, i.text, i.done, i.expires, i.qty, i.member_id FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? ORDER BY i.done, COALESCE(i.expires, '9999'), i.created_at", h,
   );
-  return lists.map((l) => ({ ...l, items: items.filter((i) => i.list_id === l.id).map((i) => ({ id: i.id, text: i.text, done: !!i.done, expires: i.expires, qty: i.qty })) }));
+  return lists.map((l) => ({ ...l, items: items.filter((i) => i.list_id === l.id).map((i) => ({ id: i.id, text: i.text, done: !!i.done, expires: i.expires, qty: i.qty, memberId: i.member_id })) }));
 };
 export function createList(name: string, icon = "📝", h = hid(), kind: ListKind = "list") {
   const id = newId();
@@ -243,8 +256,9 @@ export function createList(name: string, icon = "📝", h = hid(), kind: ListKin
 }
 export const pantryList = () => listLists().find((l) => l.kind === "pantry");
 export const shoppingList = () => listLists().find((l) => l.kind === "list" && /boodschap/i.test(l.name)) ?? listLists().find((l) => l.kind === "list");
-export function updateItem(id: string, patch: { text?: string; done?: boolean; expires?: string | null; qty?: string }) {
+export function updateItem(id: string, patch: { text?: string; done?: boolean; expires?: string | null; qty?: string; memberId?: string | null }) {
   const h = hid();
+  if (patch.memberId !== undefined) run(`UPDATE list_items SET member_id=? WHERE ${ITEM_OWNED}`, patch.memberId, id, h);
   if (patch.text !== undefined) run(`UPDATE list_items SET text=? WHERE ${ITEM_OWNED}`, patch.text.trim(), id, h);
   if (patch.done !== undefined) run(`UPDATE list_items SET done=? WHERE ${ITEM_OWNED}`, patch.done ? 1 : 0, id, h);
   if (patch.expires !== undefined) run(`UPDATE list_items SET expires=? WHERE ${ITEM_OWNED}`, patch.expires, id, h);
@@ -257,10 +271,10 @@ export function findList(name: string) {
 }
 const ownsList = (listId: string) => !!get("SELECT 1 FROM lists WHERE id=? AND household_id=?", listId, hid());
 const ITEM_OWNED = "id=? AND list_id IN (SELECT id FROM lists WHERE household_id=?)";
-export function addItem(listId: string, text: string, extra: { expires?: string | null; qty?: string } = {}) {
+export function addItem(listId: string, text: string, extra: { expires?: string | null; qty?: string; memberId?: string | null } = {}) {
   if (!ownsList(listId)) throw new Error("Onbekende lijst");
   const id = newId();
-  run("INSERT INTO list_items(id, list_id, text, expires, qty) VALUES (?,?,?,?,?)", id, listId, text.trim(), extra.expires ?? null, extra.qty ?? "");
+  run("INSERT INTO list_items(id, list_id, text, expires, qty, member_id) VALUES (?,?,?,?,?,?)", id, listId, text.trim(), extra.expires ?? null, extra.qty ?? "", extra.memberId ?? null);
   return id;
 }
 export const setItemDone = (id: string, done: boolean) => run(`UPDATE list_items SET done=? WHERE ${ITEM_OWNED}`, done ? 1 : 0, id, hid());
