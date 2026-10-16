@@ -248,8 +248,8 @@ api.put("/settings/api-key", requireOperator, async (req, res) => {
   if (!r.ok) return void res.status(400).json({ error: r.error });
   res.json({ ok: true });
   broadcast("settings", "recipes");
-  // de bibliotheek alvast van Nederlandse titels voorzien
-  L.translateMissingTitles().catch(() => {});
+  // de hele bibliotheek van Nederlandse titels voorzien (op de achtergrond, in groepjes)
+  L.translateMissingTitles(100_000).catch(() => {});
 });
 api.delete("/settings/api-key", requireOperator, (_req, res) => { clearApiKey(); res.json({ ok: true }); broadcast("settings"); });
 api.get("/bootstrap", (req, res) => {

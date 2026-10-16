@@ -265,6 +265,7 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
       }
       log(`${site}: klaar, ${crawlStatus.added} recepten toegevoegd tot nu toe`);
     }
+    run("DELETE FROM library_seen WHERE at < datetime('now','-60 days')");
     await translateMissingTitles();
   } catch (e) {
     log(`fout: ${(e as Error).message}`);
