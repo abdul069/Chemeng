@@ -219,6 +219,9 @@ function noteFailure(url: string, why: string) {
 }
 
 /** Haalt de recepten van alle (of één) sites op, met een paar pagina's tegelijk en een kleine pauze. */
+/** Sites die snel blokkeren krijgen één verbinding tegelijk en meer rust tussen de pagina's. */
+const PACE: Record<string, { concurrency: number; delayMs: number }> = { "nefisyemektarifleri.com": { concurrency: 1, delayMs: 1500 } };
+
 export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concurrency?: number } = {}) {
   if (crawlStatus.running) return;
   const sites = opts.sites ?? TURKISH_SITES;
@@ -232,17 +235,24 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
       const urls = await discoverUrls(site, max, log);
       crawlStatus.total += urls.length;
       log(`${site}: ${urls.length} nieuwe pagina's ophalen`);
-      let i = 0;
-      await Promise.all(Array.from({ length: conc }, async () => {
-        while (i < urls.length) {
+      let i = 0; let blocked = 0;
+      const pace = PACE[site] ?? { concurrency: conc, delayMs: 400 };
+      await Promise.all(Array.from({ length: pace.concurrency }, async () => {
+        while (i < urls.length && blocked < 10) {
           const u = urls[i++];
           const r = await ingestUrl(u, site);
           crawlStatus.done++;
-          if (r === "added") crawlStatus.added++; else if (r === "failed") crawlStatus.failed++;
+          if (r === "added") { crawlStatus.added++; blocked = 0; }
+          else if (r === "failed") { crawlStatus.failed++; if (/HTTP (403|429|503)/.test(lastFetchError)) blocked++; }
           if (crawlStatus.done % 50 === 0) log(`${site}: ${crawlStatus.done}/${crawlStatus.total} (${crawlStatus.added} toegevoegd)`);
-          await new Promise((res) => setTimeout(res, 400));
+          await new Promise((res) => setTimeout(res, pace.delayMs));
         }
       }));
+      if (blocked >= 10) {
+        // niet blijven kloppen: de rest van deze site krijgt een volgende beurt (de overgeslagen pagina's zijn niet als 'gezien' gemarkeerd)
+        log(`${site}: de site blokkeert ons (${lastFetchError}); de rest komt bij een volgende beurt aan bod`);
+        run("DELETE FROM library_seen WHERE url LIKE ? AND status LIKE 'fetch HTTP 4%'", `%${site}%`);
+      }
       log(`${site}: klaar, ${crawlStatus.added} recepten toegevoegd tot nu toe`);
     }
     await translateMissingTitles();
