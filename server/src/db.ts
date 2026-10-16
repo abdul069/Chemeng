@@ -274,6 +274,8 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   longitude: "4.35",
   screensaver_minutes: "10",
   week_start: "1",
+  // feestdagen in de kalender: "be" (Belgisch), "islam", beide gescheiden door een komma, of leeg
+  holidays: "be,islam",
   assistant_voice: "1",
   settings_pin: "",
   // nachtrust: scherm gedimd tussen deze uren (leeg = uit)

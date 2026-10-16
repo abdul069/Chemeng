@@ -43,7 +43,9 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
         <p className="hint">{cap(longDate(occ.on))} · {fmtRange(occ)}{occ.location ? ` · ${occ.location}` : ""}</p>
         {occ.notes && <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{occ.notes}</p>}
         <MemberDots ids={occ.members} />
-        <p className="hint">{owner
+        <p className="hint">{occ.source === "holiday"
+          ? "Feestdag, automatisch in de kalender gezet. Uit te zetten bij Instellingen → Gekoppelde agenda's."
+          : owner
           ? `Uit de agenda die ${owner.name} met je deelt.${owner.level === "bezet" ? ` ${owner.name} deelt alleen wanneer hij of zij bezet is.` : ""}`
           : `Uit de gekoppelde agenda “${cal?.name ?? "extern"}”. Pas deze afspraak aan in die agenda; ze wordt hier automatisch bijgewerkt.`}</p>
         <div className="actions"><button className="btn" onClick={onClose}>Sluiten</button></div>

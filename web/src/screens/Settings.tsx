@@ -169,6 +169,7 @@ function Calendars() {
   return (
     <Section title="Gekoppelde agenda's" action={<button className="btn small" onClick={() => setEdit("new")}><Icon.plus /> Agenda</button>}>
       <p className="hint">Koppel Google Agenda, Outlook of iCloud via het iCal-adres. In Google Agenda vind je dat bij Instellingen → je agenda → <b>Geheim adres in iCal-indeling</b>. De afspraken worden elk kwartier bijgewerkt.</p>
+      <HolidayToggles />
       <div className="upnext">
         {data!.calendars.map((c) => (
           <div className="item" key={c.id}>
@@ -353,5 +354,21 @@ function Assistant() {
         ? <p className="hint">De assistent is actief en gebruikt Claude ({data!.assistant.model}). Hij kan afspraken, maaltijden, taken en lijsten beheren. Tik op het figuurtje of op “Praat” en spreek je vraag in.</p>
         : <p className="hint">De assistent staat uit. Zet <code>ANTHROPIC_API_KEY</code> in de omgeving van de server en herstart hem. Zie de README.</p>}
     </Section>
+  );
+}
+
+/** Feestdagen die automatisch in de kalender en bij het aftellen staan. */
+function HolidayToggles() {
+  const { data } = useData();
+  const save = useSetting();
+  const on = new Set((data!.settings.holidays ?? "").split(",").filter(Boolean));
+  const toggle = (k: string) => { const n = new Set(on); if (n.has(k)) n.delete(k); else n.add(k); save({ holidays: [...n].join(",") }, "Feestdagen bijgewerkt"); };
+  return (
+    <div className="field"><span>Feestdagen automatisch in de kalender</span>
+      <div className="picks">
+        <button type="button" className="pick" aria-pressed={on.has("be")} onClick={() => toggle("be")}>🇧🇪 Belgische feestdagen</button>
+        <button type="button" className="pick" aria-pressed={on.has("islam")} onClick={() => toggle("islam")}>🌙 Ramadan, Suiker- en Offerfeest</button>
+      </div>
+    </div>
   );
 }

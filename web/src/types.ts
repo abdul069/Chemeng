@@ -9,7 +9,7 @@ export interface CalEvent {
 export interface Occurrence extends CalEvent { on: string; until: string; key: string }
 export type Moment = "ochtend" | "middag" | "avond" | "altijd";
 export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number; moment: Moment; streak: number }
-export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" }
+export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" | "holiday" }
 export interface Reward { id: string; title: string; icon: string; cost: number }
 export interface Points { earned: number; spent: number; balance: number }
 export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string }
@@ -28,7 +28,7 @@ export interface Photo { id: string; filename: string; created_at: string }
 export interface CalendarSub { id: string; name: string; url: string; members: string[]; lastSync: string | null; lastError: string | null }
 export interface Settings {
   family_name: string; city: string; latitude: string; longitude: string;
-  screensaver_minutes: string; week_start: string; assistant_voice: string; has_pin: boolean;
+  screensaver_minutes: string; week_start: string; assistant_voice: string; holidays: string; has_pin: boolean;
   sleep_from: string; sleep_until: string; home_after_minutes: string;
 }
 export interface Weather {

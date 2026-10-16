@@ -24,6 +24,7 @@ import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
+import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
 
 export const api = express.Router();
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -226,12 +227,20 @@ function publicSettings() {
   return { ...rest, has_pin: settings_pin.length > 0 };
 }
 
+/** Aftellen: ook de eerstvolgende feestdagen (volgens de instelling), tot 6 in totaal. */
+function withHolidayCountdowns(list: ReturnType<typeof countdowns>) {
+  const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
+  if (!kinds.length) return list;
+  const t = today();
+  const hol = holidaysBetween(t, addDays(t, 120), kinds).slice(0, 2).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
+  return [...list, ...hol].sort((a, b) => a.days - b.days).slice(0, 6);
+}
 api.get("/bootstrap", (req, res) => {
   const { userId, householdId } = ctx();
   const me = A.householdsOf(userId).find((h) => h.id === householdId)!;
   const members = S.listMembers();
   res.json({
-    members, shared: A.sharedPeople(userId, householdId), countdowns: countdowns(members),
+    members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
     chores: S.listChores(), rewards: S.listRewards(), points: S.points(),
     lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL },
@@ -308,7 +317,8 @@ api.get("/events", (req, res) => {
   if (!isDate(from) || !isDate(to)) return void res.status(400).json({ error: "Geef from en to op als YYYY-MM-DD." });
   const members = typeof req.query.members === "string" && req.query.members ? req.query.members.split(",") : undefined;
   const { userId, householdId } = ctx();
-  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to)];
+  const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
+  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...(kinds.length ? holidayOccurrences(from, to, kinds) : [])];
   res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });
