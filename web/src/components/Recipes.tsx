@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAction, useData } from "../store";
 import type { Recipe, RecipeHit, Slot } from "../types";
-import { Confirm, Modal } from "./ui";
+import { Confirm, Modal, Pic } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
 import { parseServings, scaleLine } from "../portions";
@@ -31,15 +31,13 @@ export function RecipeHost() {
 const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
 
 export function RecipeThumb({ r, size = 56 }: { r: Pick<Recipe, "image" | "title">; size?: number }) {
-  return r.image
-    ? <img className="rthumb" src={r.image} alt="" style={{ width: size, height: size }} loading="lazy" referrerPolicy="no-referrer" />
-    : <span className="rthumb ph" style={{ width: size, height: size }} aria-hidden>🍲</span>;
+  return <Pic src={r.image} className="rthumb" phClass="rthumb ph" style={{ width: size, height: size }} />;
 }
 
 export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen: () => void }) {
   return (
     <button className="rcard" onClick={onOpen}>
-      {r.image ? <img src={r.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="rcard-ph" aria-hidden>🍲</span>}
+      <Pic src={r.image} className="rcard-img" phClass="rcard-ph" />
       <span className="rcard-body">
         <b>{r.title}</b>
         <small>{[r.minutes ? `${r.minutes} min` : null, `${lines(r.ingredients).length} ingrediënten`, r.cuisine || null].filter(Boolean).join(" · ")}</small>
@@ -102,7 +100,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         </div>
       )}
       <div className="rhero-wrap">
-        {recipe.image ? <img className="rhero" src={recipe.image} alt="" referrerPolicy="no-referrer" /> : <div className="rhero ph" aria-hidden>🍲</div>}
+        <Pic src={recipe.image} className="rhero" phClass="rhero ph" />
         <button className="pill rhero-btn" onClick={() => setPhoto(true)}>📷 {recipe.image ? "Foto wijzigen" : "Foto toevoegen"}</button>
       </div>
       <div className="rmeta">

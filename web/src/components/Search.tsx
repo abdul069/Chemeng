@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { Modal } from "./ui";
+import { Modal, Pic } from "./ui";
 import { openRecipe } from "./Recipes";
 import { cap, fmtTime, longDate } from "../dates";
 
@@ -42,7 +42,7 @@ export function Search({ onClose, goto }: { onClose: () => void; goto: (screen: 
             </button>))}</section>}
           {r.recipes.length > 0 && <section><h3>🍲 Mijn recepten</h3>{r.recipes.map((x) => (
             <button key={x.id} className="sres" onClick={() => { onClose(); openRecipe(x.id); }}>
-              {x.image ? <img src={x.image} alt="" referrerPolicy="no-referrer" /> : <span className="ph">🍲</span>}<b>{x.title}</b><small>{x.minutes ? `${x.minutes} min` : ""}</small>
+              <Pic src={x.image} className="simg" phClass="ph" /><b>{x.title}</b><small>{x.minutes ? `${x.minutes} min` : ""}</small>
             </button>))}</section>}
           {r.items.length > 0 && <section><h3>🛒 Lijsten</h3>{r.items.map((x) => (
             <button key={x.id} className={`sres${x.done ? " done" : ""}`} onClick={() => go("lists", { list: x.listId })}><b>{x.text}</b><small>{x.icon} {x.list}{x.done ? " · afgevinkt" : ""}</small></button>))}</section>}
@@ -50,7 +50,7 @@ export function Search({ onClose, goto }: { onClose: () => void; goto: (screen: 
             <button key={x.id} className="sres" onClick={() => go("chores")}><b>{x.icon} {x.title}</b><small>{x.member}</small></button>))}</section>}
           {r.library.length > 0 && <section><h3>🇹🇷 Alle Turkse recepten <small className="muted">({r.libraryTotal})</small></h3>{r.library.map((x) => (
             <button key={x.id} className="sres" onClick={() => go("meals", { meals: "recipes", lib: q.trim() })}>
-              {x.image ? <img src={x.image} alt="" referrerPolicy="no-referrer" /> : <span className="ph">🍲</span>}<b>{x.title}</b><small>{x.title !== x.titleTr ? `🇹🇷 ${x.titleTr} · ` : ""}{x.category}</small>
+              <Pic src={x.image} className="simg" phClass="ph" /><b>{x.title}</b><small>{x.title !== x.titleTr ? `🇹🇷 ${x.titleTr} · ` : ""}{x.category}</small>
             </button>))}</section>}
         </div>
       )}

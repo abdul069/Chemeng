@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAction, useData } from "../store";
-import { Modal } from "./ui";
+import { Modal, Pic } from "./ui";
 import { openRecipe } from "./Recipes";
 import { navParam, useNavParam } from "../nav";
 
@@ -72,7 +72,7 @@ export function LibraryBrowser() {
       <div className="rgrid">
         {rows.map((r) => (
           <button className="rcard" key={r.id} onClick={() => setOpen(r.id)}>
-            {r.image ? <img src={r.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="rcard-ph" aria-hidden>🍲</span>}
+            <Pic src={r.image} className="rcard-img" phClass="rcard-ph" />
             <span className="rcard-body">
               <b>{r.title}</b>
               {r.title !== r.titleTr && <small lang="tr">🇹🇷 {r.titleTr}</small>}
@@ -109,7 +109,7 @@ export function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: (
       {!r && !err && <p className="hint">Recept laden{data?.assistant.available ? " en vertalen" : ""}…</p>}
       {r && v && (
         <>
-          {r.image && <img src={r.image} alt="" style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 16 }} referrerPolicy="no-referrer" />}
+          <Pic src={r.image} className="rhero" phClass="rhero ph" />
           <div className="picks">
             {r.original && <button className="pick" aria-pressed={!orig} onClick={() => setOrig(false)}>🇳🇱 Nederlands</button>}
             {r.original && <button className="pick" aria-pressed={orig} onClick={() => setOrig(true)}>🇹🇷 Türkçe</button>}
@@ -149,7 +149,7 @@ export function PantryCook({ onClose }: { onClose: () => void }) {
       <div className="rgrid">
         {r?.items.map((x) => (
           <button className="rcard" key={x.id} onClick={() => setOpen(x.id)}>
-            {x.image ? <img src={x.image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="rcard-ph" aria-hidden>🍲</span>}
+            <Pic src={x.image} className="rcard-img" phClass="rcard-ph" />
             <span className="rcard-body"><b>{x.title}</b><small>✓ {x.score} uit je voorraad{x.minutes ? ` · ${x.minutes} min` : ""}{x.inLibrary ? " · in je bibliotheek" : ""}</small></span>
           </button>
         ))}

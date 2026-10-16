@@ -427,7 +427,7 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 /* ---------- recepten ---------- */
 .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .rcard { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); text-align: left; padding: 0; min-width: 0; }
-.rcard img, .rcard-ph { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface-2); max-width: 100%; }
+.rcard img, .rcard-img, .rcard-ph { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface-2); max-width: 100%; }
 .rcard-ph { display: grid; place-items: center; font-size: 42px; }
 .rcard-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .rcard-body b { font-weight: 700; overflow-wrap: anywhere; }
@@ -613,7 +613,7 @@ h1, h2, h3 { font-family: var(--f-display); font-weight: 400; margin: 0; text-wr
 .search-res { display: flex; flex-direction: column; gap: 14px; }
 .search-res h3 { font-size: 15px; margin-bottom: 6px; }
 .sres { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: var(--surface-2); border-radius: 12px; padding: 8px 12px; margin-bottom: 4px; }
-.sres img, .sres .ph { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 10px; object-fit: cover; display: grid; place-items: center; background: var(--surface); }
+.sres img, .sres .simg, .sres .ph { grid-row: 1 / 3; width: 40px; height: 40px; border-radius: 10px; object-fit: cover; display: grid; place-items: center; background: var(--surface); }
 .sres b { grid-column: 2; }
 .sres small { grid-column: 2; color: var(--muted); }
 .sres.done b { text-decoration: line-through; color: var(--muted); }
