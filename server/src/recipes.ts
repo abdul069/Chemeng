@@ -264,7 +264,8 @@ export async function translateTitles(titles: string[]): Promise<string[]> {
     });
     const out = res.parsed_output?.titles ?? [];
     return titles.map((t, i) => out[i] || t);
-  } catch {
+  } catch (e) {
+    console.warn("[recepten] titels vertalen mislukt:", (e as Error).message);
     return titles;
   }
 }

@@ -285,9 +285,10 @@ export async function translateMissingTitles(limit = 2000) {
     const rows = all<{ id: string; title_tr: string }>("SELECT id, title_tr FROM library WHERE title_nl IS NULL LIMIT 40");
     if (!rows.length) break;
     const nl = await translateTitles(rows.map((r) => r.title_tr));
-    if (nl.every((t, i) => t === rows[i].title_tr)) break; // vertalen werkt niet (bv. geen sleutel)
+    if (nl.every((t, i) => t === rows[i].title_tr)) { log("titels vertalen lukt niet (zie waarschuwing hierboven); later opnieuw"); break; }
     for (let i = 0; i < rows.length; i++) run("UPDATE library SET title_nl=?, search=search || ' | ' || ? WHERE id=?", nl[i], fold(nl[i]), rows[i].id);
     n += rows.length;
+    if (n % 400 === 0) log(`${n} titels vertaald, ${get<{ n: number }>("SELECT COUNT(*) AS n FROM library WHERE title_nl IS NULL")?.n ?? 0} te gaan`);
   }
   if (n) log(`${n} titels vertaald`);
   return n;
