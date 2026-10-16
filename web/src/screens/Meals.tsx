@@ -51,6 +51,10 @@ function WeekMenu() {
           const r = await act(() => api.post<{ planned: { date: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
           if (r) toast(r.planned.length ? `${r.planned.length} avondmalen ingepland${r.left ? ` · ${r.left} nog leeg: voeg recepten toe aan je bibliotheek` : ""}` : r.left ? "Geen recepten in je bibliotheek om in te plannen" : "Alle avonden waren al ingevuld");
         }}>✨ Week vullen</button>
+        <button className="pill" title="Alle ingrediënten van de ingeplande recepten op de boodschappenlijst" onClick={async () => {
+          const r = await act(() => api.post<{ added: number; recipes: number; list: string }>("/meals/week-to-list", { from: start, to: end }));
+          if (r) toast(r.recipes ? (r.added ? `${r.added} ingrediënten van ${r.recipes} recepten op ${r.list}` : "Alles stond al op de lijst") : "Geen recepten ingepland deze week");
+        }}>🛒 Boodschappen voor de week</button>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
         <div className="mealweek">

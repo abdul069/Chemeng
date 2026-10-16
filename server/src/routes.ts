@@ -505,6 +505,24 @@ api.post("/recipes/:id/to-list", (req, res) => {
   broadcast("lists");
 });
 
+/** Boodschappen voor de hele week: alle ingrediënten van de ingeplande recepten, zonder wat al open op de lijst staat. */
+api.post("/meals/week-to-list", (req, res) => {
+  const b = z.object({ from: day, to: day, listId: z.string().optional() }).parse(req.body);
+  const shop = b.listId ? S.listLists().find((l) => l.id === b.listId) : S.shoppingList();
+  if (!shop) return void res.status(400).json({ error: "Geen boodschappenlijst gevonden." });
+  const recipes = S.listRecipes();
+  const planned = S.mealsBetween(b.from, b.to).map((m) => recipes.find((r) => r.id === m.recipeId)).filter((r): r is S.Recipe => !!r);
+  const open = new Set(shop.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")));
+  const seen = new Set<string>(); let added = 0;
+  for (const r of planned) for (const line of r.ingredients.split("\n").map((x) => x.replace(/^[-*•\s]+/, "").trim()).filter(Boolean)) {
+    const k = line.toLocaleLowerCase("nl");
+    if (open.has(k) || seen.has(k)) continue;
+    seen.add(k); S.addItem(shop.id, line); added++;
+  }
+  res.json({ added, recipes: planned.length, list: shop.name });
+  broadcast("lists");
+});
+
 // recepten van receptwebsites
 api.post("/recipes/import", async (req, res) => {
   const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), translate: z.boolean().default(true) }).parse(req.body);
