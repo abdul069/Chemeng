@@ -278,18 +278,28 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
 }
 
 /** Vertaalt de titels zonder Nederlandse naam, in groepjes van 40 (zodra de assistent beschikbaar is). */
+let translating = false;
 export async function translateMissingTitles(limit = 2000) {
-  if (!aiAvailable()) return 0;
-  let n = 0;
+  if (!aiAvailable() || translating) return 0;
+  translating = true;
+  let n = 0; let failures = 0;
+  try {
   while (n < limit) {
     const rows = all<{ id: string; title_tr: string }>("SELECT id, title_tr FROM library WHERE title_nl IS NULL LIMIT 40");
     if (!rows.length) break;
     const nl = await translateTitles(rows.map((r) => r.title_tr));
-    if (nl.every((t, i) => t === rows[i].title_tr)) { log("titels vertalen lukt niet (zie waarschuwing hierboven); later opnieuw"); break; }
+    if (nl.every((t, i) => t === rows[i].title_tr)) {
+      // mislukt (bv. tijdelijk te veel aanvragen): even wachten en opnieuw, na drie keer stoppen tot de volgende beurt
+      if (++failures >= 3) { log("titels vertalen lukt even niet (zie waarschuwing hierboven); over 10 minuten opnieuw"); break; }
+      await new Promise((r) => setTimeout(r, 30_000 * failures));
+      continue;
+    }
+    failures = 0;
     for (let i = 0; i < rows.length; i++) run("UPDATE library SET title_nl=?, search=search || ' | ' || ? WHERE id=?", nl[i], fold(nl[i]), rows[i].id);
     n += rows.length;
     if (n % 400 === 0) log(`${n} titels vertaald, ${get<{ n: number }>("SELECT COUNT(*) AS n FROM library WHERE title_nl IS NULL")?.n ?? 0} te gaan`);
   }
+  } finally { translating = false; }
   if (n) log(`${n} titels vertaald`);
   return n;
 }
@@ -311,8 +321,9 @@ export function startLibraryScheduler() {
   const stale = !last || Date.now() - Date.parse(last) > 6 * 24 * 3600_000;
   if (libraryCount() < 500 || stale) setTimeout(kick, 30_000).unref();
   setInterval(kick, 24 * 3600_000).unref(); // elke dag verder opbouwen tot alle recepten binnen zijn
-  // titels vertalen zodra een sleutel aanwezig is
+  // titels vertalen zodra een sleutel aanwezig is, en daarna elke 10 minuten verder zolang er onvertaalde zijn
   setTimeout(() => translateMissingTitles(100_000).catch(() => {}), 120_000).unref();
+  setInterval(() => translateMissingTitles(100_000).catch(() => {}), 10 * 60_000).unref();
 }
 
 /** Eén pagina proberen (voor de beheerder): wat komt er terug? */
