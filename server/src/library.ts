@@ -1,7 +1,7 @@
 // Gedeelde receptenbibliotheek: alle recepten van de Turkse receptsites worden via hun sitemaps opgehaald,
 // per categorie opgeslagen en (zodra de assistent beschikbaar is) naar het Nederlands vertaald.
 import { all, get, run, newId, db } from "./db.js";
-import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable, recipeNodes } from "./recipes.js";
+import { TURKISH_SITES, parseRecipeHtml, translateTitles, translateRecipe, aiAvailable, recipeNodes, splitJoined } from "./recipes.js";
 import { createRecipe, listRecipes, recipeBySource, RecipeInput, type RecipeInputT } from "./store.js";
 import "./ai.js"; // maakt global_settings aan
 
@@ -98,7 +98,7 @@ export async function libraryRecipe(id: string, translate = true): Promise<(Reci
   const r = get<Record<string, unknown>>("SELECT * FROM library WHERE id=?", id);
   if (!r) return null;
   const tr: RecipeInputT = {
-    title: r.title_tr as string, ingredients: r.ingredients_tr as string, instructions: r.instructions_tr as string, minutes: r.minutes as number | null,
+    title: r.title_tr as string, ingredients: splitJoined((r.ingredients_tr as string).split("\n")).join("\n"), instructions: r.instructions_tr as string, minutes: r.minutes as number | null,
     image: r.image as string | null, sourceUrl: r.source_url as string, servings: r.servings as string, cuisine: "Turks", lang: "tr", original: null,
   };
   if (r.ingredients_nl) {
@@ -311,7 +311,7 @@ export function startLibraryScheduler() {
   if (libraryCount() < 500 || stale) setTimeout(kick, 30_000).unref();
   setInterval(kick, 24 * 3600_000).unref(); // elke dag verder opbouwen tot alle recepten binnen zijn
   // titels vertalen zodra een sleutel aanwezig is
-  setTimeout(() => translateMissingTitles().catch(() => {}), 120_000).unref();
+  setTimeout(() => translateMissingTitles(100_000).catch(() => {}), 120_000).unref();
 }
 
 /** Eén pagina proberen (voor de beheerder): wat komt er terug? */

@@ -60,6 +60,10 @@ export function recipeNodes(html: string): Json[] {
   }
   return out;
 }
+/** Sommige sites geven alle ingrediënten als één regel met komma's; die splitsen we (maar "1,5 kg" blijft heel). */
+export function splitJoined(lines: string[]): string[] {
+  return lines.flatMap((l) => (l.split(/,(?!\d)/).length >= 3 && l.length > 40 ? l.split(/,(?!\d)/).map((x) => x.trim()).filter(Boolean) : [l]));
+}
 /** Ingrediënten of stappen uit de HTML zelf, als het ld+json ze niet (volledig) heeft. */
 function fromHtml(html: string, kind: "ingredient" | "step"): string[] {
   const pats = kind === "ingredient"
@@ -127,7 +131,7 @@ export function parseRecipeHtml(html: string, url: string): RecipeInputT {
   })).sort((a, b) => (b.ingredients.length + b.steps.length) - (a.ingredients.length + a.steps.length));
   for (const n of nodes.slice(0, 1)) {
     const r = n.r;
-    const ingredients = n.ingredients.length ? n.ingredients : fromHtml(html, "ingredient");
+    const ingredients = splitJoined(n.ingredients.length ? n.ingredients : fromHtml(html, "ingredient"));
     const steps = n.steps.length ? n.steps : fromHtml(html, "step");
     const title = decode(String(r.name ?? "")) || "Recept";
     const servings = decode(String(asArray(r.recipeYield as string | string[])[0] ?? ""));

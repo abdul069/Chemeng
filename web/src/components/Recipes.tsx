@@ -28,7 +28,8 @@ export function RecipeHost() {
   return <RecipeDetail recipe={recipe} onClose={() => setId(null)} />;
 }
 
-const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+const lines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean)
+  .flatMap((l) => (l.split(/,(?!\d)/).length >= 3 && l.length > 40 ? l.split(/,(?!\d)/).map((x) => x.trim()).filter(Boolean) : [l]));
 
 export function RecipeThumb({ r, size = 56 }: { r: Pick<Recipe, "image" | "title">; size?: number }) {
   return <Pic src={r.image} className="rthumb" phClass="rthumb ph" style={{ width: size, height: size }} />;

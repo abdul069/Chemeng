@@ -49,3 +49,9 @@ test("leest stappen die als geneste array staan (yemek.com)", () => {
   const r = parseRecipeHtml(html, "https://yemek.com/tarif/asure/");
   assert.equal(r.instructions, "1. Buğdayı yıkayın.\n2. Suyu ekleyin ve pişirin.");
 });
+
+test("splitst één regel met alle ingrediënten, maar niet in '1,5'", async () => {
+  const { splitJoined } = await import("./recipes.js");
+  assert.deepEqual(splitJoined(["1 litre süt,100 gram tereyağı,1,5 tatlı kaşığı tuz,1,5 su bardağı mısır nişastası"]), ["1 litre süt", "100 gram tereyağı", "1,5 tatlı kaşığı tuz", "1,5 su bardağı mısır nişastası"]);
+  assert.deepEqual(splitJoined(["2 adet soğan", "tuz, karabiber"]), ["2 adet soğan", "tuz, karabiber"]);
+});
