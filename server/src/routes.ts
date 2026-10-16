@@ -440,15 +440,15 @@ api.post("/meals/autoplan", async (req, res) => {
       }
     }
   }
+  if (!pool.length) pool = S.listRecipes(); // alles stond onlangs al op tafel: dan toch kiezen
   pool = pool.sort(() => Math.random() - 0.5);
+  // elk recept hoogstens één keer per beurt; te weinig recepten → de rest blijft leeg
   const planned: { date: string; title: string }[] = [];
-  needed.forEach((d, i) => {
-    const r = pool[i % Math.max(pool.length, 1)];
-    if (!r) return;
-    S.setMeal(d, b.slot, r.title, r.id);
-    planned.push({ date: d, title: r.title });
+  needed.slice(0, pool.length).forEach((d, i) => {
+    S.setMeal(d, b.slot, pool[i].title, pool[i].id);
+    planned.push({ date: d, title: pool[i].title });
   });
-  res.json({ planned, fromLibrary: pool.length });
+  res.json({ planned, left: needed.length - planned.length });
   broadcast("meals", "recipes");
   autoPhotos();
 });

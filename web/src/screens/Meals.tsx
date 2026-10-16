@@ -48,8 +48,8 @@ function WeekMenu() {
         <span className="range">{Number(start.slice(8))} {MSHORT[Number(start.slice(5, 7)) - 1]} – {Number(end.slice(8))} {MSHORT[Number(end.slice(5, 7)) - 1]}</span>
         <button className="iconbtn" onClick={() => setStart(addDays(start, 7))} aria-label="Volgende week"><Icon.right /></button>
         <button className="pill" title="Lege avonden krijgen een recept uit je bibliotheek" onClick={async () => {
-          const r = await act(() => api.post<{ planned: { date: string }[] }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
-          if (r) toast(r.planned.length ? `${r.planned.length} avondmalen ingepland` : "Alle avonden waren al ingevuld");
+          const r = await act(() => api.post<{ planned: { date: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
+          if (r) toast(r.planned.length ? `${r.planned.length} avondmalen ingepland${r.left ? ` · ${r.left} nog leeg: voeg recepten toe aan je bibliotheek` : ""}` : r.left ? "Geen recepten in je bibliotheek om in te plannen" : "Alle avonden waren al ingevuld");
         }}>✨ Week vullen</button>
       </div>
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>

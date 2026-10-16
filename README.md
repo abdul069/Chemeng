@@ -132,7 +132,7 @@ Gekoppelde agenda's zijn alleen-lezen in Gezinsbord; wijzigingen doe je in de oo
 | `TZ` | `Europe/Brussels` | Tijdzone voor gekoppelde agenda's |
 | `CALENDAR_SYNC_MINUTES` | `15` | Hoe vaak gekoppelde agenda's bijgewerkt worden |
 | `LIBRARY_AUTOCRAWL` | `1` | `0` zet het automatisch opbouwen van de receptenbibliotheek uit |
-| `LIBRARY_MAX_PER_SITE` | `1500` | Hoeveel recepten per receptsite maximaal opgehaald worden per beurt |
+| `LIBRARY_MAX_PER_SITE` | `4000` | Hoeveel recepten per receptsite maximaal opgehaald worden per (dagelijkse) beurt |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | automatisch | Sleutels voor pushmeldingen (worden anders zelf aangemaakt en bewaard) |
 
 ## Privacy

@@ -244,11 +244,13 @@ ${r.instructions}`,
 }
 
 /** Vertaalt een lijst receptnamen in één keer naar het Nederlands. */
+/** Korte vertalingen (titels van de bibliotheek) mogen met een sneller, goedkoper model. */
+const LIBRARY_MODEL = process.env.LIBRARY_MODEL ?? "claude-haiku-5-5";
 export async function translateTitles(titles: string[]): Promise<string[]> {
   if (!client || !titles.length) return titles;
   try {
     const res = await client.messages.parse({
-      model: MODEL,
+      model: LIBRARY_MODEL,
       max_tokens: 2000,
       output_config: { effort: "low", format: zodOutputFormat(z.object({ titles: z.array(z.string()) })) },
       messages: [{ role: "user", content: `Vertaal deze Turkse receptnamen naar korte Nederlandse namen, in dezelfde volgorde. Laat "tarifi" weg.\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}` }],

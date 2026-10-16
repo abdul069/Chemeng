@@ -213,7 +213,7 @@ function noteFailure(url: string, why: string) {
 export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concurrency?: number } = {}) {
   if (crawlStatus.running) return;
   const sites = opts.sites ?? TURKISH_SITES;
-  const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 1500);
+  const max = opts.maxPerSite ?? Number(process.env.LIBRARY_MAX_PER_SITE ?? 4000);
   const conc = opts.concurrency ?? 3;
   Object.assign(crawlStatus, { running: true, done: 0, added: 0, failed: 0, total: 0, log: [], startedAt: new Date().toISOString(), finishedAt: null });
   failuresLogged.clear();
@@ -241,7 +241,8 @@ export async function crawl(opts: { sites?: string[]; maxPerSite?: number; concu
     log(`fout: ${(e as Error).message}`);
   } finally {
     crawlStatus.running = false; crawlStatus.site = null; crawlStatus.finishedAt = new Date().toISOString();
-    log(`klaar: ${crawlStatus.added} toegevoegd, ${crawlStatus.failed} mislukt`);
+    const withImg = get<{ n: number }>("SELECT COUNT(*) AS n FROM library WHERE image IS NOT NULL")?.n ?? 0;
+    log(`klaar: ${crawlStatus.added} toegevoegd, ${crawlStatus.failed} mislukt · bibliotheek: ${libraryCount()} recepten, ${withImg} met foto`);
     if (crawlStatus.done > 0 || libraryCount() > 0) run("INSERT INTO global_settings(key, value) VALUES('library_crawled', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", new Date().toISOString());
   }
 }
@@ -278,7 +279,7 @@ export function startLibraryScheduler() {
   const last = get<{ value: string }>("SELECT value FROM global_settings WHERE key='library_crawled'")?.value ?? "";
   const stale = !last || Date.now() - Date.parse(last) > 6 * 24 * 3600_000;
   if (libraryCount() < 500 || stale) setTimeout(kick, 30_000).unref();
-  setInterval(kick, 7 * 24 * 3600_000).unref();
+  setInterval(kick, 24 * 3600_000).unref(); // elke dag verder opbouwen tot alle recepten binnen zijn
   // titels vertalen zodra een sleutel aanwezig is
   setTimeout(() => translateMissingTitles().catch(() => {}), 120_000).unref();
 }
