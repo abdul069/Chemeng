@@ -101,7 +101,8 @@ export async function tick() {
         "SELECT i.text, i.expires FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? AND l.kind='pantry' AND i.done=0 AND i.expires IS NOT NULL AND i.expires <= ? ORDER BY i.expires LIMIT 4", h.id, addDays(t, 1),
       );
       const expLine = expiring.length ? `\n🥫 Op eten: ${expiring.map((e) => `${e.text}${e.expires < t ? " (over datum)" : e.expires === t ? " (vandaag)" : ""}`).join(", ")}` : "";
-      const body = (lines.length ? lines.join("\n") : "Geen afspraken vandaag.") + (todays.length > 4 ? `\n+${todays.length - 4} meer` : "") + (chores ? `\n${chores} taken staan klaar.` : "") + expLine;
+      const dinner = get<{ title: string }>("SELECT title FROM meals WHERE household_id=? AND date=? AND slot='diner'", h.id, t)?.title;
+      const body = (lines.length ? lines.join("\n") : "Geen afspraken vandaag.") + (todays.length > 4 ? `\n+${todays.length - 4} meer` : "") + (chores ? `\n${chores} taken staan klaar.` : "") + (dinner ? `\n🍽 Vanavond: ${dinner}` : "") + expLine;
       await pushToUsers(usersFor(h.id, []), { title: "Goeiemorgen! Dit staat er vandaag op", body, url: "/#today", tag: "morning" });
     }
   }
