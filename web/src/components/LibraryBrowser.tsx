@@ -27,6 +27,9 @@ export function LibraryBrowser() {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const admin = data?.me.role === "beheerder";
+  // namen in het Turks tonen (per toestel onthouden)
+  const [tr, setTr] = useState(() => { try { return localStorage.getItem("gb.libtr") === "1"; } catch { return false; } });
+  const toggleTr = () => { setTr(!tr); try { localStorage.setItem("gb.libtr", tr ? "0" : "1"); } catch { /* */ } };
 
   const loadOverview = () => api.get<Overview>("/library/categories").then(setOv).catch(() => {});
   useEffect(() => { loadOverview(); }, []);
@@ -58,6 +61,7 @@ export function LibraryBrowser() {
       )}
       <div className="addrow">
         <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Zoek in ${ov.total} Turkse recepten (Nederlands of Turks)`} aria-label="Zoek in alle Turkse recepten" />
+        {ov.total > 0 && <button className="btn ghost small" aria-pressed={tr} title="Namen in het Turks tonen" onClick={toggleTr}>{tr ? "🇹🇷" : "🇳🇱"}</button>}
         {ov.total > 0 && <button className="btn ghost small" title="Een willekeurig recept uit deze selectie" onClick={async () => {
           const params = new URLSearchParams({ limit: "1", random: "1" }); if (cat) params.set("category", cat); if (q) params.set("q", q);
           const r = await api.get<{ items: Row[] }>(`/library?${params}`).catch(() => null);
@@ -74,8 +78,8 @@ export function LibraryBrowser() {
           <button className="rcard" key={r.id} onClick={() => setOpen(r.id)}>
             <Pic src={r.image} className="rcard-img" phClass="rcard-ph" />
             <span className="rcard-body">
-              <b>{r.title}</b>
-              {r.title !== r.titleTr && <small lang="tr">🇹🇷 {r.titleTr}</small>}
+              <b>{tr ? r.titleTr : r.title}</b>
+              {r.title !== r.titleTr && <small lang={tr ? "nl" : "tr"}>{tr ? `🇳🇱 ${r.title}` : `🇹🇷 ${r.titleTr}`}</small>}
               <small>{[r.minutes ? `${r.minutes} min` : null, r.site, r.inLibrary ? "✓ in je bibliotheek" : null].filter(Boolean).join(" · ")}</small>
             </span>
           </button>
