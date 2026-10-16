@@ -258,7 +258,7 @@ export async function translateTitles(titles: string[]): Promise<string[]> {
   try {
     const res = await client.messages.parse({
       model: LIBRARY_MODEL,
-      max_tokens: 2000,
+      max_tokens: 6000,
       output_config: { effort: "low", format: zodOutputFormat(z.object({ titles: z.array(z.string()) })) },
       messages: [{ role: "user", content: `Vertaal deze Turkse receptnamen naar korte Nederlandse namen, in dezelfde volgorde. Laat "tarifi" weg.\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}` }],
     });
