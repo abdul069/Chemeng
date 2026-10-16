@@ -115,7 +115,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         </span>
         {recipe.category && <span className="badge">{catLabel(recipe.category)}</span>}
         {recipe.cooked > 0 && <span className="badge">🍳 {recipe.cooked}× gekookt</span>}
-        <button className={`badge favbtn${recipe.favorite ? " on" : ""}`} aria-pressed={recipe.favorite} onClick={() => act(() => api.put(`/recipes/${recipe.id}/favorite`, { favorite: !recipe.favorite }), recipe.favorite ? "Uit favorieten" : "Favoriet ★")}>{recipe.favorite ? "★ Favoriet" : "☆ Favoriet"}</button>
+        <button className={`badge favbtn${recipe.favorite ? " on" : ""}`} aria-pressed={recipe.favorite} onClick={() => act(() => api.put(`/recipes/${recipe.id}/favorite`, { favorite: !recipe.favorite }), recipe.favorite ? "Niet meer bij de lievelingen" : "Bij de lievelingen ★")}>{recipe.favorite ? "★ Lieveling" : "☆ Lieveling"}</button>
         {warnings.length > 0 && <span className="badge warn" title="Volgens de profielen vermijdt iemand dit">⚠️ Bevat: {warnings.join(", ")}</span>}
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>

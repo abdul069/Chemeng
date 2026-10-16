@@ -73,7 +73,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                     </div>
                   );
                 })}
-                {!today.length && <p className="empty">Vrije dag! Geen taken vandaag. 🎈</p>}
+                {!today.length && <p className="empty">Niets te doen vandaag — geniet ervan! 🎈</p>}
                 {all.length > today.length && <p className="hint">{all.length - today.length} andere taak/taken op andere dagen.</p>}
                 <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus /> Taak</button>
               </section>

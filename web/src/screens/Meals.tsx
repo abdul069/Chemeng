@@ -174,8 +174,8 @@ function Library() {
       {(hasFav || hasOften || cats.length > 0) && (
         <div className="picks catrow">
           <button className="pick" aria-pressed={!filter} onClick={() => setFilter(null)}>Alles <small className="muted">{recipes.length}</small></button>
-          {hasFav && <button className="pick" aria-pressed={filter === "fav"} onClick={() => setFilter("fav")}>★ Favorieten</button>}
-          {hasOften && <button className="pick" aria-pressed={filter === "often"} onClick={() => setFilter("often")}>🔥 Vaak gekookt</button>}
+          {hasFav && <button className="pick" aria-pressed={filter === "fav"} onClick={() => setFilter("fav")}>★ Lievelingen</button>}
+          {hasOften && <button className="pick" aria-pressed={filter === "often"} onClick={() => setFilter("often")}>🍳 Onze klassiekers</button>}
           {cats.map((c) => <button key={c} className="pick" aria-pressed={filter === c} onClick={() => setFilter(c)}>{CATS[c]?.icon} {CATS[c]?.name ?? c} <small className="muted">{recipes.filter((r) => r.category === c).length}</small></button>)}
         </div>
       )}
