@@ -14,7 +14,9 @@ Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 | **Taken** | Klusjes per gezinslid met icoontjes, per weekdag, met sterren die kinderen inruilen voor beloningen |
 | **Maaltijden en recepten** | Weekmenu (ontbijt, lunch, diner) en een receptenbibliotheek met foto's. Recepten zoeken op Turkse receptsites (nefisyemektarifleri, yemek.com, lezzet, Arda'nın Mutfağı, Refika'nın Mutfağı, ...) of toevoegen via een link. Recepten staan in het Nederlands; het origineel (bv. Turks) blijft bewaard en is met één tik te tonen. Per recept: ingrediënten afvinken die je al hebt, de ontbrekende op de boodschappenlijst zetten en het recept op een dag inplannen. Elk gerecht krijgt automatisch een foto: die van de receptpagina zelf, anders een foto van een receptsite of Wikipedia; je kunt ook een andere kiezen of zelf een foto nemen |
 | **Apps** | Foto's, weer (7 dagen), klok met kookwekkers en wekkers, gedeelde spraakmemo's, en snelkoppelingen naar YouTube, Spotify, Google Foto's/Agenda/Maps |
-| **Lijsten** | Boodschappen, to-do en eigen lijsten, live gedeeld tussen alle toestellen |
+| **Receptenbibliotheek** | Alle recepten van de Turkse receptsites worden automatisch opgehaald (via hun sitemaps) en per categorie in een gedeelde bibliotheek gezet: soepen, börek & deeg, kebab & grill, vlees, kip, vis, groenten, peulvruchten, rijst & pasta, salades & meze, desserts, ontbijt, dranken, sauzen. Blader of zoek (Nederlands of Turks), bekijk het recept en zet het met één tik in je eigen bibliotheek. Titels en recepten worden naar het Nederlands vertaald zodra de assistent ingesteld is; de bibliotheek wordt wekelijks bijgewerkt |
+| **Lijsten** | Boodschappen, to-do en eigen lijsten, live gedeeld tussen alle toestellen. Voorraad met aantal en houdbaarheidsdatum: waarschuwing bij bijna of al over datum, en met één tik op de boodschappenlijst |
+| **Zoeken** | Eén zoekvak voor afspraken, recepten, lijsten, taken en de hele bibliotheek |
 | **Foto's** | Foto's uploaden; na een tijdje zonder aanraking wordt het scherm een fotolijst met klok, weer en de volgende afspraak |
 | **Assistent** | Claude als laag over het scherm, met handsfree praten (tot je op Stop tikt), voorlezen, opgemaakte antwoorden, antwoordknoppen en duimpjes. "Zet volleybal op dinsdag om 17u voor Lina en Mama", "Wat kook ik vanavond?", "Zoek een recept voor mercimek çorbası en plan het vrijdag", "Zet de ingrediënten op de boodschappenlijst" |
 | **Instellingen** | Gezinsleden (naam, kleur, figuurtje of foto, ouder/kind), woonplaats voor het weer, fotolijst, ouder-pincode, thema |
@@ -129,6 +131,9 @@ Gekoppelde agenda's zijn alleen-lezen in Gezinsbord; wijzigingen doe je in de oo
 | `DATA_DIR` | `data` | Map voor database en foto's |
 | `TZ` | `Europe/Brussels` | Tijdzone voor gekoppelde agenda's |
 | `CALENDAR_SYNC_MINUTES` | `15` | Hoe vaak gekoppelde agenda's bijgewerkt worden |
+| `LIBRARY_AUTOCRAWL` | `1` | `0` zet het automatisch opbouwen van de receptenbibliotheek uit |
+| `LIBRARY_MAX_PER_SITE` | `1500` | Hoeveel recepten per receptsite maximaal opgehaald worden per beurt |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | automatisch | Sleutels voor pushmeldingen (worden anders zelf aangemaakt en bewaard) |
 
 ## Privacy
 

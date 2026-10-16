@@ -11,7 +11,10 @@ Vergeleken: Skylight Calendar (2 / Max / Pro), Hearth Display, Cozyla Calendar+ 
 | **Routines** (ochtend/avond) met stappen voor kinderen | Hearth (sterkste punt) | Gebouwd: taken per dagdeel, routinekaart op Vandaag, reeksen (streaks) |
 | **Beloningen met sterren** | Skylight (Plus), Cozyla | Hadden we al |
 | **Maaltijdplanning + recepten + boodschappenlijst** | Skylight (Plus), Cozyla, Cozi | Hadden we al, plus Turkse receptsites en vertaling |
-| **Voorraadkast** (wat is er in huis, vervaldatums) | Cozyla | Gebouwd: Voorraad als lijst met vervaldatum |
+| **Voorraadkast** (wat is er in huis, vervaldatums) | Cozyla | Gebouwd: Voorraad met aantal en houdbaarheidsdatum, waarschuwing en "→ Boodschappen" |
+| **Receptenbibliotheek met duizenden recepten per categorie** | Samsung Food, Cookpad (geen gezinsscherm heeft het) | Gebouwd: alle recepten van de Turkse sites automatisch opgehaald, per categorie, Nederlands met Turks origineel |
+| **Zoeken in alles** (gebruikers missen het bij Cozi en Skylight) | — | Gebouwd: één zoekvak voor afspraken, recepten, lijsten, taken en bibliotheek |
+| **Wachtwoord vergeten / back-up** | alle apps | Gebouwd: herstel-link van de beheerder, back-up als JSON |
 | **Slaapstand** (scherm 's nachts uit) | Skylight | Gebouwd: nachtrust in Instellingen |
 | **Meldingen op de telefoon** voor afspraken en taken | gevraagd door Skylight-gebruikers | Gebouwd: pushmeldingen (Web Push) |
 | **Spraakassistent** ("Hey Cozyla") die plant en taken verdeelt | Cozyla (betaald AI-abonnement) | Hadden we al (handsfree, met tools) |
