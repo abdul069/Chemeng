@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { photoUrl } from "../api";
 import { useData, useRemote } from "../store";
-import type { Occurrence, Weather } from "../types";
+import { Occurrence, Weather , isShopping } from "../types";
 import { addDays, cap, clock, fmtRange, longDate, nowMin, relDay, toMin, todayIso } from "../dates";
 
 /** Fotolijst: foto's van het gezin met de klok en de volgende afspraak. Tik om terug te gaan. */
@@ -35,7 +35,7 @@ export function Screensaver({ onWake }: { onWake: () => void }) {
       ))}
       <div className="widgets" aria-hidden>
         {(() => {
-          const shop = data?.lists.find((l) => l.kind === "list" && /boodschap/i.test(l.name));
+          const shop = data?.lists.find(isShopping);
           const todo = data?.lists.find((l) => l.kind === "list" && /to-?do/i.test(l.name));
           return [shop, todo].filter((l): l is NonNullable<typeof l> => !!l && l.items.some((i) => !i.done)).map((l) => (
             <div className="widget" key={l.id}>

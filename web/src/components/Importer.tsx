@@ -1,3 +1,4 @@
+import { isShopping } from "../types";
 import { useRef, useState } from "react";
 import { api } from "../api";
 import { useAction, useData } from "../store";
@@ -25,7 +26,7 @@ export function Importer({ onClose }: { onClose: () => void }) {
   const [pickedItems, setPickedItems] = useState<Set<number>>(new Set());
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
-  const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
+  const shop = data?.lists.find(isShopping) ?? data?.lists.find((l) => l.kind === "list");
 
   const choose = (f: File | null) => {
     setFile(f);

@@ -200,6 +200,7 @@ function addColumn(table: string, col: string, def: string) {
   if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumn("recipes", "image", "TEXT");
+addColumn("list_items", "aisle", "TEXT");
 addColumn("recipes", "source_url", "TEXT");
 addColumn("recipes", "servings", "TEXT NOT NULL DEFAULT ''");
 addColumn("recipes", "cuisine", "TEXT NOT NULL DEFAULT ''");
@@ -216,6 +217,8 @@ addColumn("recipes", "favorite", "INTEGER NOT NULL DEFAULT 0");
 addColumn("recipes", "category", "TEXT NOT NULL DEFAULT ''");
 addColumn("list_items", "member_id", "TEXT");
 addColumn("lists", "kind", "TEXT NOT NULL DEFAULT 'list'");
+// bestaande boodschappenlijsten krijgen de eigen soort "shopping"
+db.exec("UPDATE lists SET kind='shopping' WHERE kind='list' AND (lower(name) LIKE '%boodschap%' OR lower(name) LIKE '%alışveriş%' OR lower(name) LIKE '%alisveris%')");
 addColumn("list_items", "expires", "TEXT");
 addColumn("list_items", "qty", "TEXT NOT NULL DEFAULT ''");
 addColumn("events", "countdown", "INTEGER NOT NULL DEFAULT 0");
@@ -229,6 +232,14 @@ CREATE TABLE IF NOT EXISTS assistant_feedback (
   rating INTEGER NOT NULL,
   question TEXT NOT NULL,
   answer TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS staples (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  aisle TEXT,
+  sort INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS ezan_sounds (

@@ -12,8 +12,10 @@ export interface Chore { id: string; memberId: string; title: string; icon: stri
 export interface Countdown { title: string; date: string; days: number; icon: string; memberId: string | null; kind: "birthday" | "event" | "holiday" }
 export interface Reward { id: string; title: string; icon: string; cost: number }
 export interface Points { earned: number; spent: number; balance: number; today: number; week: number }
-export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string; /** persoonlijke to-do van dit gezinslid */ memberId?: string | null }
-export interface List { id: string; name: string; icon: string; kind: "list" | "pantry"; items: ListItem[] }
+export interface ListItem { id: string; text: string; done: boolean; /** houdbaar tot (voorraad) */ expires: string | null; qty: string; /** persoonlijke to-do van dit gezinslid */ memberId?: string | null; /** afdeling in de winkel, handmatig gekozen (anders automatisch) */ aisle?: string | null }
+export interface List { id: string; name: string; icon: string; kind: "list" | "pantry" | "shopping"; items: ListItem[] }
+export interface Staple { id: string; text: string; aisle: string | null }
+export const isShopping = (l: Pick<List, "kind" | "name">) => l.kind === "shopping" || (l.kind === "list" && /boodschap|alışveriş|alisveris/i.test(l.name));
 export interface Recipe {
   id: string; title: string; ingredients: string; instructions: string; minutes: number | null; image: string | null; sourceUrl: string | null; servings: string; cuisine: string;
   /** taal van de getoonde versie */ lang: string;

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { navParam, useNavParam } from "../nav";
 import { api } from "../api";
 import { useAction, useData } from "../store";
-import type { List, ListItem } from "../types";
+import { isShopping, type List, type ListItem, type Staple } from "../types";
+import { useRemote } from "../store";
 import { Confirm, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { diffDays, shortDate, todayIso } from "../dates";
@@ -36,14 +37,15 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   const list = data.lists.find((l) => l.id === sel) ?? data.lists[0];
   const pantry = list?.kind === "pantry";
   // boodschappen per afdeling in de winkel; afgevinkte onderaan
-  const isShop = !!list && list.kind === "list" && /boodschap|winkel|markt|alışveriş/i.test(list.name);
+  const isShop = !!list && isShopping(list);
+  const [staples, setStaples] = useState(false);
   const toggleGrouped = () => { setGrouped(!grouped); try { localStorage.setItem("gb.aisles", grouped ? "0" : "1"); } catch { /* */ } };
   const sections: { key: string; items: ListItem[] }[] = (() => {
     if (!list) return [];
     if (!(isShop && grouped)) return [{ key: "", items: list.items }];
     const open = list.items.filter((i) => !i.done); const done = list.items.filter((i) => i.done);
     const by = new Map<string, ListItem[]>();
-    for (const i of open) { const k = aisleOf(i.text); by.set(k, [...(by.get(k) ?? []), i]); }
+    for (const i of open) { const k = i.aisle ?? aisleOf(i.text); by.set(k, [...(by.get(k) ?? []), i]); }
     const order = [...AISLES.map((a) => a.key), "overig"];
     return [...order.filter((k) => by.has(k)).map((k) => ({ key: k, items: by.get(k)! })), ...(done.length ? [{ key: "done", items: done }] : [])];
   })();
@@ -98,6 +100,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               </div>
             </div>
             {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>🍳 Koken met wat in huis is</button>}
+            {isShop && <div className="shop-tools"><button className="btn ghost" onClick={() => setStaples(true)}>☑️ Vaste boodschappen aanvinken</button><span className="hint">Per afdeling gesorteerd; tik op ✎ om de afdeling van een item te kiezen.</span></div>}
             {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is en zet het met 🛒 op de boodschappenlijst.</p>}
             <form className="addrow" onSubmit={(e) => { e.preventDefault(); add(); }}>
               <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? "bv. yoghurt" : "Toevoegen… (meerdere met komma's)"} aria-label="Nieuw item" />
@@ -118,7 +121,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                       {ex && <small className={ex.cls} style={{ display: "block" }}>{ex.label}</small>}
                     </span>
                     {pantry && <button className="iconbtn" style={{ width: 36, height: 36 }} title="Op de boodschappenlijst zetten" aria-label={`${i.text} op de boodschappenlijst`} onClick={() => toShopping(i)}>🛒</button>}
-                    {pantry && <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={`${i.text} bewerken`} onClick={() => setEdit(i)}>✎</button>}
+                    {(pantry || isShop) && <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={`${i.text} bewerken`} onClick={() => setEdit(i)}>✎</button>}
                     <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={`${i.text} verwijderen`} onClick={() => act(() => api.del(`/items/${i.id}`))}><Icon.trash /></button>
                   </div>
                 );
@@ -129,8 +132,9 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
           </section>
         ) : <p className="empty">Nog geen lijsten.</p>}
       </div>
-      {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} />}
-      {edit && <ItemEditor item={edit} onClose={() => setEdit(null)} />}
+      {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} hasShop={data.lists.some(isShopping)} />}
+      {edit && <ItemEditor item={edit} shop={isShop} onClose={() => setEdit(null)} />}
+      {staples && list && <StaplesPicker list={list} onClose={() => setStaples(false)} />}
       {cook && <PantryCook onClose={() => setCook(false)} />}
       {confirm && list && <Confirm title={`${list.name} verwijderen?`} text="Alle items op deze lijst verdwijnen." onClose={() => setConfirm(false)}
         actions={[{ label: "Verwijderen", run: () => { act(() => api.del(`/lists/${list.id}`), "Lijst verwijderd"); setSel(null); } }]} />}
@@ -138,23 +142,32 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   );
 }
 
-function ItemEditor({ item, onClose }: { item: ListItem; onClose: () => void }) {
+function ItemEditor({ item, shop, onClose }: { item: ListItem; shop?: boolean; onClose: () => void }) {
   const act = useAction();
-  const [f, setF] = useState({ text: item.text, qty: item.qty, expires: item.expires ?? "" });
+  const [f, setF] = useState({ text: item.text, qty: item.qty, expires: item.expires ?? "", aisle: item.aisle ?? "" });
+  const auto = aisleOf(f.text);
   const save = async () => {
-    if (await act(() => api.patch(`/items/${item.id}`, { text: f.text, qty: f.qty, expires: f.expires || null }), "Bewaard")) onClose();
+    if (await act(() => api.patch(`/items/${item.id}`, { text: f.text, qty: f.qty, expires: f.expires || null, aisle: f.aisle || null }), "Bewaard")) onClose();
   };
   return (
-    <Modal title="Voorraad-item" onClose={onClose}>
+    <Modal title={shop ? "Boodschap" : "Voorraad-item"} onClose={onClose}>
       <label className="field"><span>Wat</span><input id="ie-text" value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} /></label>
       <label className="field"><span>Aantal</span><input id="ie-qty" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="bv. 2 pakken" /></label>
-      <label className="field"><span>Houdbaar tot</span><input id="ie-exp" type="date" value={f.expires} onChange={(e) => setF({ ...f, expires: e.target.value })} /></label>
+      {shop && (
+        <div className="field"><span>Afdeling</span>
+          <div className="picks">
+            <button type="button" className="pick" aria-pressed={!f.aisle} onClick={() => setF({ ...f, aisle: "" })}>Automatisch ({AISLE_INFO[auto].icon} {AISLE_INFO[auto].name})</button>
+            {[...AISLES.map((a) => a.key), "overig"].map((k) => <button type="button" key={k} className="pick" aria-pressed={f.aisle === k} onClick={() => setF({ ...f, aisle: k })}>{AISLE_INFO[k].icon} {AISLE_INFO[k].name}</button>)}
+          </div>
+        </div>
+      )}
+      {!shop && <label className="field"><span>Houdbaar tot</span><input id="ie-exp" type="date" value={f.expires} onChange={(e) => setF({ ...f, expires: e.target.value })} /></label>}
       <div className="actions"><button className="btn ghost" onClick={onClose}>Annuleren</button><button className="btn" disabled={!f.text.trim()} onClick={save}>Bewaren</button></div>
     </Modal>
   );
 }
 
-function NewList({ onClose, onCreated, hasPantry }: { onClose: () => void; onCreated: (id: string) => void; hasPantry: boolean }) {
+function NewList({ onClose, onCreated, hasPantry, hasShop }: { onClose: () => void; onCreated: (id: string) => void; hasPantry: boolean; hasShop: boolean }) {
   const act = useAction();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("📝");
@@ -169,15 +182,71 @@ function NewList({ onClose, onCreated, hasPantry }: { onClose: () => void; onCre
         <input id="nl-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ width: 64, flex: "none" }} aria-label="Icoon" />
         <input id="nl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="bv. Inpaklijst vakantie" aria-label="Naam" onKeyDown={(e) => e.key === "Enter" && name.trim() && save()} />
       </div>
-      {!hasPantry && (
+      {(!hasPantry || !hasShop) && (
         <div className="field"><span>Soort</span>
           <div className="picks">
             <button type="button" className="pick" aria-pressed={kind === "list"} onClick={() => setKind("list")}>📝 Gewone lijst</button>
-            <button type="button" className="pick" aria-pressed={kind === "pantry"} onClick={() => { setKind("pantry"); if (!name) setName("Voorraad"); if (icon === "📝") setIcon("🥫"); }}>🥫 Voorraad (met houdbaarheid)</button>
+            {!hasShop && <button type="button" className="pick" aria-pressed={kind === "shopping"} onClick={() => { setKind("shopping"); if (!name) setName("Boodschappen"); if (icon === "📝") setIcon("🛒"); }}>🛒 Boodschappen (per afdeling)</button>}
+            {!hasPantry && <button type="button" className="pick" aria-pressed={kind === "pantry"} onClick={() => { setKind("pantry"); if (!name) setName("Voorraad"); if (icon === "📝") setIcon("🥫"); }}>🥫 Voorraad (met houdbaarheid)</button>}
           </div>
         </div>
       )}
       <div className="actions"><button className="btn ghost" onClick={onClose}>Annuleren</button><button className="btn" disabled={!name.trim()} onClick={save}>Maken</button></div>
+    </Modal>
+  );
+}
+
+/** Vaste boodschappen: de standaardlijst van het gezin, aanvinken in plaats van typen. */
+function StaplesPicker({ list, onClose }: { list: List; onClose: () => void }) {
+  const act = useAction();
+  const { toast } = useData();
+  const [staples, reload] = useRemote<Staple[]>("/staples", ["lists"], []);
+  const [manage, setManage] = useState(false);
+  const [nw, setNw] = useState("");
+  const open = new Map(list.items.filter((i) => !i.done).map((i) => [i.text.toLocaleLowerCase("nl"), i]));
+  const toggle = async (st: Staple) => {
+    const on = open.get(st.text.toLocaleLowerCase("nl"));
+    if (on) await act(() => api.del(`/items/${on.id}`));
+    else await act(() => api.post(`/lists/${list.id}/items`, { text: st.text, aisle: st.aisle ?? aisleOf(st.text) }));
+  };
+  const addStaple = async () => {
+    const t = nw.trim(); if (!t) return;
+    const r = await act(() => api.post<{ id: string }>("/staples", { text: t, aisle: aisleOf(t) }), `${t} toegevoegd aan de vaste lijst`);
+    if (r) { setNw(""); reload(); }
+  };
+  const groups = [...AISLES.map((a) => a.key), "overig"].map((k) => ({ k, items: staples.filter((s) => (s.aisle ?? aisleOf(s.text)) === k) })).filter((g) => g.items.length);
+  const n = staples.filter((s) => open.has(s.text.toLocaleLowerCase("nl"))).length;
+  return (
+    <Modal title="Vaste boodschappen" onClose={onClose} wide>
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        <span className="hint">Tik aan wat je nodig hebt; het komt meteen op {list.name}. <b>{n}</b> staan er nu op.</span>
+        <button className="linkbtn" onClick={() => setManage(!manage)}>{manage ? "Klaar" : "Lijst beheren"}</button>
+      </div>
+      <form className="addrow" onSubmit={(e) => { e.preventDefault(); addStaple(); }}>
+        <input value={nw} onChange={(e) => setNw(e.target.value)} placeholder="Nieuw vast product, bv. Ayran" aria-label="Nieuw vast product" />
+        <button className="btn ghost" type="submit" disabled={!nw.trim()}>+ Vast</button>
+      </form>
+      <div className="staples">
+        {groups.map((g) => (
+          <section key={g.k}>
+            <div className="aisle-h">{AISLE_INFO[g.k].icon} {AISLE_INFO[g.k].name}</div>
+            <div className="picks">
+              {g.items.map((st) => {
+                const on = open.has(st.text.toLocaleLowerCase("nl"));
+                return (
+                  <button key={st.id} type="button" className={`pick staple${manage ? " manage" : ""}`} aria-pressed={on}
+                    onClick={() => (manage ? act(() => api.del(`/staples/${st.id}`), `${st.text} van de vaste lijst gehaald`).then(() => reload()) : toggle(st))}
+                    title={manage ? "Van de vaste lijst halen" : on ? "Van de boodschappenlijst halen" : "Op de boodschappenlijst zetten"}>
+                    {on && !manage ? "✓ " : manage ? "✕ " : ""}{st.text}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+        {!staples.length && <p className="empty">De vaste lijst wordt geladen…</p>}
+      </div>
+      <div className="actions"><button className="btn" onClick={() => { onClose(); if (n) toast(`${n} vaste boodschappen op ${list.name}`); }}>Klaar</button></div>
     </Modal>
   );
 }

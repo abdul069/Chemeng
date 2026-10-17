@@ -278,7 +278,7 @@ api.get("/bootstrap", (req, res) => {
   res.json({
     members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
     chores: S.listChores(), rewards: S.listRewards(), points: withPeriods(S.points()),
-    lists: S.listLists(), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
+    lists: (S.ensureShoppingList(), S.listLists()), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
   });
@@ -543,14 +543,17 @@ api.delete("/recipes/:id", (req, res) => { S.deleteRecipe(p(req)); res.json({ ok
 api.post("/recipes/:id/to-list", (req, res) => {
   const recipe = S.listRecipes().find((r) => r.id === p(req));
   if (!recipe) return void res.status(404).json({ error: "Recept niet gevonden." });
-  const b = z.object({ listId: z.string(), items: z.array(z.string().trim().min(1).max(200)).max(100).optional() }).parse(req.body);
+  const b = z.object({ listId: z.string().optional(), items: z.array(z.string().trim().min(1).max(200)).max(100).optional() }).parse(req.body);
   const all = recipe.ingredients.split("\n").map((s) => s.replace(/^[-*•\s]+/, "").trim()).filter(Boolean);
   const items = b.items ?? all;
+  const listId = b.listId ?? S.ensureShoppingList();
+  const list = S.listLists().find((l) => l.id === listId);
+  if (!list) return void res.status(404).json({ error: "Lijst niet gevonden." });
   // niets dubbel zetten wat nog open op de lijst staat
-  const open = new Set(S.listLists().find((l) => l.id === b.listId)?.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")) ?? []);
+  const open = new Set(list.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")));
   const fresh = items.filter((it) => !open.has(it.toLocaleLowerCase("nl")));
-  fresh.forEach((it) => S.addItem(b.listId, it));
-  res.json({ added: fresh.length, skipped: items.length - fresh.length });
+  tx(() => fresh.forEach((it) => S.addItem(listId, it)));
+  res.json({ added: fresh.length, skipped: items.length - fresh.length, list: list.name });
   broadcast("lists");
 });
 
@@ -668,19 +671,38 @@ api.post("/recipes/:id/translate", async (req, res) => {
 
 // ---------- lijsten ----------
 api.post("/lists", (req, res) => {
-  const b = z.object({ name: z.string().trim().min(1).max(60), icon: z.string().max(16).default("📝"), kind: z.enum(["list", "pantry"]).default("list") }).parse(req.body);
+  const b = z.object({ name: z.string().trim().min(1).max(60), icon: z.string().max(16).default("📝"), kind: z.enum(["list", "pantry", "shopping"]).default("list") }).parse(req.body);
   res.json({ id: S.createList(b.name, b.icon, hid(), b.kind) });
   broadcast("lists");
 });
 api.delete("/lists/:id", (req, res) => { S.deleteList(p(req)); res.json({ ok: true }); broadcast("lists"); });
+const aisle = z.enum(S.AISLE_KEYS).nullable().optional();
 api.post("/lists/:id/items", (req, res) => {
-  const b = z.object({ text: z.string().trim().min(1).max(200), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional() }).parse(req.body);
-  res.json({ id: S.addItem(p(req), b.text, { expires: b.expires ?? null, qty: b.qty, memberId: b.memberId ?? null }) });
+  const b = z.object({ text: z.string().trim().min(1).max(200), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional(), aisle }).parse(req.body);
+  res.json({ id: S.addItem(p(req), b.text, { expires: b.expires ?? null, qty: b.qty, memberId: b.memberId ?? null, aisle: b.aisle ?? null }) });
   broadcast("lists");
 });
+/** Meerdere items in één keer (vaste boodschappen aanvinken); wat al open op de lijst staat, wordt overgeslagen. */
+api.post("/lists/:id/items/bulk", (req, res) => {
+  const b = z.object({ items: z.array(z.object({ text: z.string().trim().min(1).max(200), aisle })).min(1).max(200) }).parse(req.body);
+  const list = S.listLists().find((l) => l.id === p(req));
+  if (!list) return void res.status(404).json({ error: "Lijst niet gevonden." });
+  const open = new Set(list.items.filter((i) => !i.done).map((i) => i.text.toLocaleLowerCase("nl")));
+  let added = 0;
+  tx(() => { for (const it of b.items) { if (open.has(it.text.toLocaleLowerCase("nl"))) continue; S.addItem(list.id, it.text, { aisle: it.aisle ?? null }); open.add(it.text.toLocaleLowerCase("nl")); added++; } });
+  res.json({ added, skipped: b.items.length - added });
+  broadcast("lists");
+});
+// vaste boodschappen: de standaardlijst om aan te vinken in plaats van te typen
+api.get("/staples", (_req, res) => { res.json(S.listStaples()); });
+api.post("/staples", (req, res) => {
+  const b = z.object({ text: z.string().trim().min(1).max(80), aisle }).parse(req.body);
+  res.json({ id: S.addStaple(b.text, b.aisle ?? null), staples: S.listStaples() });
+});
+api.delete("/staples/:id", (req, res) => { S.deleteStaple(p(req)); res.json(S.listStaples()); });
 api.post("/lists/:id/clear-done", (req, res) => { S.clearDone(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.patch("/items/:id", (req, res) => {
-  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional() }).parse(req.body);
+  const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional(), aisle }).parse(req.body);
   S.updateItem(p(req), b);
   res.json({ ok: true });
   broadcast("lists");

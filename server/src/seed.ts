@@ -84,7 +84,7 @@ export function seedDemo() {
     setMeal(d(i), "diner", dn, dn === "Spaghetti bolognese" ? bolo : dn === "Zelfgemaakte pizza" ? pizza : null);
   });
 
-  const shop = findList("Boodschappen")?.id ?? createList("Boodschappen", "🛒");
+  const shop = findList("Boodschappen")?.id ?? createList("Boodschappen", "🛒", undefined, "shopping");
   ["Melk", "Brood", "Bananen", "Kaas", "Wasmiddel"].forEach((x) => addItem(shop, x));
   const todo = findList("To-do")?.id ?? createList("To-do", "✅");
   ["Turnzak Lina wassen", "Cadeau oma kopen", "Afspraak garage maken"].forEach((x) => addItem(todo, x));

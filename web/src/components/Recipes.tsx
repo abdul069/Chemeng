@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAction, useData } from "../store";
 import type { Recipe, RecipeHit, Slot } from "../types";
+import { isShopping } from "../types";
 import { Confirm, Modal, Pic } from "./ui";
 import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, MSHORT, addDays, todayIso, weekday } from "../dates";
@@ -62,23 +63,24 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const steps = lines(version.instructions);
   const notTranslated = recipe.lang !== "nl" && !recipe.original;
   const origLang = LANG[recipe.original?.lang ?? recipe.lang] ?? (recipe.original?.lang ?? recipe.lang);
-  const [have, setHave] = useState<Set<number>>(new Set());
   const [plan, setPlan] = useState(false);
   const [edit, setEdit] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState(false);
   const [cook, setCook] = useState(false);
-  const shop = data?.lists.find((l) => /boodschap/i.test(l.name)) ?? data?.lists[0];
-  const missing = ingredients.filter((_, i) => !have.has(i));
+  const shop = data?.lists.find(isShopping);
+  // aangevinkt = nodig (standaard alles); vink af wat je al in huis hebt
+  const [skip, setSkip] = useState<Set<number>>(new Set());
+  const missing = ingredients.filter((_, i) => !skip.has(i));
   // allergieën/voorkeuren uit de profielen
   const warnings = dietHits(`${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`, avoidWords(data?.members ?? []));
-  const toggle = (i: number) => setHave((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
+  const toggle = (i: number) => setSkip((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
   const toList = async () => {
-    if (!shop) { toast("Maak eerst een boodschappenlijst bij Lijsten."); return; }
-    const r = await act(() => api.post<{ added: number; skipped: number }>(`/recipes/${recipe.id}/to-list`, { listId: shop.id, items: missing }));
-    if (r) toast(r.added ? `${r.added} op ${shop.name} gezet${r.skipped ? ` (${r.skipped} stonden er al)` : ""}` : "Alles stond al op de lijst");
+    if (!missing.length) { toast("Vink eerst aan wat je nodig hebt."); return; }
+    const r = await act(() => api.post<{ added: number; skipped: number; list: string }>(`/recipes/${recipe.id}/to-list`, { listId: shop?.id, items: missing }));
+    if (r) toast(r.added ? `${r.added} op ${r.list} gezet${r.skipped ? ` (${r.skipped} stonden er al)` : ""}` : "Alles stond al op de lijst");
   };
   const translate = async () => {
     setBusy(true);
@@ -91,8 +93,8 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
     <Modal title={version.title} onClose={onClose} wide>
       {recipe.original && (
         <div className="seg langseg" role="group" aria-label="Taal van het recept">
-          <button aria-pressed={!showOrig} onClick={() => { setShowOrig(false); setHave(new Set()); }}>🇳🇱 Nederlands</button>
-          <button aria-pressed={showOrig} onClick={() => { setShowOrig(true); setHave(new Set()); }}>{FLAG[recipe.original.lang] ?? "🌐"} {origLang}</button>
+          <button aria-pressed={!showOrig} onClick={() => { setShowOrig(false); setSkip(new Set()); }}>🇳🇱 Nederlands</button>
+          <button aria-pressed={showOrig} onClick={() => { setShowOrig(true); setSkip(new Set()); }}>{FLAG[recipe.original.lang] ?? "🌐"} {origLang}</button>
         </div>
       )}
       {notTranslated && (
@@ -126,15 +128,15 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
           const text = `${version.title}\n\nIngrediënten:\n${ingredients.map((x) => `• ${x}`).join("\n")}\n\nBereiding:\n${steps.map((x, i) => `${i + 1}. ${x.replace(/^\d+[.)]\s*/, "")}`).join("\n")}${recipe.sourceUrl ? `\n\n${recipe.sourceUrl}` : ""}`;
           try { if (navigator.share) await navigator.share({ title: version.title, text }); else { await navigator.clipboard.writeText(text); toast("Recept gekopieerd"); } } catch { /* geannuleerd */ }
         }}>↗ Delen</button>
-        <button className="btn" onClick={toList} disabled={!missing.length}>🛒 {missing.length === ingredients.length ? "Alles" : `${missing.length} ontbrekende`} op {shop?.name ?? "de boodschappenlijst"}</button>
+        <button className="btn" onClick={toList} disabled={!missing.length}>🛒 {missing.length === ingredients.length ? "Alles" : `${missing.length} ${missing.length === 1 ? "ingrediënt" : "ingrediënten"}`} op {shop?.name ?? "Boodschappen"}</button>
         {data?.assistant.available && notTranslated && <button className="btn ghost" onClick={translate} disabled={busy}>{busy ? "Vertalen…" : "Vertaal naar Nederlands"}</button>}
       </div>
       <section>
-        <div className="section-title"><h2>Ingrediënten</h2><span className="hint">Vink aan wat je al in huis hebt</span></div>
+        <div className="section-title"><h2>Ingrediënten</h2><span className="hint">Aangevinkt = nodig · vink af wat je al in huis hebt{skip.size ? <> · <button className="linkbtn" onClick={() => setSkip(new Set())}>alles aanvinken</button></> : null}</span></div>
         <div className="ingr">
           {ingredients.map((x, i) => (
-            <label key={i} className={`ingr-row${have.has(i) ? " have" : ""}`}>
-              <input type="checkbox" checked={have.has(i)} onChange={() => toggle(i)} />
+            <label key={i} className={`ingr-row${skip.has(i) ? " have" : ""}`}>
+              <input type="checkbox" checked={!skip.has(i)} onChange={() => toggle(i)} />
               <span>{x}</span>
             </label>
           ))}

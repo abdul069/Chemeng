@@ -240,14 +240,14 @@ export function setMeal(date: string, slot: string, title: string, recipeId: str
 }
 
 // ---------- lijsten ----------
-export type ListKind = "list" | "pantry";
+export type ListKind = "list" | "pantry" | "shopping";
 export const listLists = () => {
   const h = hid();
   const lists = all<{ id: string; name: string; icon: string; kind: ListKind }>("SELECT id, name, icon, kind FROM lists WHERE household_id=? ORDER BY sort, name", h);
-  const items = all<{ id: string; list_id: string; text: string; done: number; expires: string | null; qty: string; member_id: string | null }>(
-    "SELECT i.id, i.list_id, i.text, i.done, i.expires, i.qty, i.member_id FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? ORDER BY i.done, COALESCE(i.expires, '9999'), i.created_at", h,
+  const items = all<{ id: string; list_id: string; text: string; done: number; expires: string | null; qty: string; member_id: string | null; aisle: string | null }>(
+    "SELECT i.id, i.list_id, i.text, i.done, i.expires, i.qty, i.member_id, i.aisle FROM list_items i JOIN lists l ON l.id = i.list_id WHERE l.household_id=? ORDER BY i.done, COALESCE(i.expires, '9999'), i.created_at", h,
   );
-  return lists.map((l) => ({ ...l, items: items.filter((i) => i.list_id === l.id).map((i) => ({ id: i.id, text: i.text, done: !!i.done, expires: i.expires, qty: i.qty, memberId: i.member_id })) }));
+  return lists.map((l) => ({ ...l, items: items.filter((i) => i.list_id === l.id).map((i) => ({ id: i.id, text: i.text, done: !!i.done, expires: i.expires, qty: i.qty, memberId: i.member_id, aisle: i.aisle })) }));
 };
 export function createList(name: string, icon = "📝", h = hid(), kind: ListKind = "list") {
   const id = newId();
@@ -255,9 +255,17 @@ export function createList(name: string, icon = "📝", h = hid(), kind: ListKin
   return id;
 }
 export const pantryList = () => listLists().find((l) => l.kind === "pantry");
-export const shoppingList = () => listLists().find((l) => l.kind === "list" && /boodschap/i.test(l.name)) ?? listLists().find((l) => l.kind === "list");
-export function updateItem(id: string, patch: { text?: string; done?: boolean; expires?: string | null; qty?: string; memberId?: string | null }) {
+export const shoppingList = () => { const ls = listLists(); return ls.find((l) => l.kind === "shopping") ?? ls.find((l) => l.kind === "list" && /boodschap/i.test(l.name)); };
+/** Elk gezin heeft één boodschappenlijst; bestaat die nog niet, dan maken we ze. */
+export function ensureShoppingList() {
+  const existing = shoppingList();
+  if (existing) return existing.id;
+  return createList("Boodschappen", "🛒", hid(), "shopping");
+}
+export const AISLE_KEYS = ["groente", "zuivel", "vlees", "brood", "droog", "diepvries", "drank", "huishouden", "overig"] as const;
+export function updateItem(id: string, patch: { text?: string; done?: boolean; expires?: string | null; qty?: string; memberId?: string | null; aisle?: string | null }) {
   const h = hid();
+  if (patch.aisle !== undefined) run(`UPDATE list_items SET aisle=? WHERE ${ITEM_OWNED}`, patch.aisle, id, h);
   if (patch.memberId !== undefined) run(`UPDATE list_items SET member_id=? WHERE ${ITEM_OWNED}`, patch.memberId, id, h);
   if (patch.text !== undefined) run(`UPDATE list_items SET text=? WHERE ${ITEM_OWNED}`, patch.text.trim(), id, h);
   if (patch.done !== undefined) run(`UPDATE list_items SET done=? WHERE ${ITEM_OWNED}`, patch.done ? 1 : 0, id, h);
@@ -271,12 +279,44 @@ export function findList(name: string) {
 }
 const ownsList = (listId: string) => !!get("SELECT 1 FROM lists WHERE id=? AND household_id=?", listId, hid());
 const ITEM_OWNED = "id=? AND list_id IN (SELECT id FROM lists WHERE household_id=?)";
-export function addItem(listId: string, text: string, extra: { expires?: string | null; qty?: string; memberId?: string | null } = {}) {
+export function addItem(listId: string, text: string, extra: { expires?: string | null; qty?: string; memberId?: string | null; aisle?: string | null } = {}) {
   if (!ownsList(listId)) throw new Error("Onbekende lijst");
   const id = newId();
-  run("INSERT INTO list_items(id, list_id, text, expires, qty, member_id) VALUES (?,?,?,?,?,?)", id, listId, text.trim(), extra.expires ?? null, extra.qty ?? "", extra.memberId ?? null);
+  run("INSERT INTO list_items(id, list_id, text, expires, qty, member_id, aisle) VALUES (?,?,?,?,?,?,?)", id, listId, text.trim(), extra.expires ?? null, extra.qty ?? "", extra.memberId ?? null, extra.aisle ?? null);
   return id;
 }
+
+// ---------- vaste boodschappen (standaardlijst om aan te vinken) ----------
+export interface Staple { id: string; text: string; aisle: string | null }
+export const DEFAULT_STAPLES: { text: string; aisle: string }[] = [
+  ...["Melk", "Yoghurt", "Kaas", "Beyaz peynir", "Boter", "Eieren", "Ayran", "Kaymak"].map((text) => ({ text, aisle: "zuivel" })),
+  ...["Brood", "Pide", "Yufka", "Lavaş", "Simit"].map((text) => ({ text, aisle: "brood" })),
+  ...["Tomaten", "Komkommer", "Uien", "Knoflook", "Paprika", "Aardappelen", "Citroen", "Peterselie", "Sla", "Appels", "Bananen", "Druiven", "Spinazie", "Courgette", "Aubergine", "Wortelen", "Prei", "Munt", "Dille", "Champignons"].map((text) => ({ text, aisle: "groente" })),
+  ...["Kipfilet", "Gehakt", "Lamsvlees", "Sucuk", "Vis", "Köfte"].map((text) => ({ text, aisle: "vlees" })),
+  ...["Rijst", "Bulgur", "Pasta", "Bloem", "Linzen", "Kikkererwten", "Suiker", "Zout", "Olijfolie", "Zonnebloemolie", "Salça", "Thee", "Koffie", "Pul biber", "Komijn", "Olijven", "Tahin", "Pekmez", "Honing", "Noten"].map((text) => ({ text, aisle: "droog" })),
+  ...["Water", "Vruchtensap", "Cola"].map((text) => ({ text, aisle: "drank" })),
+  ...["Frieten", "IJs"].map((text) => ({ text, aisle: "diepvries" })),
+  ...["WC-papier", "Keukenrol", "Afwasmiddel", "Wasmiddel", "Zeep", "Shampoo", "Tandpasta", "Vuilniszakken", "Luiers"].map((text) => ({ text, aisle: "huishouden" })),
+];
+export function listStaples(): Staple[] {
+  const h = hid();
+  let rows = all<Staple>("SELECT id, text, aisle FROM staples WHERE household_id=? ORDER BY sort, created_at", h);
+  if (!rows.length) {
+    tx(() => { DEFAULT_STAPLES.forEach((x, i) => run("INSERT INTO staples(id, household_id, text, aisle, sort) VALUES (?,?,?,?,?)", newId(), h, x.text, x.aisle, i)); });
+    rows = all<Staple>("SELECT id, text, aisle FROM staples WHERE household_id=? ORDER BY sort, created_at", h);
+  }
+  return rows;
+}
+export function addStaple(text: string, aisle: string | null) {
+  const h = hid();
+  const t = text.trim();
+  const dup = get<{ id: string }>("SELECT id FROM staples WHERE household_id=? AND lower(text)=lower(?)", h, t);
+  if (dup) return dup.id;
+  const id = newId();
+  run("INSERT INTO staples(id, household_id, text, aisle, sort) VALUES (?,?,?,?,(SELECT COALESCE(MAX(sort),-1)+1 FROM staples WHERE household_id=?))", id, h, t, aisle, h);
+  return id;
+}
+export const deleteStaple = (id: string) => run("DELETE FROM staples WHERE id=? AND household_id=?", id, hid());
 export const setItemDone = (id: string, done: boolean) => run(`UPDATE list_items SET done=? WHERE ${ITEM_OWNED}`, done ? 1 : 0, id, hid());
 export const updateItemText = (id: string, text: string) => run(`UPDATE list_items SET text=? WHERE ${ITEM_OWNED}`, text.trim(), id, hid());
 export const deleteItem = (id: string) => run(`DELETE FROM list_items WHERE ${ITEM_OWNED}`, id, hid());

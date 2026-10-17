@@ -1027,3 +1027,9 @@ h1, h2, h3 { font-family: var(--f-body); font-weight: 600; letter-spacing: -0.01
   .miniplayer-txt small { display: none; }
   .ezan-card { padding: 22px 18px; }
 }
+.shop-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.staples { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow: auto; padding-right: 4px; }
+.staples section { display: flex; flex-direction: column; gap: 6px; }
+.pick.staple { border-color: rgba(30,38,50,.12); font-weight: 500; }
+.pick.staple[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #05302c; }
+.pick.staple.manage { border-style: dashed; color: var(--danger); background: #fff; }
