@@ -2,15 +2,15 @@
 export type Bi = { nl: string; tr: string };
 export interface Quiz { q: Bi; options: Bi[]; answer: number; why?: Bi; topic: string; icon?: string; optionIcons?: string[] }
 export interface Pair { ar: string; latin: string; meaning: Bi; icon: string }
-export interface Order { title: Bi; icon: string; steps: Bi[]; icons: string[] }
+export interface Order { title: Bi; icon: string; photo: string; steps: Bi[]; icons: string[] }
 
-export const TOPICS: Record<string, Bi & { icon: string }> = {
-  zuilen: { nl: "De vijf zuilen", tr: "İslam'ın beş şartı", icon: "🕌" },
-  profeten: { nl: "Profeten", tr: "Peygamberler", icon: "📜" },
-  gebed: { nl: "Het gebed", tr: "Namaz", icon: "🤲" },
-  ramadan: { nl: "Ramadan & feest", tr: "Ramazan ve bayram", icon: "🌙" },
-  adab: { nl: "Goede manieren", tr: "Güzel ahlak", icon: "💛" },
-  koran: { nl: "De Koran", tr: "Kur'an", icon: "📖" },
+export const TOPICS: Record<string, Bi & { icon: string; photo: string }> = {
+  zuilen: { photo: "Kaaba", nl: "De vijf zuilen", tr: "İslam'ın beş şartı", icon: "🕌" },
+  profeten: { photo: "Al-Masjid an-Nabawi", nl: "Profeten", tr: "Peygamberler", icon: "📜" },
+  gebed: { photo: "Sultan Ahmed Mosque", nl: "Het gebed", tr: "Namaz", icon: "🤲" },
+  ramadan: { photo: "Iftar", nl: "Ramadan & feest", tr: "Ramazan ve bayram", icon: "🌙" },
+  adab: { photo: "Turkish tea", nl: "Goede manieren", tr: "Güzel ahlak", icon: "💛" },
+  koran: { photo: "Quran", nl: "De Koran", tr: "Kur'an", icon: "📖" },
 };
 
 export const QUIZ: Quiz[] = [
@@ -68,26 +68,26 @@ export const PAIRS: Pair[] = [
 ];
 
 export const ORDERS: Order[] = [
-  { icon: "💧", icons: ["🤲", "👄", "👃", "😊", "💪", "🧠", "🦶"], title: { nl: "De stappen van de wudu (abdest)", tr: "Abdestin adımları" }, steps: [
+  { icon: "💧", icons: ["🤲", "👄", "👃", "😊", "💪", "🧠", "🦶"], photo: "Wudu", title: { nl: "De stappen van de wudu (abdest)", tr: "Abdestin adımları" }, steps: [
     { nl: "Bismillah zeggen en handen wassen", tr: "Bismillah deyip elleri yıkamak" }, { nl: "Mond spoelen", tr: "Ağzı çalkalamak" }, { nl: "Neus spoelen", tr: "Burna su vermek" },
     { nl: "Gezicht wassen", tr: "Yüzü yıkamak" }, { nl: "Armen tot de ellebogen wassen", tr: "Kolları dirseklere kadar yıkamak" }, { nl: "Hoofd (en oren) met natte handen strijken", tr: "Başı ve kulakları mesh etmek" }, { nl: "Voeten tot de enkels wassen", tr: "Ayakları topuklara kadar yıkamak" } ] },
-  { icon: "🕌", icons: ["🌄", "☀️", "🌤️", "🌇", "🌙"], title: { nl: "De vijf gebeden van de dag, in volgorde", tr: "Günün beş namazı, sırayla" }, steps: [
+  { icon: "🕌", icons: ["🌄", "☀️", "🌤️", "🌇", "🌙"], photo: "Adhan", title: { nl: "De vijf gebeden van de dag, in volgorde", tr: "Günün beş namazı, sırayla" }, steps: [
     { nl: "Fajr (sabah) – ochtend", tr: "Sabah namazı" }, { nl: "Dhuhr (öğle) – middag", tr: "Öğle namazı" }, { nl: "Asr (ikindi) – namiddag", tr: "İkindi namazı" }, { nl: "Maghrib (akşam) – avond", tr: "Akşam namazı" }, { nl: "Isha (yatsı) – nacht", tr: "Yatsı namazı" } ] },
-  { icon: "🏛️", icons: ["☝️", "🧎", "🤲", "🌙", "🕋"], title: { nl: "De vijf zuilen van de islam", tr: "İslam'ın beş şartı" }, steps: [
+  { icon: "🏛️", icons: ["☝️", "🧎", "🤲", "🌙", "🕋"], photo: "Kaaba", title: { nl: "De vijf zuilen van de islam", tr: "İslam'ın beş şartı" }, steps: [
     { nl: "Shahada – geloofsgetuigenis", tr: "Kelime-i şehadet" }, { nl: "Salat – het gebed", tr: "Namaz" }, { nl: "Zakat – geven aan de armen", tr: "Zekât" }, { nl: "Sawm – vasten in de ramadan", tr: "Oruç" }, { nl: "Hadj – bedevaart naar Mekka", tr: "Hac" } ] },
-  { icon: "🧎", icons: ["🧍", "🙇", "🧍", "🧎", "🪑", "🧎"], title: { nl: "Een rak'ah van het gebed", tr: "Namazın bir rekâtı" }, steps: [
+  { icon: "🧎", icons: ["🧍", "🙇", "🧍", "🧎", "🪑", "🧎"], photo: "Salah", title: { nl: "Een rak'ah van het gebed", tr: "Namazın bir rekâtı" }, steps: [
     { nl: "Staan (kıyam) en Al-Fatiha lezen", tr: "Kıyam ve Fâtiha okumak" }, { nl: "Buigen (rükû)", tr: "Rükû" }, { nl: "Weer rechtop staan", tr: "Doğrulmak" }, { nl: "Eerste neerknieling (secde)", tr: "Birinci secde" }, { nl: "Even zitten", tr: "Oturmak" }, { nl: "Tweede neerknieling (secde)", tr: "İkinci secde" } ] },
-  { icon: "🌙", icons: ["🌄", "🕌", "☀️", "🍽️", "🌃"], title: { nl: "Een dag in de ramadan", tr: "Ramazanda bir gün" }, steps: [
+  { icon: "🌙", icons: ["🌄", "🕌", "☀️", "🍽️", "🌃"], photo: "Ramadan", title: { nl: "Een dag in de ramadan", tr: "Ramazanda bir gün" }, steps: [
     { nl: "Sahur – eten vóór zonsopgang", tr: "Sahur" }, { nl: "Fajr-gebed en het vasten begint", tr: "Sabah namazı, oruç başlar" }, { nl: "Overdag: geen eten of drinken, goed gedrag", tr: "Gündüz: yemek yok, güzel davranış" }, { nl: "Iftar bij zonsondergang (akşam)", tr: "Akşam ezanıyla iftar" }, { nl: "Teravih-gebed in de avond", tr: "Teravih namazı" } ] },
 ];
 
 /** Korte soera's om te leren: nummer in de Koran en een kindvriendelijke uitleg. */
-export const SURAHS: { n: number; name: Bi; about: Bi }[] = [
-  { n: 1, name: { nl: "Al-Fatiha", tr: "Fâtiha" }, about: { nl: "De opening: we vragen Allah om ons de goede weg te tonen. Je leest ze in elk gebed.", tr: "Açılış: Allah'tan bize doğru yolu göstermesini isteriz. Her namazda okunur." } },
-  { n: 112, name: { nl: "Al-Ikhlas", tr: "İhlâs" }, about: { nl: "Allah is Eén, Hij heeft niemand nodig en er is niemand zoals Hij.", tr: "Allah birdir, hiçbir şeye muhtaç değildir, O'nun dengi yoktur." } },
-  { n: 113, name: { nl: "Al-Falaq", tr: "Felak" }, about: { nl: "We zoeken bescherming bij Allah tegen alles wat kwaad is.", tr: "Her kötülükten Allah'a sığınırız." } },
-  { n: 114, name: { nl: "An-Nas", tr: "Nâs" }, about: { nl: "We zoeken bescherming bij Allah, de Heer van de mensen, tegen influisteringen.", tr: "İnsanların Rabbi olan Allah'a vesveselerden sığınırız." } },
-  { n: 108, name: { nl: "Al-Kevser", tr: "Kevser" }, about: { nl: "De kortste soera: Allah gaf de profeet veel goeds, dus bid en wees dankbaar.", tr: "En kısa sure: Allah peygambere çok hayır verdi; namaz kıl ve şükret." } },
-  { n: 103, name: { nl: "Al-Asr", tr: "Asr" }, about: { nl: "Over tijd: wie gelooft, goed doet en geduldig is, is op de goede weg.", tr: "Zaman üzerine: iman eden, iyilik yapan ve sabreden kazanır." } },
-  { n: 110, name: { nl: "An-Nasr", tr: "Nasr" }, about: { nl: "Als de hulp van Allah komt, prijs Hem en vraag vergeving.", tr: "Allah'ın yardımı gelince O'nu tesbih et ve bağışlanma dile." } },
+export const SURAHS: { n: number; name: Bi; about: Bi; photo: string }[] = [
+  { n: 1, photo: "Al-Fatiha", name: { nl: "Al-Fatiha", tr: "Fâtiha" }, about: { nl: "De opening: we vragen Allah om ons de goede weg te tonen. Je leest ze in elk gebed.", tr: "Açılış: Allah'tan bize doğru yolu göstermesini isteriz. Her namazda okunur." } },
+  { n: 112, photo: "Al-Ikhlas", name: { nl: "Al-Ikhlas", tr: "İhlâs" }, about: { nl: "Allah is Eén, Hij heeft niemand nodig en er is niemand zoals Hij.", tr: "Allah birdir, hiçbir şeye muhtaç değildir, O'nun dengi yoktur." } },
+  { n: 113, photo: "Al-Falaq", name: { nl: "Al-Falaq", tr: "Felak" }, about: { nl: "We zoeken bescherming bij Allah tegen alles wat kwaad is.", tr: "Her kötülükten Allah'a sığınırız." } },
+  { n: 114, photo: "An-Nas", name: { nl: "An-Nas", tr: "Nâs" }, about: { nl: "We zoeken bescherming bij Allah, de Heer van de mensen, tegen influisteringen.", tr: "İnsanların Rabbi olan Allah'a vesveselerden sığınırız." } },
+  { n: 108, photo: "Al-Kawthar", name: { nl: "Al-Kevser", tr: "Kevser" }, about: { nl: "De kortste soera: Allah gaf de profeet veel goeds, dus bid en wees dankbaar.", tr: "En kısa sure: Allah peygambere çok hayır verdi; namaz kıl ve şükret." } },
+  { n: 103, photo: "Al-Asr", name: { nl: "Al-Asr", tr: "Asr" }, about: { nl: "Over tijd: wie gelooft, goed doet en geduldig is, is op de goede weg.", tr: "Zaman üzerine: iman eden, iyilik yapan ve sabreden kazanır." } },
+  { n: 110, photo: "An-Nasr", name: { nl: "An-Nasr", tr: "Nasr" }, about: { nl: "Als de hulp van Allah komt, prijs Hem en vraag vergeving.", tr: "Allah'ın yardımı gelince O'nu tesbih et ve bağışlanma dile." } },
 ];

@@ -19,7 +19,7 @@ import {
 import * as A from "./accounts.js";
 import { seedDemo } from "./seed.js";
 import { fetchRecipe, searchTurkishRecipes, translateRecipe, RecipeError, aiAvailable } from "./recipes.js";
-import { findDishPhotos, fillMissingPhotos } from "./dishphotos.js";
+import { findDishPhotos, fillMissingPhotos, wikipedia } from "./dishphotos.js";
 import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
@@ -886,6 +886,19 @@ api.delete("/ezan/sounds/:id", requireAdmin, (req, res) => {
 });
 
 // ---------- spelend islam leren (kinderen) ----------
+/** Een sfeerfoto bij een onderwerp (Wikipedia), met cache zodat het snel blijft. */
+const photoCache = new Map<string, { url: string; title: string } | null>();
+api.get("/learn/photo", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+  if (!q) return void res.json(null);
+  if (!photoCache.has(q)) {
+    let hit: { url: string; title: string } | null = null;
+    for (const lang of ["en", "tr", "nl"]) { try { const r = await wikipedia(lang, q); if (r[0]) { hit = { url: r[0].url, title: r[0].title }; break; } } catch { /* volgende */ } }
+    photoCache.set(q, hit);
+  }
+  res.set("Cache-Control", "public, max-age=86400");
+  res.json(photoCache.get(q) ?? null);
+});
 api.get("/learn/progress", (_req, res) => { res.json({ progress: S.learnProgress(), dailyMax: S.LEARN_DAILY_MAX }); });
 api.post("/learn/stars", (req, res) => {
   const b = z.object({ memberId: z.string(), game: z.string().regex(/^[a-z-]{2,30}$/), stars: z.number().int().min(1).max(20) }).parse(req.body);

@@ -14,7 +14,7 @@ const norm = (s: string) => s.trim().toLocaleLowerCase("tr").replace(/\s+/g, " "
 // woorden die geen gerecht zijn: daar zoeken we geen foto voor
 const SKIP = /^(restjes|restje|uit eten|op restaurant|afhaal|takeaway|niets|geen|vasten|\?+|-+)$/i;
 
-async function wikipedia(lang: string, query: string): Promise<DishPhoto[]> {
+export async function wikipedia(lang: string, query: string): Promise<DishPhoto[]> {
   const url = new URL(`https://${lang}.wikipedia.org/w/api.php`);
   url.search = new URLSearchParams({
     action: "query", generator: "search", gsrsearch: query, gsrlimit: "4", gsrnamespace: "0",
