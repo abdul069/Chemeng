@@ -16,6 +16,7 @@ import { all } from "./db.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 8080);
 const WEB_DIR = path.resolve(process.env.WEB_DIR ?? path.join(here, "../../web/dist"));
+try { process.env.GB_BUILD = fs.readFileSync(path.join(WEB_DIR, "index.html"), "utf8").match(/assets\/index-([A-Za-z0-9_-]+)\.js/)?.[1] ?? ""; } catch { process.env.GB_BUILD = ""; }
 
 const app = express();
 app.disable("x-powered-by");
@@ -33,7 +34,7 @@ app.use("/api", api);
 if (fs.existsSync(WEB_DIR)) {
   app.use(express.static(WEB_DIR, { index: false, maxAge: "1h" }));
   // alle andere routes horen bij de app zelf
-  app.get(/^\/(?!api|ws).*/, (_req, res) => res.sendFile(path.join(WEB_DIR, "index.html")));
+  app.get(/^\/(?!api|ws).*/, (_req, res) => res.sendFile(path.join(WEB_DIR, "index.html"), { headers: { "Cache-Control": "no-cache" } }));
 }
 
 const server = http.createServer(app);

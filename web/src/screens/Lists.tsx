@@ -38,7 +38,6 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   const pantry = list?.kind === "pantry";
   // boodschappen per afdeling in de winkel; afgevinkte onderaan
   const isShop = !!list && isShopping(list);
-  const [staples, setStaples] = useState(false);
   const toggleGrouped = () => { setGrouped(!grouped); try { localStorage.setItem("gb.aisles", grouped ? "0" : "1"); } catch { /* */ } };
   const sections: { key: string; items: ListItem[] }[] = (() => {
     if (!list) return [];
@@ -100,14 +99,14 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               </div>
             </div>
             {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>🍳 Koken met wat in huis is</button>}
-            {isShop && <div className="shop-tools"><button className="btn ghost" onClick={() => setStaples(true)}>☑️ Vaste boodschappen aanvinken</button><span className="hint">Per afdeling gesorteerd; tik op ✎ om de afdeling van een item te kiezen.</span></div>}
             {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is en zet het met 🛒 op de boodschappenlijst.</p>}
+            {isShop ? <StaplesInline list={list} /> : (
             <form className="addrow" onSubmit={(e) => { e.preventDefault(); add(); }}>
               <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? "bv. yoghurt" : "Toevoegen… (meerdere met komma's)"} aria-label="Nieuw item" />
               {pantry && <input id="item-qty" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="aantal" aria-label="Aantal" style={{ width: 90, flex: "none" }} />}
               {pantry && <input id="item-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} aria-label="Houdbaar tot" style={{ width: 150, flex: "none" }} />}
               <button className="btn" type="submit" disabled={!text.trim()}>Toevoegen</button>
-            </form>
+            </form>)}
             <div className="items">
               {sections.map((sec) => (<div key={sec.key || "all"} className="items">
               {sec.key && <div className="aisle-h">{sec.key === "done" ? "✓ Afgevinkt" : `${AISLE_INFO[sec.key].icon} ${AISLE_INFO[sec.key].name}`}<span className="muted num">{sec.items.length}</span></div>}
@@ -127,14 +126,13 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                 );
               })}
               </div>))}
-              {!list.items.length && <p className="empty">{pantry ? "Nog niets in voorraad. Voeg toe wat je in huis hebt, met houdbaarheidsdatum." : "De lijst is leeg. Typ hierboven of vraag het aan de assistent."}</p>}
+              {!list.items.length && <p className="empty">{pantry ? "Nog niets in voorraad. Voeg toe wat je in huis hebt, met houdbaarheidsdatum." : isShop ? "De lijst is leeg. Tik hierboven aan wat je nodig hebt." : "De lijst is leeg. Typ hierboven of vraag het aan de assistent."}</p>}
             </div>
           </section>
         ) : <p className="empty">Nog geen lijsten.</p>}
       </div>
       {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} hasShop={data.lists.some(isShopping)} />}
       {edit && <ItemEditor item={edit} shop={isShop} onClose={() => setEdit(null)} />}
-      {staples && list && <StaplesPicker list={list} onClose={() => setStaples(false)} />}
       {cook && <PantryCook onClose={() => setCook(false)} />}
       {confirm && list && <Confirm title={`${list.name} verwijderen?`} text="Alle items op deze lijst verdwijnen." onClose={() => setConfirm(false)}
         actions={[{ label: "Verwijderen", run: () => { act(() => api.del(`/lists/${list.id}`), "Lijst verwijderd"); setSel(null); } }]} />}
@@ -196,57 +194,70 @@ function NewList({ onClose, onCreated, hasPantry, hasShop }: { onClose: () => vo
   );
 }
 
-/** Vaste boodschappen: de standaardlijst van het gezin, aanvinken in plaats van typen. */
-function StaplesPicker({ list, onClose }: { list: List; onClose: () => void }) {
+/** Boodschappen kies je uit de vaste producten van het gezin; typen is alleen nodig voor iets nieuws, en dat wordt dan meteen een vast product. */
+function StaplesInline({ list }: { list: List }) {
   const act = useAction();
-  const { toast } = useData();
   const [staples, reload] = useRemote<Staple[]>("/staples", ["lists"], []);
+  const [q, setQ] = useState("");
   const [manage, setManage] = useState(false);
-  const [nw, setNw] = useState("");
-  const open = new Map(list.items.filter((i) => !i.done).map((i) => [i.text.toLocaleLowerCase("nl"), i]));
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem("gb.staples.open") !== "0"; } catch { return true; } });
+  const toggleOpen = () => { setOpen(!open); try { localStorage.setItem("gb.staples.open", open ? "0" : "1"); } catch { /* */ } };
+  const onList = new Map(list.items.filter((i) => !i.done).map((i) => [i.text.toLocaleLowerCase("nl"), i]));
+  const fold = (x: string) => x.toLocaleLowerCase("nl").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const f = fold(q.trim());
+  const shown = f ? staples.filter((st) => fold(st.text).includes(f)) : staples;
+  const exact = staples.some((st) => fold(st.text) === f);
   const toggle = async (st: Staple) => {
-    const on = open.get(st.text.toLocaleLowerCase("nl"));
+    const on = onList.get(st.text.toLocaleLowerCase("nl"));
     if (on) await act(() => api.del(`/items/${on.id}`));
     else await act(() => api.post(`/lists/${list.id}/items`, { text: st.text, aisle: st.aisle ?? aisleOf(st.text) }));
   };
-  const addStaple = async () => {
-    const t = nw.trim(); if (!t) return;
-    const r = await act(() => api.post<{ id: string }>("/staples", { text: t, aisle: aisleOf(t) }), `${t} toegevoegd aan de vaste lijst`);
-    if (r) { setNw(""); reload(); }
+  /** Iets nieuws: op de lijst én in de vaste producten (één keer typen, daarna altijd aan te tikken). */
+  const addNew = async () => {
+    const parts = q.split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) return;
+    setQ("");
+    for (const t of parts) {
+      const existing = staples.find((st) => fold(st.text) === fold(t));
+      if (!existing) await act(() => api.post("/staples", { text: t, aisle: aisleOf(t) }));
+      if (!onList.has(t.toLocaleLowerCase("nl"))) await act(() => api.post(`/lists/${list.id}/items`, { text: existing?.text ?? t, aisle: existing?.aisle ?? aisleOf(t) }));
+    }
+    reload();
   };
-  const groups = [...AISLES.map((a) => a.key), "overig"].map((k) => ({ k, items: staples.filter((s) => (s.aisle ?? aisleOf(s.text)) === k) })).filter((g) => g.items.length);
-  const n = staples.filter((s) => open.has(s.text.toLocaleLowerCase("nl"))).length;
+  const groups = [...AISLES.map((a) => a.key), "overig"].map((k) => ({ k, items: shown.filter((st) => (st.aisle ?? aisleOf(st.text)) === k) })).filter((g) => g.items.length);
   return (
-    <Modal title="Vaste boodschappen" onClose={onClose} wide>
-      <div className="section-title" style={{ marginBottom: 0 }}>
-        <span className="hint">Tik aan wat je nodig hebt; het komt meteen op {list.name}. <b>{n}</b> staan er nu op.</span>
-        <button className="linkbtn" onClick={() => setManage(!manage)}>{manage ? "Klaar" : "Lijst beheren"}</button>
-      </div>
-      <form className="addrow" onSubmit={(e) => { e.preventDefault(); addStaple(); }}>
-        <input value={nw} onChange={(e) => setNw(e.target.value)} placeholder="Nieuw vast product, bv. Ayran" aria-label="Nieuw vast product" />
-        <button className="btn ghost" type="submit" disabled={!nw.trim()}>+ Vast</button>
+    <div className="staples-inline">
+      <form className="addrow" onSubmit={(e) => { e.preventDefault(); if (f && !exact) addNew(); else if (shown.length === 1) { toggle(shown[0]); setQ(""); } }}>
+        <input id="item-new" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek of typ een product… (nieuw = ook vast product)" aria-label="Zoek of typ een product" />
+        {f && !exact && <button className="btn" type="submit">+ “{q.trim()}” toevoegen</button>}
+        {q && <button type="button" className="iconbtn" onClick={() => setQ("")} aria-label="Wissen"><Icon.close /></button>}
       </form>
-      <div className="staples">
-        {groups.map((g) => (
-          <section key={g.k}>
-            <div className="aisle-h">{AISLE_INFO[g.k].icon} {AISLE_INFO[g.k].name}</div>
-            <div className="picks">
-              {g.items.map((st) => {
-                const on = open.has(st.text.toLocaleLowerCase("nl"));
-                return (
-                  <button key={st.id} type="button" className={`pick staple${manage ? " manage" : ""}`} aria-pressed={on}
-                    onClick={() => (manage ? act(() => api.del(`/staples/${st.id}`), `${st.text} van de vaste lijst gehaald`).then(() => reload()) : toggle(st))}
-                    title={manage ? "Van de vaste lijst halen" : on ? "Van de boodschappenlijst halen" : "Op de boodschappenlijst zetten"}>
-                    {on && !manage ? "✓ " : manage ? "✕ " : ""}{st.text}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-        {!staples.length && <p className="empty">De vaste lijst wordt geladen…</p>}
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        <button className="linkbtn" onClick={toggleOpen} aria-expanded={open}>{open ? "▾" : "▸"} Vaste producten <span className="muted num">({staples.length})</span></button>
+        <span className="hint">Tik aan = op de lijst · nog eens = eraf{open ? <> · <button className="linkbtn" onClick={() => setManage(!manage)}>{manage ? "Klaar" : "Beheren"}</button></> : null}</span>
       </div>
-      <div className="actions"><button className="btn" onClick={() => { onClose(); if (n) toast(`${n} vaste boodschappen op ${list.name}`); }}>Klaar</button></div>
-    </Modal>
+      {(open || f) && (
+        <div className="staples">
+          {groups.map((g) => (
+            <section key={g.k}>
+              <div className="aisle-h">{AISLE_INFO[g.k].icon} {AISLE_INFO[g.k].name}</div>
+              <div className="picks">
+                {g.items.map((st) => {
+                  const on = onList.has(st.text.toLocaleLowerCase("nl"));
+                  return (
+                    <button key={st.id} type="button" className={`pick staple${manage ? " manage" : ""}`} aria-pressed={on}
+                      onClick={() => (manage ? act(() => api.del(`/staples/${st.id}`), `${st.text} is geen vast product meer`).then(() => reload()) : toggle(st))}
+                      title={manage ? "Uit de vaste producten halen" : on ? "Van de lijst halen" : "Op de lijst zetten"}>
+                      {on && !manage ? "✓ " : manage ? "✕ " : ""}{st.text}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+          {f && !shown.length && <p className="hint">Nog geen vast product met “{q.trim()}”. Druk op Enter om het toe te voegen; voortaan kun je het aantikken.</p>}
+        </div>
+      )}
+    </div>
   );
 }

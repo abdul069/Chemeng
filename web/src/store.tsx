@@ -29,7 +29,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(() => {
     api.get<Bootstrap>("/bootstrap")
-      .then((d) => { setData(d); setError(null); setErrorCode(null); })
+      .then((d) => {
+        // nieuwe versie online? één keer verversen zodat niemand op een oud scherm blijft werken
+        const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.match(/index-([A-Za-z0-9_-]+)\.js/)?.[1];
+        if (d.build && mine && d.build !== mine && sessionStorage.getItem("gb.reloaded") !== d.build) { sessionStorage.setItem("gb.reloaded", d.build); location.reload(); return; }
+        setData(d); setError(null); setErrorCode(null);
+      })
       .catch((e) => {
         setError(e.message);
         const code = e instanceof ApiError ? e.code ?? null : null;

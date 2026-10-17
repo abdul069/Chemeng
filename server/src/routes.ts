@@ -281,6 +281,7 @@ api.get("/bootstrap", (req, res) => {
     lists: (S.ensureShoppingList(), S.listLists()), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
+    build: process.env.GB_BUILD || null,
   });
 });
 
