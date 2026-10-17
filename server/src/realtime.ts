@@ -5,7 +5,7 @@ import { sessionFromCookie } from "./auth.js";
 import { viewersOfHousehold } from "./accounts.js";
 import { hid } from "./db.js";
 
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan";
 
 const sockets = new Map<WebSocket, { userId: string; householdId: string | null }>();
 

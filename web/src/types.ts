@@ -31,7 +31,15 @@ export interface Settings {
   family_name: string; city: string; latitude: string; longitude: string;
   screensaver_minutes: string; week_start: string; assistant_voice: string; holidays: string; has_pin: boolean;
   sleep_from: string; sleep_until: string; home_after_minutes: string;
+  ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
+  quran_reciter: string; quran_translation: string;
 }
+export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
+export interface PrayerDay { date: string; times: Record<Prayer, string>; tomorrow: Record<Prayer, string>; methods: { id: string; label: string }[]; city: string }
+export interface EzanSound { id: string; name: string; filename: string }
+export interface SurahInfo { number: number; name: string; englishName: string; englishNameTranslation: string; numberOfAyahs: number; revelationType: string }
+export interface Ayah { number: number; numberInSurah: number; text: string; translation: string; juz: number; page: number; sajda: boolean }
+export interface Surah extends SurahInfo { translationId: string; ayahs: Ayah[] }
 export interface Weather {
   city: string;
   current: { temp: number; code: number; label: string; icon: string; wind: number };
@@ -54,7 +62,7 @@ export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
   | { valid: true; kind: "agenda"; from: string; level: string };
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }

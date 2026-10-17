@@ -17,6 +17,8 @@ import { emitNav } from "./nav";
 import { RecipeHost } from "./components/Recipes";
 import { SettingsScreen } from "./screens/Settings";
 import { cap, clock, longDate, todayIso } from "./dates";
+import { EzanOverlay, useEzan } from "./components/Ezan";
+import { QuranMiniPlayer } from "./components/Quran";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
@@ -89,6 +91,7 @@ export function App() {
     return () => { document.removeEventListener("visibilitychange", vis); lock?.release().catch(() => {}); };
   }, []);
 
+  const ezan = useEzan();
   const openAssistant = useCallback((prompt?: string) => setAssist({ prompt, key: Date.now() }), []);
 
   if (resetToken) return <ResetPassword token={resetToken} onDone={() => { setResetToken(null); reload(); }} />;
@@ -133,11 +136,13 @@ export function App() {
       </main>
       {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label="Afspraak toevoegen">+</button>}
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
+      {appView !== "quran" || screen !== "apps" ? <QuranMiniPlayer onOpen={() => { setScreenState("apps"); setAppView("quran"); }} /> : null}
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
       <RecipeHost />
       {search && <Search onClose={() => setSearch(false)} goto={(sc, extra) => { emitNav(extra ?? {}); setScreen(sc as Screen); }} />}
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
+      {ezan.active && <EzanOverlay prayer={ezan.active.prayer} at={ezan.active.at} onClose={ezan.stop} />}
       {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
     </div>

@@ -4,6 +4,12 @@ Een slim gezinsscherm voor in de keuken: één groot touchscreen (of een tablet 
 gezinskalender, taken, maaltijden, lijsten, een fotolijst en een AI-assistent waarmee je kunt praten.
 Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 
+## Gebedstijden, ezan en Koran
+
+- **Gebedstijden** worden op de server astronomisch berekend voor de ingestelde woonplaats, met keuze uit rekenmethodes (Diyanet, Muslim World League, ISNA, Egypte, Umm al-Qura, Karachi, UOIF, Koeweit, Singapore, Teheran, Jafari) en de asr-school (standaard of Hanafi). Per gebed kun je minuten bijstellen.
+- **Ezan**: zet de ezan aan en elk scherm van het gezin laat op de gebedstijd de oproep horen. Kies per gebed welk geluid klinkt (eigen mp3's uit de ezan-bibliotheek, een zacht belletje of stil). Geluiden voeg je toe via een bestand of een link; de server bewaart ze. Per toestel kun je het geluid uitzetten.
+- **Koran**: alle 114 soera's lezen in het Arabisch met vertaling (Nederlands, Turks, Engels, Frans), luisteren per vers met meevolgen (het spelende vers licht op en blijft in beeld), en op de achtergrond verder luisteren terwijl je andere schermen gebruikt (kleine speler onderaan). Tekst via alquran.cloud (met blijvende cache op de server), audio via cdn.islamic.network.
+
 ## Wat zit erin
 
 | Onderdeel | Wat het doet |

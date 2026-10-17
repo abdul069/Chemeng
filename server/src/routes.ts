@@ -25,6 +25,8 @@ import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./impor
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
+import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
+import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
 export const api = express.Router();
@@ -796,6 +798,71 @@ api.get("/geocode", async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
   if (q.length < 2) return void res.json([]);
   try { res.json(await geocode(q)); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Zoeken mislukt" }); }
+});
+
+// ---------- gebedstijden en ezan ----------
+const parseJson = <T,>(s: string, fb: T): T => { try { return JSON.parse(s) as T; } catch { return fb; } };
+function prayerDay(date: string) {
+  const s = getSettings();
+  const adjust = parseJson<Partial<Record<Prayer, number>>>(s.ezan_adjust, {});
+  const times = prayerTimes({ date, latitude: Number(s.latitude), longitude: Number(s.longitude), method: s.ezan_method, asr: s.ezan_asr === "hanafi" ? "hanafi" : "standard", adjust });
+  return { date, times: Object.fromEntries(PRAYERS.map((p) => [p, new Date(times[p]).toISOString()])) as Record<Prayer, string> };
+}
+api.get("/prayer", (req, res) => {
+  const q = z.object({ date: z.string().optional() }).parse(req.query);
+  const date = q.date && isDate(q.date) ? q.date : today();
+  res.json({ ...prayerDay(date), tomorrow: prayerDay(addDays(date, 1)).times, methods: METHODS.map((m) => ({ id: m.id, label: m.label })), city: getSettings().city });
+});
+const ezanAudio = multer({
+  storage: multer.diskStorage({
+    destination: PHOTO_DIR,
+    filename: (_req, file, cb) => cb(null, `ezan-${crypto.randomUUID()}${/mp4|m4a|aac/.test(file.mimetype) ? ".m4a" : /ogg/.test(file.mimetype) ? ".ogg" : /wav/.test(file.mimetype) ? ".wav" : ".mp3"}`),
+  }),
+  limits: { fileSize: 40 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, /^audio\//.test(file.mimetype)),
+});
+const listEzanSounds = () => all<{ id: string; name: string; filename: string }>("SELECT id, name, filename FROM ezan_sounds WHERE household_id=? ORDER BY created_at", hid());
+api.get("/ezan/sounds", (_req, res) => { res.json(listEzanSounds()); });
+api.post("/ezan/sounds", requireAdmin, ezanAudio.single("audio"), (req, res) => {
+  if (!req.file) return void res.status(400).json({ error: "Het geluidsbestand kwam niet goed door. Kies een mp3-, m4a- of ogg-bestand." });
+  const name = String(req.body?.name ?? "").trim().slice(0, 80) || req.file.originalname.replace(/\.[a-z0-9]+$/i, "").slice(0, 80) || "Ezan";
+  run("INSERT INTO ezan_sounds(id, household_id, name, filename) VALUES (?,?,?,?)", newId(), hid(), name, req.file.filename);
+  res.json(listEzanSounds());
+  broadcast("ezan");
+});
+/** Een ezan van een link halen (de server downloadt, zodat het ook werkt als de bron later verdwijnt). */
+api.post("/ezan/sounds/url", requireAdmin, async (req, res) => {
+  const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), name: z.string().trim().max(80).default("") }).parse(req.body);
+  const r = await fetch(b.url, { signal: AbortSignal.timeout(60_000), headers: { "user-agent": "Gezinsbord/1.0" } });
+  if (!r.ok) return void res.status(502).json({ error: `De link antwoordde met ${r.status}.` });
+  const type = r.headers.get("content-type") ?? "";
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length > 40 * 1024 * 1024) return void res.status(413).json({ error: "Dat bestand is te groot (max. 40 MB)." });
+  if (!/^audio\//.test(type) && !/\.(mp3|m4a|ogg|wav)(\?|$)/i.test(b.url)) return void res.status(415).json({ error: "De link wijst niet naar een geluidsbestand." });
+  const ext = /mp4|m4a|aac|\.m4a/.test(type + b.url) ? ".m4a" : /ogg/.test(type + b.url) ? ".ogg" : /wav/.test(type + b.url) ? ".wav" : ".mp3";
+  const filename = `ezan-${crypto.randomUUID()}${ext}`;
+  fs.writeFileSync(path.join(PHOTO_DIR, filename), buf);
+  const name = b.name || decodeURIComponent(path.basename(new URL(b.url).pathname)).replace(/\.[a-z0-9]+$/i, "").slice(0, 80) || "Ezan";
+  run("INSERT INTO ezan_sounds(id, household_id, name, filename) VALUES (?,?,?,?)", newId(), hid(), name, filename);
+  res.json(listEzanSounds());
+  broadcast("ezan");
+});
+api.delete("/ezan/sounds/:id", requireAdmin, (req, res) => {
+  const m = get<{ filename: string }>("SELECT filename FROM ezan_sounds WHERE id=? AND household_id=?", p(req), hid());
+  if (m) { run("DELETE FROM ezan_sounds WHERE id=?", p(req)); fs.rm(path.join(PHOTO_DIR, path.basename(m.filename)), { force: true }, () => {}); }
+  res.json(listEzanSounds());
+  broadcast("ezan");
+});
+
+// ---------- koran ----------
+api.get("/quran/surahs", async (_req, res) => {
+  try { res.json({ surahs: await quranSurahs(), reciters: RECITERS, translations: TRANSLATIONS }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "De Koran kon niet geladen worden." }); }
+});
+api.get("/quran/surah/:n", async (req, res) => {
+  const n = Number(req.params.n);
+  if (!(n >= 1 && n <= 114)) return void res.status(404).json({ error: "Onbekende soera." });
+  const q = z.object({ translation: z.string().regex(/^[a-z]{2}\.[a-z0-9-]+$/).optional() }).parse(req.query);
+  try { res.json(await quranSurah(n, q.translation ?? getSettings().quran_translation)); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "De soera kon niet geladen worden." }); }
 });
 
 // ---------- spraakmemo's ----------

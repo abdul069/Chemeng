@@ -7,6 +7,8 @@ import type { EditorState } from "../components/EventEditor";
 import { RecipeThumb, openRecipe } from "../components/Recipes";
 import { Icon } from "../components/Icons";
 import { addDays, cap, clock, greeting, longDate, todayIso } from "../dates";
+import type { PrayerDay } from "../types";
+import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
 const SLOT_ICON: Record<string, string> = { ontbijt: "🥣", lunch: "🥪", diner: "🍽️", snack: "🍎" };
@@ -44,6 +46,9 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const [events] = useRemote<Occurrence[]>(`/events?from=${t}&to=${addDays(t, 1)}`, ["events", "members"], []);
   const [meals] = useRemote<Meal[]>(`/meals?from=${t}&to=${t}`, ["meals"], []);
   const [weather] = useRemote<Weather | null>("/weather", ["settings"], null);
+  const ezanOn = data?.settings.ezan_on === "1";
+  const [prayerDay] = useRemote<PrayerDay | null>(ezanOn ? "/prayer" : null, ["settings"], null);
+  const nxt = ezanOn ? nextPrayer(prayerDay) : null;
   const visible = events.filter((e) => !e.members.length || e.members.some((m) => !hidden.has(m)));
   const hour = new Date().getHours();
   const mealOrder: ("ontbijt" | "lunch" | "diner")[] = hour < 10 ? ["ontbijt", "lunch", "diner"] : hour < 14 ? ["lunch", "diner", "ontbijt"] : ["diner", "lunch", "ontbijt"];
@@ -62,6 +67,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           <span className="bord-time num">{time}</span>
           <span className="bord-date">{cap(longDate(t))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>
           {weather && <span className="bord-wx num" title={`${weather.city}: ${weather.current.label}`}>{weather.current.icon} {weather.current.temp}° <small>↑{weather.days[0]?.max}° ↓{weather.days[0]?.min}°</small></span>}
+          {nxt && <span className="bord-wx num" title="Volgend gebed">{PRAYER_ICON[nxt.prayer]} {PRAYER_NAME[nxt.prayer]} <small>{hm(new Date(nxt.at).toISOString())}</small></span>}
           <button className="iconbtn glass" onClick={openSearch} aria-label="Zoeken in alles"><Icon.search /></button>
         </div>
       </div>

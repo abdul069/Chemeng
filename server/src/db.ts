@@ -231,6 +231,18 @@ CREATE TABLE IF NOT EXISTS assistant_feedback (
   answer TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS ezan_sounds (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS quran_cache (
+  key TEXT PRIMARY KEY,
+  json TEXT NOT NULL,
+  fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS memos (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
@@ -287,6 +299,17 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   sleep_until: "",
   // na zoveel minuten zonder aanraking terug naar Vandaag (0 = nooit)
   home_after_minutes: "3",
+  // ezan: aan/uit, rekenmethode, asr-school, welke gebeden klinken, geluid per gebed (JSON), minuten bijstellen (JSON), volume 0-100
+  ezan_on: "0",
+  ezan_method: "diyanet",
+  ezan_asr: "standard",
+  ezan_prayers: "fajr,dhuhr,asr,maghrib,isha",
+  ezan_sounds: "{}",
+  ezan_adjust: "{}",
+  ezan_volume: "80",
+  // koran: voordrager en vertaling
+  quran_reciter: "ar.alafasy",
+  quran_translation: "nl.siregar",
 };
 
 export function getSettings(householdId = hid()): Record<string, string> {
