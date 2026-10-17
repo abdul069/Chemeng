@@ -68,7 +68,7 @@ export const PAIRS: Pair[] = [
 ];
 
 export const ORDERS: Order[] = [
-  { icon: "💧", icons: ["🤲", "👄", "👃", "😊", "💪", "🧠", "🦶"], photo: "Ablution in Islam", title: { nl: "De stappen van de wudu (abdest)", tr: "Abdestin adımları" }, steps: [
+  { icon: "🧼", icons: ["🤲", "👄", "👃", "😊", "💪", "🧠", "🦶"], photo: "Ablution in Islam", title: { nl: "De stappen van de wudu (abdest)", tr: "Abdestin adımları" }, steps: [
     { nl: "Bismillah zeggen en handen wassen", tr: "Bismillah deyip elleri yıkamak" }, { nl: "Mond spoelen", tr: "Ağzı çalkalamak" }, { nl: "Neus spoelen", tr: "Burna su vermek" },
     { nl: "Gezicht wassen", tr: "Yüzü yıkamak" }, { nl: "Armen tot de ellebogen wassen", tr: "Kolları dirseklere kadar yıkamak" }, { nl: "Hoofd (en oren) met natte handen strijken", tr: "Başı ve kulakları mesh etmek" }, { nl: "Voeten tot de enkels wassen", tr: "Ayakları topuklara kadar yıkamak" } ] },
   { icon: "🕌", icons: ["🌄", "☀️", "🌤️", "🌇", "🌙"], photo: "Adhan", title: { nl: "De vijf gebeden van de dag, in volgorde", tr: "Günün beş namazı, sırayla" }, steps: [

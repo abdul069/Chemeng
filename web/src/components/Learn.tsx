@@ -105,6 +105,8 @@ export function LearnApp() {
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const [earned, setEarned] = useState<{ given: number; today: number; dailyMax: number } | null>(null);
   useEffect(() => { if (me) { try { localStorage.setItem("gb.learn.who", me.id); } catch { /* */ } } }, [me]);
+  // Op de telefoon vult een spel het hele scherm (geen kop, geen onderbalk), zodat niets hoeft te scrollen.
+  useEffect(() => { document.body.classList.toggle("gb-kidsgame", !!game); return () => document.body.classList.remove("gb-kidsgame"); }, [game]);
 
   const finish = async (g: Game, stars: number, name: string) => {
     if (!me || stars <= 0) { setGame(null); return; }
@@ -173,7 +175,7 @@ function GameShell({ title, onClose, children, progress, icon }: { title: string
           </span>
         )}
       </div>
-      {children}
+      <div className="learn-body">{children}</div>
     </div>
   );
 }
