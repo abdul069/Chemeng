@@ -833,4 +833,13 @@ export const TR: Record<string, string> = {
   "ingrediënten": "malzeme",
 
   "Automatisch": "Otomatik",
+  "Lees voor": "Sesli oku",
+  "Hoi! Kies een onderwerp, dan stel ik je vragen.": "Merhaba! Bir konu seç, sana sorular sorayım.",
+  "Juist! Een ster voor jou!": "Doğru! Sana bir yıldız!",
+  "Ja, dat is het! Goed gevonden.": "Evet, bu! İyi buldun.",
+  "Oeps, bijna! Probeer nog eens.": "Ay, az kaldı! Bir daha dene.",
+  "Alles juist! {s} sterren!": "Hepsi doğru! {s} yıldız!",
+  "Goed gedaan! {s} van {m} sterren.": "Aferin! {m} yıldızdan {s} tanesi.",
+  "Wat doen we eerst?": "Önce ne yapıyoruz?",
+  "Hoi {name}! Waar heb je zin in?": "Merhaba {name}! Canın ne istiyor?",
 };

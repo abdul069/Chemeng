@@ -11,12 +11,45 @@ import { ORDERS, PAIRS, QUIZ, SURAHS, TOPICS, type Bi } from "../learn-content";
 
 type Game = "quiz" | "match" | "order" | "surah" | "sums" | "tables" | "speed";
 
-/** Echte illustratie van het web voor een emoji: OpenMoji-tekening (CC BY-SA) via CDN, met het emoji zelf als terugval. */
-const openmoji = (e: string) => `https://cdn.jsdelivr.net/npm/openmoji@15.1.0/color/svg/${[...e].map((c) => c.codePointAt(0)!).filter((cp) => cp !== 0xfe0f).map((cp) => cp.toString(16).toUpperCase().padStart(4, "0")).join("-")}.svg`;
-function Illu({ e, className = "" }: { e: string; className?: string }) {
-  const [broken, setBroken] = useState(false);
-  if (!e || broken) return <span className={`illu-txt ${className}`} aria-hidden>{e}</span>;
-  return <img className={`illu ${className}`} src={openmoji(e)} alt="" draggable={false} loading="lazy" onError={() => setBroken(true)} />;
+/** Echte, kleurrijke tekening van het web voor een emoji: Google Noto-emoji, bewegend waar dat bestaat,
+ *  anders de stilstaande tekening, en als het web niet meewerkt het emoji zelf. */
+const notoId = (e: string) => [...e].map((c) => c.codePointAt(0)!).filter((cp) => cp !== 0xfe0f).map((cp) => cp.toString(16).padStart(4, "0")).join("_");
+const NOTO = "https://fonts.gstatic.com/s/e/notoemoji/latest/";
+function Illu({ e, className = "", still = false }: { e: string; className?: string; still?: boolean }) {
+  const [step, setStep] = useState(still ? 1 : 0);
+  useEffect(() => setStep(still ? 1 : 0), [e, still]);
+  if (!e || step > 1) return <span className={`illu-txt ${className}`} aria-hidden>{e}</span>;
+  const src = step === 0 ? `${NOTO}${notoId(e)}/512.webp` : `${NOTO}${notoId(e)}/emoji.svg`;
+  return <img key={src} className={`illu ${className}`} src={src} alt="" draggable={false} loading="lazy" onError={() => setStep((x) => x + 1)} />;
+}
+/** Leest tekst voor met de stem van het toestel (kinderen kunnen nog niet alles lezen). */
+let voiceOn = (() => { try { return localStorage.getItem("gb.learn.voice") !== "0"; } catch { return true; } })();
+function speak(text: string, force = false) {
+  if ((!voiceOn && !force) || typeof speechSynthesis === "undefined") return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}]/gu, "").replace(/\s+/g, " ").trim());
+    u.lang = getLang() === "tr" ? "tr-TR" : "nl-NL"; u.rate = 0.92; u.pitch = 1.1;
+    speechSynthesis.speak(u);
+  } catch { /* geen stem */ }
+}
+/** Korte kindertekst: zonder haakjes-uitleg. */
+const kidText = (s: string) => s.replace(/\s*\([^)]*\)/g, "").trim() || s;
+type Mood = "idle" | "ask" | "happy" | "oops" | "party";
+const MASCOT: Record<Mood, string> = { idle: "🦉", ask: "🤔", happy: "😍", oops: "🤗", party: "🥳" };
+/** Nuri de uil: praat in een tekstballon, leest voor en reageert blij of troostend. */
+function Mascot({ mood, say }: { mood: Mood; say: string }) {
+  const [, bump] = useState(0);
+  useEffect(() => { if (say) { const tm = setTimeout(() => speak(say), 250); return () => clearTimeout(tm); } }, [say]);
+  return (
+    <div className={`nuri mood-${mood}`}>
+      <Illu e={MASCOT[mood]} className="nuri-ic" />
+      <div className="mbubble">
+        <span>{say}</span>
+        <button type="button" className="say" aria-label={tr("Lees voor")} onClick={() => { voiceOn = true; try { localStorage.setItem("gb.learn.voice", "1"); } catch { /* */ } bump((x) => x + 1); speak(say, true); }}>🔊</button>
+      </div>
+    </div>
+  );
 }
 /** Sfeerfoto van Wikipedia bij een onderwerp. */
 function Photo({ q, className = "" }: { q: string; className?: string }) {
@@ -105,6 +138,7 @@ export function LearnApp() {
           <small className="muted">{tr("Max. {n} sterren per spel per dag. Ze tellen mee in de spaarpot.", { n: progress.dailyMax })}</small>
         </div>
       </section>
+      <Mascot mood="idle" say={tr("Hoi {name}! Waar heb je zin in?", { name: me.name })} />
       {earned && <p className="hint learn-earned">{earned.given > 0 ? tr("+{n} sterren voor {name}! 🎉", { n: earned.given, name: me.name }) : tr("Goed gespeeld! Het dagmaximum voor dit spel is bereikt; morgen weer sterren.")}</p>}
       <div className="learn-subjects kid-tabs" role="group" aria-label={tr("Onderwerp")}>
         <button className={subject === "islam" ? "on" : ""} aria-pressed={subject === "islam"} onClick={() => pickSubject("islam")}><span aria-hidden>🕌</span> {tr("Islam")}</button>
@@ -145,10 +179,11 @@ function GameShell({ title, onClose, children, progress, icon }: { title: string
 }
 
 function Result({ stars, max, onDone }: { stars: number; max: number; onDone: () => void }) {
-  useEffect(() => { beep("win"); }, []);
+  useEffect(() => { beep("win"); speak(stars === max ? tr("Alles juist! {s} sterren!", { s: stars }) : tr("Goed gedaan! {s} van {m} sterren.", { s: stars, m: max })); }, [stars, max]);
   return (
     <div className="learn-result kid-pop">
       <Burst />
+      <Illu e="🥳" className="result-mascot" />
       <Illu e={stars === max ? "🏆" : stars >= max / 2 ? "🌟" : "💪"} className="learn-result-ic bounce" />
       <div className="star-row" aria-hidden>{Array.from({ length: max }, (_, i) => <span key={i} className={i < stars ? "lit" : ""} style={{ animationDelay: `${i * 0.08}s` }}>⭐</span>)}</div>
       <b>{stars === max ? tr("Alles juist!") : tr("Goed gedaan!")}</b>
@@ -163,33 +198,44 @@ function QuizGame({ onDone, onClose }: { onDone: (stars: number) => void; onClos
   const [topic, setTopic] = useState<string | null>(null);
   const qs = useMemo(() => (topic ? shuffle(QUIZ.filter((q) => q.topic === topic)).slice(0, 6) : []), [topic]);
   const [i, setI] = useState(0);
-  const [picked, setPicked] = useState<number | null>(null);
+  const [tried, setTried] = useState<number[]>([]); // fout geprobeerde antwoorden van deze vraag
+  const [solved, setSolved] = useState(false);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
+  const open = (k: string | null) => { setTopic(k); setI(0); setTried([]); setSolved(false); setScore(0); setDone(false); };
   if (!topic) return (
     <GameShell title={tr("Weetjesquiz")} onClose={onClose}>
-      <p className="hint">{tr("Kies een onderwerp. Zes vragen, elke juiste is een ster.")}</p>
+      <Mascot mood="idle" say={tr("Hoi! Kies een onderwerp, dan stel ik je vragen.")} />
       <div className="learn-grid">
-        {Object.entries(TOPICS).map(([k, v], i) => <button key={k} className="learn-tile kid" style={{ "--c": ["#48d1c4", "#ffd34d", "#ff8a4c", "#b58cf0", "#ff6b9d", "#6fb7ff"][i % 6] } as React.CSSProperties} onClick={() => setTopic(k)}><Illu e={v.icon} className="learn-ic big wiggle" /><Photo q={v.photo} className="tile-photo" /><b>{bi(v)}</b><small>{QUIZ.filter((q) => q.topic === k).length} {tr("vragen")}</small></button>)}
+        {Object.entries(TOPICS).map(([k, v], i) => <button key={k} className="learn-tile kid" style={{ "--c": ["#48d1c4", "#ffd34d", "#ff8a4c", "#b58cf0", "#ff6b9d", "#6fb7ff"][i % 6] } as React.CSSProperties} onClick={() => open(k)}><Illu e={v.icon} className="learn-ic big wiggle" /><Photo q={v.photo} className="tile-photo" /><b>{bi(v)}</b><small>{QUIZ.filter((q) => q.topic === k).length} {tr("vragen")}</small></button>)}
       </div>
     </GameShell>
   );
   if (done) return <GameShell title={tr("Weetjesquiz")} onClose={onClose}><Result stars={score} max={qs.length} onDone={() => onDone(score)} /></GameShell>;
   const q = qs[i];
-  const answer = (k: number) => { if (picked !== null) return; setPicked(k); if (k === q.answer) { setScore((s) => s + 1); beep("good"); } else beep("bad"); };
-  const next = () => { if (i + 1 >= qs.length) setDone(true); else { setI(i + 1); setPicked(null); } };
+  const answer = (k: number) => {
+    if (solved || tried.includes(k)) return;
+    if (k === q.answer) { setSolved(true); if (tried.length === 0) setScore((s) => s + 1); beep("good"); }
+    else { setTried([...tried, k]); beep("bad"); }
+  };
+  const next = () => { if (i + 1 >= qs.length) setDone(true); else { setI(i + 1); setTried([]); setSolved(false); } };
+  const say = solved ? (tried.length === 0 ? tr("Juist! Een ster voor jou!") : tr("Ja, dat is het! Goed gevonden.")) : tried.length ? tr("Oeps, bijna! Probeer nog eens.") : bi(q.q);
   return (
-    <GameShell title={bi(TOPICS[topic])} icon={TOPICS[topic].icon} onClose={() => setTopic(null)} progress={i / qs.length}>
+    <GameShell title={bi(TOPICS[topic])} icon={TOPICS[topic].icon} onClose={() => open(null)} progress={i / qs.length}>
       <Photo q={TOPICS[topic].photo} className="banner" />
+      <Mascot mood={solved ? "happy" : tried.length ? "oops" : "ask"} say={say} />
       <div className="learn-q kid-card">
-        {picked !== null && picked === q.answer && <Burst />}
+        {solved && <Burst />}
         <small>{tr("Vraag {i} van {n}", { i: i + 1, n: qs.length })}</small>
         <div className="kid-question"><Illu e={q.icon ?? TOPICS[topic].icon} className="kid-q-ic bob" /><h2>{bi(q.q)}</h2></div>
         <div className="learn-options pics">
-          {q.options.map((o, k) => <button key={k} className={`learn-opt pic${picked !== null ? (k === q.answer ? " right" : k === picked ? " wrong shake" : " dim") : ""}`} onClick={() => answer(k)}><Illu e={q.optionIcons?.[k] ?? "⬜"} className="opt-ic" /><span>{bi(o)}</span></button>)}
+          {q.options.map((o, k) => {
+            const state = solved ? (k === q.answer ? " right" : " dim") : tried.includes(k) ? " wrong dim" : tried.length && k === tried[tried.length - 1] ? " shake" : "";
+            return <button key={k} className={`learn-opt pic${state}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0"][k % 4] } as React.CSSProperties} onClick={() => answer(k)} disabled={solved || tried.includes(k)}><Illu e={q.optionIcons?.[k] ?? "⬜"} className="opt-ic" /><span>{kidText(bi(o))}</span></button>;
+          })}
         </div>
-        {picked !== null && <p className={`learn-feedback ${picked === q.answer ? "good" : "oops"}`}>{picked === q.answer ? tr("Juist! ⭐") : tr("Niet juist. Het goede antwoord staat groen.")}</p>}
-        {picked !== null && <button className="btn" onClick={next}>{i + 1 >= qs.length ? tr("Klaar") : tr("Volgende vraag")}</button>}
+        {solved && q.why && <p className="learn-feedback good">{bi(q.why)}</p>}
+        {solved && <button className="btn kid-next" onClick={next}>{i + 1 >= qs.length ? tr("Klaar") + " 🎉" : tr("Volgende vraag") + " ➜"}</button>}
       </div>
     </GameShell>
   );
@@ -247,7 +293,7 @@ function OrderGame({ onDone, onClose }: { onDone: (stars: number) => void; onClo
   const start = (k: number) => { setWhich(k); setPool(shuffle(ORDERS[k].steps.map((_, i) => i))); setPlaced([]); setMistakes(0); };
   if (!order) return (
     <GameShell title={tr("Op volgorde")} onClose={onClose}>
-      <p className="hint">{tr("Tik de stappen aan in de juiste volgorde.")}</p>
+      <Mascot mood="idle" say={tr("Tik de stappen aan in de juiste volgorde.")} />
       <div className="learn-grid">{ORDERS.map((o, k) => <button key={k} className="learn-tile kid" style={{ "--c": ["#6fb7ff", "#ffd34d", "#48d1c4", "#b58cf0", "#ff8a4c"][k % 5] } as React.CSSProperties} onClick={() => start(k)}><Illu e={o.icon} className="learn-ic big wiggle" /><Photo q={o.photo} className="tile-photo" /><b>{bi(o.title)}</b><small>{o.steps.length} {tr("stappen")}</small></button>)}</div>
     </GameShell>
   );
@@ -262,6 +308,7 @@ function OrderGame({ onDone, onClose }: { onDone: (stars: number) => void; onClo
       {complete ? <Result stars={stars} max={order.steps.length} onDone={() => onDone(stars)} /> : (
         <div className="order kids">
           <Photo q={order.photo} className="banner" />
+          <Mascot mood={mistakes && shakeId !== null ? "oops" : placed.length ? "happy" : "ask"} say={shakeId !== null ? tr("Oeps, bijna! Probeer nog eens.") : placed.length === 0 ? tr("Wat doen we eerst?") : tr("Wat komt nu?")} />
           <div className="order-path">
             {order.steps.map((_, k) => {
               const done = k < placed.length;
@@ -274,8 +321,7 @@ function OrderGame({ onDone, onClose }: { onDone: (stars: number) => void; onClo
               );
             })}
           </div>
-          <p className="hint kid-hint">{tr("Wat komt nu?")} 👇</p>
-          <div className="order-pool pics">{pool.map((i) => <button key={i} className={`learn-opt pic${shakeId === i ? " wrong shake" : ""}`} onClick={() => pick(i)}><Illu e={order.icons[i]} className="opt-ic" /><span>{bi(order.steps[i])}</span></button>)}</div>
+          <div className="order-pool pics">{pool.map((i) => <button key={i} className={`learn-opt pic${shakeId === i ? " wrong shake" : ""}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0", "#6fb7ff", "#ff6b9d"][i % 6] } as React.CSSProperties} onClick={() => pick(i)}><Illu e={order.icons[i]} className="opt-ic" /><span>{bi(order.steps[i])}</span></button>)}</div>
           {mistakes > 0 && <p className="hint">{tr("{n} keer mis, geeft niet: probeer verder!", { n: mistakes })}</p>}
         </div>
       )}
@@ -357,6 +403,7 @@ function makeSum(max: number, ops: Op[]): Sum {
 }
 const choicesFor = (answer: number) => { const set = new Set([answer]); while (set.size < 4) { const d = answer + (rnd(10) - 5) * (answer > 20 ? 2 : 1); if (d >= 0 && d !== answer) set.add(d); } return shuffle([...set]); };
 
+const OPWORD: Record<Op, Bi> = { "+": { nl: "plus", tr: "artı" }, "−": { nl: "min", tr: "eksi" }, "×": { nl: "keer", tr: "çarpı" }, "÷": { nl: "gedeeld door", tr: "bölü" } };
 const FRUIT = ["🍎", "🍓", "🍊", "🍇", "🐟", "⭐", "🧁", "🐥"];
 function Objects({ n, icon }: { n: number; icon: string }) {
   return <span className="objs" aria-hidden>{Array.from({ length: n }, (_, i) => <span key={i} style={{ animationDelay: `${i * 0.04}s` }}><Illu e={icon} className="obj" /></span>)}</span>;
@@ -371,6 +418,7 @@ function SumRow({ sum, onAnswer }: { sum: Sum; onAnswer: (ok: boolean) => void }
   return (
     <div className="learn-q math kid-card">
       {picked === sum.answer && <Burst />}
+      <Mascot mood={picked === null ? "ask" : picked === sum.answer ? "happy" : "oops"} say={picked === null ? `${sum.a} ${OPWORD[sum.op][getLang() === "tr" ? "tr" : "nl"]} ${sum.b}?` : picked === sum.answer ? tr("Juist! Een ster voor jou!") : tr("Bijna! Het juiste antwoord is {n}.", { n: sum.answer })} />
       {visual && (
         <div className="math-visual">
           <Objects n={sum.a} icon={icon} />
@@ -382,7 +430,6 @@ function SumRow({ sum, onAnswer }: { sum: Sum; onAnswer: (ok: boolean) => void }
       <div className="math-choices">
         {choices.map((c, k) => <button key={c} className={`learn-opt num bubble${picked !== null ? (c === sum.answer ? " right" : c === picked ? " wrong shake" : " dim") : ""}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0"][k % 4] } as React.CSSProperties} onClick={() => pick(c)}>{c}</button>)}
       </div>
-      {picked !== null && <p className="learn-feedback">{picked === sum.answer ? tr("Juist! ⭐") : tr("Bijna! Het juiste antwoord is {n}.", { n: sum.answer })}</p>}
     </div>
   );
 }
