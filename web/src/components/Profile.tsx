@@ -4,6 +4,7 @@ import { useAction, useData, useRemote } from "../store";
 import type { Member } from "../types";
 import { Avatar, Modal, cvar } from "./ui";
 import { todayIso, weekday } from "../dates";
+import { t as tr } from "../i18n";
 
 /** Viering als alle taken van vandaag af zijn ("Ta-da!"). */
 export function Celebration({ name, onDone }: { name: string; onDone: () => void }) {
@@ -16,8 +17,8 @@ export function Celebration({ name, onDone }: { name: string; onDone: () => void
       })}
       <div className="celebrate-card">
         <span className="celebrate-badge">🏅</span>
-        <b>Goed gedaan, {name}!</b>
-        <p>Alles van vandaag is af. Lekker bezig — geniet van je vrije tijd.</p>
+        <b>{tr("Goed gedaan, {n}!", { n: name })}</b>
+        <p>{tr("Alles van vandaag is af. Lekker bezig — geniet van je vrije tijd.")}</p>
       </div>
     </div>
   );
@@ -60,54 +61,54 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
       </div>
       <div className="profile-cols">
         <section>
-          <div className="section-title"><h3>Vandaag te doen</h3><span className="muted num">{n}/{chores.length}</span></div>
+          <div className="section-title"><h3>{tr("Vandaag te doen")}</h3><span className="muted num">{n}/{chores.length}</span></div>
           <div className="progress" style={{ marginBottom: 8 }}><i style={{ width: `${chores.length ? (n / chores.length) * 100 : 0}%` }} /></div>
-          {!chores.length && <p className="empty">Niets te doen vandaag — geniet ervan! 🎈</p>}
+          {!chores.length && <p className="empty">{tr("Niets te doen vandaag — geniet ervan! 🎈")}</p>}
           {chores.map((c) => {
             const d = set.has(`${t}|${c.id}`);
             return (
-              <button key={c.id} className={`prof-chore${d ? " done" : ""}`} onClick={() => toggle(c)} aria-pressed={d}>
+              <button key={c.id} className={`prof-chore${d ? tr(" done") : ""}`} onClick={() => toggle(c)} aria-pressed={d}>
                 <span>{c.icon} {c.title}</span><small>⭐ {c.points}</small><i>{d ? "✓" : ""}</i>
               </button>
             );
           })}
-          {chores.length > 0 && n === chores.length && <p className="hint">🏅 Alles van vandaag is af.</p>}
+          {chores.length > 0 && n === chores.length && <p className="hint">{tr("🏅 Alles van vandaag is af.")}</p>}
         </section>
         <section>
-          <div className="section-title"><h3>Spaarpot</h3><span className="hint">⭐ {pts.balance} om in te ruilen</span></div>
+          <div className="section-title"><h3>{tr("Spaarpot")}</h3><span className="hint">⭐ {pts.balance} om in te ruilen</span></div>
           <div className="prof-rewards">
             {data.rewards.map((r) => (
               <div className="reward-card" key={r.id}>
                 <span className="ic">{r.icon}</span>
                 <b>{r.title}</b>
                 <small>⭐ {r.cost}</small>
-                <button className={`btn small${pts.balance >= r.cost ? " accent" : ""}`} disabled={pts.balance < r.cost} onClick={() => act(() => api.post(`/rewards/${r.id}/claim`, { memberId: member.id }), "Beloning ingeruild 🎉")}>Inruilen</button>
+                <button className={`btn small${pts.balance >= r.cost ? tr(" accent") : ""}`} disabled={pts.balance < r.cost} onClick={() => act(() => api.post(`/rewards/${r.id}/claim`, { memberId: member.id }), tr("Beloning ingeruild 🎉"))}>{tr("Inruilen")}</button>
               </div>
             ))}
-            {!data.rewards.length && <p className="empty">Nog niets om voor te sparen. Een ouder voegt beloningen toe bij Taken → Beloningen.</p>}
+            {!data.rewards.length && <p className="empty">{tr("Nog niets om voor te sparen. Een ouder voegt beloningen toe bij Taken → Beloningen.")}</p>}
           </div>
         </section>
       </div>
       {todoList && (
         <section>
-          <div className="section-title"><h3>Mijn briefjes</h3><span className="hint">eigen geheugensteuntjes</span></div>
+          <div className="section-title"><h3>{tr("Mijn briefjes")}</h3><span className="hint">{tr("eigen geheugensteuntjes")}</span></div>
           <form className="addrow" onSubmit={(e) => { e.preventDefault(); addTodo(); }}>
-            <input value={todo} onChange={(e) => setTodo(e.target.value)} placeholder={`Iets voor ${member.name}…`} aria-label="Nieuwe to-do" />
-            <button className="btn" type="submit" disabled={!todo.trim()}>Toevoegen</button>
+            <input value={todo} onChange={(e) => setTodo(e.target.value)} placeholder={tr("Iets voor {n}…", { n: member.name })} aria-label={tr("Nieuwe to-do")} />
+            <button className="btn" type="submit" disabled={!todo.trim()}>{tr("Toevoegen")}</button>
           </form>
           <div className="items">
             {mine.map((i) => (
-              <div className={`item${i.done ? " done" : ""}`} key={i.id}>
+              <div className={`item${i.done ? tr(" done") : ""}`} key={i.id}>
                 <button className="check" aria-pressed={i.done} onClick={() => act(() => api.patch(`/items/${i.id}`, { done: !i.done }))}>{i.done ? "✓" : ""}</button>
                 <span className="txt">{i.text}</span>
-                <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label="Verwijderen" onClick={() => act(() => api.del(`/items/${i.id}`))}>🗑</button>
+                <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={tr("Verwijderen")} onClick={() => act(() => api.del(`/items/${i.id}`))}>🗑</button>
               </div>
             ))}
             {!mine.length && <p className="hint">Nog geen briefjes. Zet hier wat {member.name} zelf wil onthouden.</p>}
           </div>
         </section>
       )}
-      {celebrate && <Celebration name={member.name} onDone={() => { setCelebrate(false); toast("Alles af voor vandaag 🏅"); }} />}
+      {celebrate && <Celebration name={member.name} onDone={() => { setCelebrate(false); toast(tr("Alles af voor vandaag 🏅")); }} />}
     </Modal>
   );
 }
@@ -121,7 +122,7 @@ export function StarsRanking() {
   const max = Math.max(1, ...rows.map((r) => r.week));
   return (
     <aside className="ranking card card-pad">
-      <div className="section-title"><h3>Wie schittert deze week?</h3></div>
+      <div className="section-title"><h3>{tr("Wie schittert deze week?")}</h3></div>
       {rows.map((r, i) => (
         <div className="rank-row" key={r.m.id} style={cvar(r.m.color)}>
           <span className="medal">{medals[i] ?? `${i + 1}.`}</span>
@@ -130,7 +131,7 @@ export function StarsRanking() {
           <span className="num">⭐ {r.week}</span>
         </div>
       ))}
-      {!rows.length && <p className="hint">Nog geen gezinsleden.</p>}
+      {!rows.length && <p className="hint">{tr("Nog geen gezinsleden.")}</p>}
     </aside>
   );
 }

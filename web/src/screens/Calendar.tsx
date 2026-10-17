@@ -9,6 +9,7 @@ import type { EditorState } from "../components/EventEditor";
 import { MONTHS, MSHORT, addDays, addMonths, cap, longDate, shortDate, startOfMonth, startOfWeek, todayIso } from "../dates";
 import { api } from "../api";
 import { Importer, QuickAdd } from "../components/Importer";
+import { t } from "../i18n";
 
 type View = "D" | "W" | "M" | "L";
 const VIEW_KEY = "gezinsbord.view";
@@ -46,7 +47,7 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
   const open = (o: Occurrence) => openEditor({ occ: o });
   const sync = async () => {
     setSyncing(true);
-    try { await api.post("/calendars/sync"); toast("Agenda's bijgewerkt"); } catch (e) { toast(e instanceof Error ? e.message : "Bijwerken mislukt"); }
+    try { await api.post("/calendars/sync"); toast(t("Agenda's bijgewerkt")); } catch (e) { toast(e instanceof Error ? e.message : t("Bijwerken mislukt")); }
     setSyncing(false);
   };
 
@@ -55,23 +56,23 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
       <div className="topbar">
         {header}
         <div className="right">
-          <button className="iconbtn" onClick={() => step(-1)} aria-label="Vorige"><Icon.left /></button>
+          <button className="iconbtn" onClick={() => step(-1)} aria-label={t("Vorige")}><Icon.left /></button>
           <span className="range">{label}</span>
-          <button className="iconbtn" onClick={() => step(1)} aria-label="Volgende"><Icon.right /></button>
-          <button className="pill" onClick={() => setCursor(todayIso())}>Vandaag</button>
-          <label className="iconbtn datejump" title="Naar een datum springen">
+          <button className="iconbtn" onClick={() => step(1)} aria-label={t("Volgende")}><Icon.right /></button>
+          <button className="pill" onClick={() => setCursor(todayIso())}>{t("Vandaag")}</button>
+          <label className="iconbtn datejump" title={t("Naar een datum springen")}>
             <Icon.calpick />
-            <input type="date" aria-label="Naar een datum springen" value={cursor}
+            <input type="date" aria-label={t("Naar een datum springen")} value={cursor}
               onClick={(e) => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.(); } catch { /* */ } }}
               onChange={(e) => e.target.value && setCursor(e.target.value)} />
           </label>
-          <div className="seg" role="group" aria-label="Weergave">
+          <div className="seg" role="group" aria-label={t("Weergave")}>
             {([["D", "Dag"], ["W", "Week"], ["M", "Maand"], ["L", "Lijst"]] as [View, string][]).map(([v, l]) => (
               <button key={v} aria-pressed={view === v} title={l} onClick={() => setView(v)}>{v}</button>
             ))}
           </div>
-          {!!data?.calendars.length && <button className="iconbtn" onClick={sync} disabled={syncing} aria-label="Gekoppelde agenda's bijwerken"><Icon.sync /></button>}
-          <button className="pill" onClick={() => setImporting(true)} title="Foto van een brief of flyer, of geplakte tekst, wordt afspraken">📷 Importeren</button>
+          {!!data?.calendars.length && <button className="iconbtn" onClick={sync} disabled={syncing} aria-label={t("Gekoppelde agenda's bijwerken")}><Icon.sync /></button>}
+          <button className="pill" onClick={() => setImporting(true)} title={t("Foto van een brief of flyer, of geplakte tekst, wordt afspraken")}>{t("📷 Importeren")}</button>
         </div>
       </div>
       <PeopleBar />
@@ -89,14 +90,14 @@ export function CalendarScreen({ openEditor, header }: { openEditor: (s: EditorS
             const list = visible.filter((e) => e.on <= dayPop && e.until >= dayPop);
             return (
               <>
-                <p className="hint">{list.length === 1 ? "1 afspraak" : `${list.length} afspraken`}</p>
+                <p className="hint">{list.length === 1 ? t("1 afspraak") : `${list.length} afspraken`}</p>
                 <div className="upnext">{list.map((e) => <EventRow key={e.key} e={e} onOpen={(o) => { setDayPop(null); open(o); }} />)}</div>
               </>
             );
           })()}
           <div className="actions">
-            <button className="btn ghost" onClick={() => { setCursor(dayPop); setView("D"); setDayPop(null); }}>Dag openen</button>
-            <button className="btn" onClick={() => { openEditor({ defaults: { date: dayPop } }); setDayPop(null); }}>+ Afspraak</button>
+            <button className="btn ghost" onClick={() => { setCursor(dayPop); setView("D"); setDayPop(null); }}>{t("Dag openen")}</button>
+            <button className="btn" onClick={() => { openEditor({ defaults: { date: dayPop } }); setDayPop(null); }}>{t("+ Afspraak")}</button>
           </div>
         </Modal>
       )}

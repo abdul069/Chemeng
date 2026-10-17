@@ -4,6 +4,7 @@ import { useData, useRemote } from "../store";
 import type { EzanSound, Prayer, PrayerDay } from "../types";
 import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_TR, hm } from "../islam";
 import { ezanOnThisDevice } from "./Prayer";
+import { t } from "../i18n";
 
 const PLAYED_KEY = "gezinsbord.ezan.played";
 
@@ -86,13 +87,13 @@ export function useEzan() {
 /** Rustige melding over het scherm tijdens de ezan. */
 export function EzanOverlay({ prayer, at, onClose }: { prayer: Prayer; at: string; onClose: () => void }) {
   return (
-    <div className="ezan" role="dialog" aria-label="Gebedstijd">
+    <div className="ezan" role="dialog" aria-label={t("Gebedstijd")}>
       <div className="ezan-card">
         <span className="ezan-ic" aria-hidden>{PRAYER_ICON[prayer]}</span>
-        <small>Gebedstijd · {hm(at)}</small>
+        <small>{t("Gebedstijd")} · {hm(at)}</small>
         <b>{PRAYER_NAME[prayer]} <span className="muted" style={{ fontWeight: 500 }}>· {PRAYER_TR[prayer]}</span></b>
         <p className="ezan-ar" lang="ar" dir="rtl">حَيَّ عَلَى الصَّلَاةِ</p>
-        <button className="btn" onClick={onClose}>Stil</button>
+        <button className="btn" onClick={onClose}>{t("Stil")}</button>
       </div>
     </div>
   );

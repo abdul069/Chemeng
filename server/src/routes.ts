@@ -24,7 +24,7 @@ import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
-import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
+import { holidayOccurrences, holidaysBetween, localizeHoliday, type Holiday } from "./holidays.js";
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
@@ -237,7 +237,7 @@ function withHolidayCountdowns(list: ReturnType<typeof countdowns>) {
   const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
   if (!kinds.length) return list;
   const t = today();
-  const hol = holidaysBetween(t, addDays(t, 120), kinds).slice(0, 2).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
+  const hol = holidaysBetween(t, addDays(t, 120), kinds).slice(0, 2).map((h) => localizeHoliday(h, getSettings().language)).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
   return [...list, ...hol].sort((a, b) => a.days - b.days).slice(0, 6);
 }
 /** Claude API-sleutel invullen in de app (beheerder). De sleutel wordt eerst gecontroleerd. */
@@ -356,7 +356,7 @@ api.get("/events", (req, res) => {
   const members = typeof req.query.members === "string" && req.query.members ? req.query.members.split(",") : undefined;
   const { userId, householdId } = ctx();
   const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
-  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...(kinds.length ? holidayOccurrences(from, to, kinds) : [])];
+  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...(kinds.length ? holidayOccurrences(from, to, kinds).map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
   res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });

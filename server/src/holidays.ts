@@ -42,6 +42,15 @@ const ISLAMIC: Holiday[] = [
   { date: "2028-05-05", endDate: "2028-05-08", title: "Kurban Bayramı (Offerfeest, ±1 dag)", icon: "🐑", kind: "islam" },
 ];
 
+const TR_TITLES: Record<string, string> = {
+  "Nieuwjaar": "Yılbaşı", "Paasmaandag": "Paskalya Pazartesisi", "Dag van de Arbeid": "İşçi Bayramı", "O.L.H. Hemelvaart": "İsa'nın Göğe Yükselişi", "Pinkstermaandag": "Pentekost Pazartesisi",
+  "Feest van de Vlaamse Gemeenschap": "Flaman Topluluğu Bayramı", "Nationale feestdag": "Belçika Ulusal Bayramı", "O.L.V. Hemelvaart": "Meryem Ana Günü", "Allerheiligen": "Azizler Günü", "Wapenstilstand": "Ateşkes Günü", "Kerstmis": "Noel",
+  "Begin van de Ramadan": "Ramazan başlangıcı", "Begin van de Ramadan (±1 dag)": "Ramazan başlangıcı (±1 gün)",
+  "Ramazan Bayramı (Suikerfeest)": "Ramazan Bayramı", "Ramazan Bayramı (Suikerfeest, ±1 dag)": "Ramazan Bayramı (±1 gün)",
+  "Kurban Bayramı (Offerfeest)": "Kurban Bayramı", "Kurban Bayramı (Offerfeest, ±1 dag)": "Kurban Bayramı (±1 gün)",
+};
+/** Feestdagnamen in de taal van het gezin. */
+export const localizeHoliday = (h: Holiday, lang: string): Holiday => (lang === "tr" ? { ...h, title: TR_TITLES[h.title] ?? h.title } : h);
 export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"]): Holiday[] {
   const years: number[] = [];
   for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) years.push(y);

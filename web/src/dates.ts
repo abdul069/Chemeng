@@ -1,7 +1,19 @@
+// De namen worden in-place aangepast bij een taalwissel (zie i18n.ts), zodat alle schermen dezelfde arrays blijven gebruiken.
 export const DAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
 export const DSHORT = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 export const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 export const MSHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+const NAMES = {
+  nl: { days: [...DAYS], dshort: [...DSHORT], months: [...MONTHS], mshort: [...MSHORT] },
+  tr: { days: ["pazar", "pazartesi", "salı", "çarşamba", "perşembe", "cuma", "cumartesi"], dshort: ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"], months: ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"], mshort: ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"] },
+};
+let dateLang: "nl" | "tr" = "nl";
+export function applyDateLang(l: "nl" | "tr") {
+  dateLang = l;
+  const n = NAMES[l];
+  DAYS.splice(0, DAYS.length, ...n.days); DSHORT.splice(0, DSHORT.length, ...n.dshort);
+  MONTHS.splice(0, MONTHS.length, ...n.months); MSHORT.splice(0, MSHORT.length, ...n.mshort);
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 export const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -17,26 +29,27 @@ export const fmtTime = (t: string | null) => { if (!t) return ""; const [h, m] =
 export const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 export const clock = (d = new Date()) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-export const longDate = (s: string) => { const d = parse(s); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
-export const shortDate = (s: string) => { const d = parse(s); return `${DSHORT[d.getDay()]} ${d.getDate()} ${MSHORT[d.getMonth()]}`; };
+export const longDate = (s: string) => { const d = parse(s); return dateLang === "tr" ? `${d.getDate()} ${cap(MONTHS[d.getMonth()])} ${cap(DAYS[d.getDay()])}` : `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+export const shortDate = (s: string) => { const d = parse(s); return dateLang === "tr" ? `${d.getDate()} ${MSHORT[d.getMonth()]} ${DSHORT[d.getDay()]}` : `${DSHORT[d.getDay()]} ${d.getDate()} ${MSHORT[d.getMonth()]}`; };
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function relDay(s: string): string {
   const diff = Math.round((parse(s).getTime() - parse(todayIso()).getTime()) / 864e5);
-  if (diff === 0) return "Vandaag";
-  if (diff === 1) return "Morgen";
-  if (diff === -1) return "Gisteren";
+  if (diff === 0) return dateLang === "tr" ? "Bugün" : "Vandaag";
+  if (diff === 1) return dateLang === "tr" ? "Yarın" : "Morgen";
+  if (diff === -1) return dateLang === "tr" ? "Dün" : "Gisteren";
   return cap(longDate(s));
 }
 
 export function fmtRange(e: { allDay: boolean; startTime: string | null; endTime: string | null; on?: string; until?: string; date: string; endDate: string | null }) {
   const multi = (e.until ?? e.endDate) && (e.until ?? e.endDate) !== (e.on ?? e.date);
-  if (e.allDay) return multi ? `t/m ${shortDate((e.until ?? e.endDate)!)}` : "Hele dag";
+  if (e.allDay) return multi ? `${dateLang === "tr" ? "→" : "t/m"} ${shortDate((e.until ?? e.endDate)!)}` : dateLang === "tr" ? "Tüm gün" : "Hele dag";
   return `${fmtTime(e.startTime)} – ${fmtTime(e.endTime)}`;
 }
 
 export function greeting() {
   const h = new Date().getHours();
+  if (dateLang === "tr") return h < 6 ? "İyi geceler" : h < 12 ? "Günaydın" : h < 18 ? "İyi günler" : "İyi akşamlar";
   return h < 6 ? "Goeienacht" : h < 12 ? "Goeiemorgen" : h < 18 ? "Goeiemiddag" : "Goeienavond";
 }
 export const diffDays = (a: string, b: string) => Math.round((parse(b).getTime() - parse(a).getTime()) / 864e5);

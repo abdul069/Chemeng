@@ -318,6 +318,8 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   ezan_sounds: "{}",
   ezan_adjust: "{}",
   ezan_volume: "80",
+  // taal van de app: nl of tr
+  language: "nl",
   // koran: voordrager en vertaling
   quran_reciter: "ar.alafasy",
   quran_translation: "nl.siregar",

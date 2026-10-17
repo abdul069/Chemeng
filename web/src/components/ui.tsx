@@ -3,6 +3,7 @@ import { photoUrl } from "../api";
 import type { Member } from "../types";
 import { useData } from "../store";
 import { Icon } from "./Icons";
+import { t } from "../i18n";
 
 export const cvar = (c: string) => ({ "--c": c }) as CSSProperties;
 
@@ -52,9 +53,9 @@ export function PeopleBar({ count }: { count?: string }) {
       {count && <span className="count-chip">{count}</span>}
       {[...data.members, ...data.shared].map((m, i) => (
         <span key={m.id} style={{ display: "contents" }}>
-          {m.shared && i === data.members.length && <span className="people-sep" aria-hidden><span>Gedeeld</span></span>}
-          <button className={`person${m.shared ? " shared" : ""}`} aria-pressed={!hidden.has(m.id)} onClick={() => toggleHidden(m.id)}
-            title={`${m.shared ? "Gedeelde agenda van " : ""}${m.name}: tik om te ${hidden.has(m.id) ? "tonen" : "verbergen"}`}>
+          {m.shared && i === data.members.length && <span className="people-sep" aria-hidden><span>{t("Gedeeld")}</span></span>}
+          <button className={`person${m.shared ? t(" shared") : ""}`} aria-pressed={!hidden.has(m.id)} onClick={() => toggleHidden(m.id)}
+            title={`${m.shared ? t("Gedeelde agenda van ") : ""}${m.name}: ${hidden.has(m.id) ? t("tik om te tonen") : t("tik om te verbergen")}`}>
             <Avatar m={m} />
             <span className="pname">{m.name}</span>
           </button>
@@ -74,10 +75,10 @@ export function Modal({ title, onClose, children, wide }: { title: ReactNode; on
   }, [onClose]);
   return (
     <div className="modal-back" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`modal${wide ? " wide" : ""}`} role="dialog" aria-modal="true" ref={ref}>
+      <div className={`modal${wide ? t(" wide") : ""}`} role="dialog" aria-modal="true" ref={ref}>
         <div className="modal-h">
           <h2>{title}</h2>
-          <button className="iconbtn" onClick={onClose} aria-label="Sluiten"><Icon.close /></button>
+          <button className="iconbtn" onClick={onClose} aria-label={t("Sluiten")}><Icon.close /></button>
         </div>
         {children}
       </div>
@@ -91,7 +92,7 @@ export function Confirm({ title, text, actions, onClose }: { title: string; text
     <Modal title={title} onClose={onClose}>
       {text && <p className="hint">{text}</p>}
       <div className="actions">
-        <button className="btn ghost" onClick={onClose}>Annuleren</button>
+        <button className="btn ghost" onClick={onClose}>{t("Annuleren")}</button>
         {actions.map((a) => <button key={a.label} className={`btn ${a.kind ?? ""}`} onClick={() => { a.run(); onClose(); }}>{a.label}</button>)}
       </div>
     </Modal>
@@ -123,7 +124,7 @@ export function MemberPicks({ value, onChange, all = true }: { value: string[]; 
         </button>
       ))}
       {all && members.length > 1 && (
-        <button type="button" className="pick" aria-pressed={everyone} onClick={() => onChange(everyone ? [] : members.map((m) => m.id))}>Iedereen</button>
+        <button type="button" className="pick" aria-pressed={everyone} onClick={() => onChange(everyone ? [] : members.map((m) => m.id))}>{t("Iedereen")}</button>
       )}
     </div>
   );

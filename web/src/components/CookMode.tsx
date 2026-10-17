@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTimers, fmtLeft } from "./Timers";
+import { t } from "../i18n";
 
 /** Minuten in een stap: "20 dakika", "15-20 min", "een halfuur" → voor de kookwekker. */
 export function minutesIn(step: string): number | null {
@@ -37,8 +38,8 @@ export function CookMode({ title, ingredients, steps, onClose }: { title: string
       <header className="cook-h">
         <b>{title}</b>
         <span className="muted num">stap {i + 1} / {steps.length}</span>
-        <button className="pill" onClick={() => setShowIngr((v) => !v)} aria-pressed={showIngr}>🧂 Ingrediënten</button>
-        <button className="iconbtn" onClick={onClose} aria-label="Kookmodus sluiten">✕</button>
+        <button className="pill" onClick={() => setShowIngr((v) => !v)} aria-pressed={showIngr}>{t("🧂 Ingrediënten")}</button>
+        <button className="iconbtn" onClick={onClose} aria-label={t("Kookmodus sluiten")}>✕</button>
       </header>
       <div className="cook-progress"><i style={{ width: `${((i + 1) / Math.max(steps.length, 1)) * 100}%` }} /></div>
       <div className="cook-body">
@@ -50,10 +51,10 @@ export function CookMode({ title, ingredients, steps, onClose }: { title: string
         </main>
       </div>
       <footer className="cook-f">
-        <button className="btn ghost" onClick={() => setI((x) => Math.max(0, x - 1))} disabled={i === 0}>‹ Vorige</button>
+        <button className="btn ghost" onClick={() => setI((x) => Math.max(0, x - 1))} disabled={i === 0}>{t("‹ Vorige")}</button>
         {i < steps.length - 1
-          ? <button className="btn" onClick={() => setI((x) => x + 1)}>Volgende ›</button>
-          : <button className="btn accent" onClick={onClose}>Klaar, smakelijk! 🎉</button>}
+          ? <button className="btn" onClick={() => setI((x) => x + 1)}>{t("Volgende ›")}</button>
+          : <button className="btn accent" onClick={onClose}>{t("Klaar, smakelijk! 🎉")}</button>}
       </footer>
     </div>
   );

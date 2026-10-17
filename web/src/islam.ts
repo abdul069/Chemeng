@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Prayer, PrayerDay, Surah } from "./types";
+import { t } from "./i18n";
 
 export const PRAYER_ORDER: Prayer[] = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 export const PRAYER_NAME: Record<Prayer, string> = { fajr: "Fajr", sunrise: "Zonsopgang", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
@@ -16,7 +17,7 @@ export function nextPrayer(day: PrayerDay | null, now = Date.now()): { prayer: P
   for (const p of EZAN_PRAYERS) { const t = new Date(day.times[p]).getTime(); if (t > now) return { prayer: p, at: t, tomorrow: false }; }
   return { prayer: "fajr", at: new Date(day.tomorrow.fajr).getTime(), tomorrow: true };
 }
-export const untilText = (ms: number) => { const m = Math.max(0, Math.round(ms / 60_000)); return m < 60 ? `over ${m} min` : `over ${Math.floor(m / 60)}u${String(m % 60).padStart(2, "0")}`; };
+export const untilText = (ms: number) => { const m = Math.max(0, Math.round(ms / 60_000)); return m < 60 ? t("over {m} min", { m }) : t("over {h}u{m}", { h: Math.floor(m / 60), m: String(m % 60).padStart(2, "0") }); };
 
 /** Islamitische datum (umm al-qura) in het Nederlands. */
 export const hijri = (d = new Date()) => { try { return new Intl.DateTimeFormat("nl-u-ca-islamic-umalqura", { day: "numeric", month: "long", year: "numeric" }).format(d); } catch { return ""; } };

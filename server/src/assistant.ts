@@ -309,6 +309,8 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
     return { reply: "De assistent is nog niet ingesteld. Een beheerder vult de Claude API-sleutel in bij Instellingen → Assistent.", changes: [] };
   }
   const changes: Change[] = [];
+  const lang = getSettings().language === "tr" ? "tr" : "nl";
+  const langNote = lang === "tr" ? "\n\nBELANGRIJK: dit gezin heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : "";
   const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length) return { reply: "Waarmee kan ik helpen?", changes };
@@ -321,7 +323,7 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low" },
-    system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: SYSTEM + langNote, cache_control: { type: "ephemeral" } }],
     tools: buildTools(changes),
     messages,
     max_iterations: 8,

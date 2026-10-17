@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, onChanged, ApiError } from "./api";
 import type { Bootstrap, Member, Topic } from "./types";
+import { t, setLang } from "./i18n";
 
 interface Ctx {
   data: Bootstrap | null;
@@ -33,6 +34,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // nieuwe versie online? één keer verversen zodat niemand op een oud scherm blijft werken
         const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.match(/index-([A-Za-z0-9_-]+)\.js/)?.[1];
         if (d.build && mine && d.build !== mine && sessionStorage.getItem("gb.reloaded") !== d.build) { sessionStorage.setItem("gb.reloaded", d.build); location.reload(); return; }
+        setLang(d.settings.language === "tr" ? "tr" : "nl");
         setData(d); setError(null); setErrorCode(null);
       })
       .catch((e) => {
@@ -101,7 +103,7 @@ export function useAction() {
       if (ok) toast(ok);
       return r;
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Er ging iets mis.");
+      toast(e instanceof Error ? e.message : t("Er ging iets mis."));
       return undefined;
     }
   }, [toast]);

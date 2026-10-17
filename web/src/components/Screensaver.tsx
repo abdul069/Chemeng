@@ -3,6 +3,7 @@ import { photoUrl } from "../api";
 import { useData, useRemote } from "../store";
 import { Occurrence, Weather , isShopping } from "../types";
 import { addDays, cap, clock, fmtRange, longDate, nowMin, relDay, toMin, todayIso } from "../dates";
+import { t as tr } from "../i18n";
 
 /** Fotolijst: foto's van het gezin met de klok en de volgende afspraak. Tik om terug te gaan. */
 export function Screensaver({ onWake }: { onWake: () => void }) {
@@ -26,7 +27,7 @@ export function Screensaver({ onWake }: { onWake: () => void }) {
   const cur = photos[order];
 
   return (
-    <div className={`saver${cur ? "" : " noimg"}`} onPointerDown={onWake} onKeyDown={onWake} role="button" tabIndex={0} aria-label="Terug naar het gezinsbord">
+    <div className={`saver${cur ? "" : tr(" noimg")}`} onPointerDown={onWake} onKeyDown={onWake} role="button" tabIndex={0} aria-label={tr("Terug naar het gezinsbord")}>
       {photos.map((p, k) => (
         <span key={p.id}>
           {k === order && <img className="bg on" src={photoUrl(p.filename)} alt="" />}
@@ -53,7 +54,7 @@ export function Screensaver({ onWake }: { onWake: () => void }) {
         </div>
         {next && (
           <div className="next">
-            <div style={{ opacity: 0.8, fontSize: 15 }}>Volgende</div>
+            <div style={{ opacity: 0.8, fontSize: 15 }}>{tr("Volgende")}</div>
             <b>{next.title}</b> · {relDay(next.on)} {fmtRange(next)}
           </div>
         )}

@@ -19,15 +19,16 @@ import { SettingsScreen } from "./screens/Settings";
 import { cap, clock, longDate, todayIso } from "./dates";
 import { EzanOverlay, useEzan } from "./components/Ezan";
 import { QuranMiniPlayer } from "./components/Quran";
+import { t as tr } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
-  { id: "today", label: "Bord", icon: "home", title: "Bord" },
-  { id: "calendar", label: "Kalender", icon: "calendar", title: "Kalender" },
-  { id: "chores", label: "Taken", icon: "tasks", title: "Taken" },
-  { id: "meals", label: "Maaltijden", icon: "meals", title: "Maaltijden" },
-  { id: "lists", label: "Lijsten", icon: "lists", title: "Lijsten" },
-  { id: "apps", label: "Apps", icon: "apps", title: "Apps" },
+  { id: "today", label: tr("Bord"), icon: "home", title: tr("Bord") },
+  { id: "calendar", label: tr("Kalender"), icon: "calendar", title: tr("Kalender") },
+  { id: "chores", label: tr("Taken"), icon: "tasks", title: tr("Taken") },
+  { id: "meals", label: tr("Maaltijden"), icon: "meals", title: tr("Maaltijden") },
+  { id: "lists", label: tr("Lijsten"), icon: "lists", title: tr("Lijsten") },
+  { id: "apps", label: tr("Apps"), icon: "apps", title: tr("Apps") },
 ];
 
 export function App() {
@@ -99,33 +100,33 @@ export function App() {
   if (errorCode === "no_household" && !inviteToken) return <NoHousehold onDone={reload} />;
   if (errorCode === "no_household" && inviteToken) return <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />;
   if (error && !data) return <ErrorScreen error={error} />;
-  if (!data) return <div className="center"><div className="mascot thinking" aria-label="Laden" /></div>;
+  if (!data) return <div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>;
 
   const current = NAV.find((n) => n.id === screen);
   const makeHeader = (title: string, back?: () => void) => (
     <div className="titleblock">
       {back
-        ? <button className="backbtn" onClick={back}><Icon.left /> Apps</button>
-        : <span className="eyebrow">{time} · {cap(longDate(todayIso()))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>}
-      <div className="titlerow"><h1>{title}</h1><button className="iconbtn search-top" onClick={() => setSearch(true)} aria-label="Zoeken in alles"><Icon.search /></button></div>
+        ? <button className="backbtn" onClick={back}><Icon.left />{" "}{tr("Apps")}</button>
+        : <span className="eyebrow">{time} · {cap(longDate(todayIso()))}{!online && <span className="offline" style={{ marginLeft: 8 }}>{tr("Offline")}</span>}</span>}
+      <div className="titlerow"><h1>{title}</h1><button className="iconbtn search-top" onClick={() => setSearch(true)} aria-label={tr("Zoeken in alles")}><Icon.search /></button></div>
     </div>
   );
-  const header = makeHeader(screen === "settings" ? "Instellingen" : current?.title ?? "");
+  const header = makeHeader(screen === "settings" ? tr("Instellingen") : tr(current?.title ?? ""));
   const openEditor = (s: EditorState) => setEditor(s);
 
   return (
     <div className="shell">
-      <nav className="rail" aria-label="Hoofdmenu">
-        <button className="mascot-btn brand" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" style={{ width: 48, height: 48 }} /></button>
+      <nav className="rail" aria-label={tr("Hoofdmenu")}>
+        <button className="mascot-btn brand" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><div className="mascot" style={{ width: 48, height: 48 }} /></button>
         {NAV.map((n) => {
           const I = Icon[n.icon];
-          return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{n.label}</button>;
+          return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{tr(n.label)}</button>;
         })}
         <span className="spacer" />
-        <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label="Zoeken in alles"><Icon.search />Zoeken</button>
-        <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />Instellingen</button>
+        <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label={tr("Zoeken in alles")}><Icon.search />{tr("Zoeken")}</button>
+        <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>
       </nav>
-      <main className={`page${screen === "today" ? " page-bord" : ""}`}>
+      <main className={`page${screen === "today" ? tr(" page-bord") : ""}`}>
         {screen === "today" && <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />}
         {screen === "calendar" && <CalendarScreen header={header} openEditor={openEditor} />}
         {screen === "chores" && <ChoresScreen header={header} />}
@@ -134,8 +135,8 @@ export function App() {
         {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} startSlideshow={() => setSaver(true)} />}
         {screen === "settings" && <SettingsScreen header={header} />}
       </main>
-      {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label="Afspraak toevoegen">+</button>}
-      <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label="Assistent openen"><div className="mascot" /></button>
+      {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label={tr("Afspraak toevoegen")}>+</button>}
+      <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><div className="mascot" /></button>
       {appView !== "quran" || screen !== "apps" ? <QuranMiniPlayer onOpen={() => { setScreenState("apps"); setAppView("quran"); }} /> : null}
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
       <RecipeHost />
@@ -153,7 +154,7 @@ export function App() {
 function SleepScreen({ onWake }: { onWake: () => void }) {
   const [t, setT] = useState(clock());
   useEffect(() => { const i = setInterval(() => setT(clock()), 10_000); return () => clearInterval(i); }, []);
-  return <div className="sleep" onPointerDown={onWake} role="button" tabIndex={0} aria-label="Scherm wakker maken"><span className="num">{t}</span></div>;
+  return <div className="sleep" onPointerDown={onWake} role="button" tabIndex={0} aria-label={tr("Scherm wakker maken")}><span className="num">{t}</span></div>;
 }
 
 function ErrorScreen({ error }: { error: string }) {
@@ -161,9 +162,9 @@ function ErrorScreen({ error }: { error: string }) {
     <div className="center">
       <div className="card auth">
         <div className="mascot" />
-        <h1>Gezinsbord</h1>
+        <h1>{tr("Gezinsbord")}</h1>
         <p className="error">{error}</p>
-        <button className="btn" onClick={() => location.reload()}>Opnieuw proberen</button>
+        <button className="btn" onClick={() => location.reload()}>{tr("Opnieuw proberen")}</button>
       </div>
     </div>
   );

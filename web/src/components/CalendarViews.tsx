@@ -3,6 +3,7 @@ import { useData } from "../store";
 import type { Member, Occurrence, Weather } from "../types";
 import { Avatar, MemberDots, cvar } from "./ui";
 import { DSHORT, MSHORT, addDays, cap, fmtRange, fmtTime, longDate, nowMin, startOfMonth, startOfWeek, toMin, todayIso, weekday, clock } from "../dates";
+import { t as tr } from "../i18n";
 
 const START_H = 6;
 const END_H = 24;
@@ -72,11 +73,11 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
             <span>{m.name}</span>
           </div>
         ))}
-        <div className="allday-lbl">hele dag</div>
+        <div className="allday-lbl">{tr("hele dag")}</div>
         {cols.map((m) => (
           <div className="allday-cell" key={m.id}>
             {dayEvents.filter((e) => (e.allDay || e.on !== date) && inCol(e, m)).map((e) => (
-              <button key={e.key} className={`chip${e.readOnly ? " ext" : ""}`} style={cvar(m.color)} onClick={() => onOpen(e)}><b>{e.title}</b></button>
+              <button key={e.key} className={`chip${e.readOnly ? tr(" ext") : ""}`} style={cvar(m.color)} onClick={() => onOpen(e)}><b>{e.title}</b></button>
             ))}
           </div>
         ))}
@@ -101,7 +102,7 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
                 const l = L.get(e.key)!;
                 const w = 100 / l.n;
                 return (
-                  <button key={e.key} className={`ev${e.readOnly ? " ext" : ""}`} onClick={() => onOpen(e)}
+                  <button key={e.key} className={`ev${e.readOnly ? tr(" ext") : ""}`} onClick={() => onOpen(e)}
                     style={{ ...cvar(m.color), top, height: h, left: `calc(${l.i * w}% + 3px)`, width: `calc(${w}% - 6px)` }}>
                     <b>{e.title}</b>
                     {h > 34 && <small>{fmtRange(e)}</small>}
@@ -122,9 +123,9 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
 function Chip({ e, onOpen }: { e: Occurrence; onOpen: (o: Occurrence) => void }) {
   const { member } = useData();
   return (
-    <button className={`chip tile${e.readOnly ? " ext" : ""}`} style={cvar(occColor(e, member))} onClick={() => onOpen(e)}>
+    <button className={`chip tile${e.readOnly ? tr(" ext") : ""}`} style={cvar(occColor(e, member))} onClick={() => onOpen(e)}>
       <span className="tile-body">
-        <small>{e.allDay ? "hele dag" : fmtRange(e)}</small>
+        <small>{e.allDay ? tr("hele dag") : fmtRange(e)}</small>
         <b>{e.title}</b>
       </span>
       {e.members.length > 0 && <MemberDots ids={e.members} max={3} />}
@@ -158,10 +159,10 @@ export function WeekView({ start, events, weather, onOpen, onDay, onNextWeek }: 
             <div className={`wday${d === t ? " today" : ""}`} key={d}>
               <button className="wday-h" onClick={() => onDay(d)} aria-label={`Open ${longDate(d)}`}>
                 <strong>{DSHORT[weekday(d)]} <span className="datebadge">{Number(d.slice(8))}</span></strong>
-                <span className="n">{w ? <span className="wday-weather">{w.icon} {w.max}°</span> : list.length ? `${list.length} afspr.` : ""}</span>
+                <span className="n">{w ? <span className="wday-weather">{w.icon} {w.max}°</span> : list.length ? `${list.length} ${tr("afspr.")}` : ""}</span>
               </button>
               {list.map((e) => <Chip key={e.key} e={e} onOpen={onOpen} />)}
-              {!list.length && <p className="empty">Een rustige dag.</p>}
+              {!list.length && <p className="empty">{tr("Een rustige dag.")}</p>}
             </div>
           );
         })}
@@ -196,7 +197,7 @@ export function MonthView({ month, events, weekStart, onDay }: { month: string; 
         {cells.map((d) => {
           const list = events.filter((e) => e.on <= d && e.until >= d);
           return (
-            <button key={d} className={`mcell${d.slice(0, 7) !== month.slice(0, 7) ? " out" : ""}${d === t ? " today" : ""}`} onClick={() => onDay(d)} aria-label={`${longDate(d)}, ${list.length} afspraken`}>
+            <button key={d} className={`mcell${d.slice(0, 7) !== month.slice(0, 7) ? " out" : ""}${d === t ? " today" : ""}`} onClick={() => onDay(d)} aria-label={`${longDate(d)}, ${list.length} ${tr("afspraken")}`}>
               <span className="mnum"><span className="datebadge">{Number(d.slice(8))}</span>{list.length > 0 && <span className="c">{list.length}</span>}</span>
               {list.slice(0, 3).map((e) => (
                 <span key={e.key} className="mchip" style={cvar(occColor(e, member))}>
@@ -226,7 +227,7 @@ export function AgendaView({ from, days, events, onOpen }: { from: string; days:
             <div className="upnext">{list.map((e) => <EventRow key={e.key} e={e} onOpen={onOpen} />)}</div>
           </section>
         ))}
-        {!out.length && <p className="empty">Niets gepland in deze periode.</p>}
+        {!out.length && <p className="empty">{tr("Niets gepland in deze periode.")}</p>}
       </div>
     </div>
   );

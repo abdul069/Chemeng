@@ -4,6 +4,10 @@ Een slim gezinsscherm voor in de keuken: één groot touchscreen (of een tablet 
 gezinskalender, taken, maaltijden, lijsten, een fotolijst en een AI-assistent waarmee je kunt praten.
 Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 
+## Taal: Nederlands of Turks
+
+Bij Instellingen → Taal kies je Nederlands of Türkçe voor de hele app: menu's, knoppen, datums, feestdagen en de assistent (die dan in het Turks antwoordt). In het Turks blijven recepten in het Turks (het origineel), tonen de bibliotheek en de receptkaarten Turkse titels, en wordt de Koran-vertaling Turks (Diyanet).
+
 ## Boodschappen
 
 - Elk gezin heeft een eigen **boodschappenlijst** (soort "Boodschappen"), automatisch gesorteerd per afdeling in de winkel (groenten, zuivel, vlees, brood, droge voeding, diepvries, dranken, huishouden). De afdeling van een item kun je zelf kiezen via ✎.

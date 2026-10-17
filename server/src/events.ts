@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { all, get, run, newId, hid } from "./db.js";
+import { all, get, run, newId, hid , getSettings } from "./db.js";
 import { addDays, addMonths, diffDays, isDate, today as todayFn } from "./dates.js";
 
 export const REPEATS = ["none", "daily", "weekly", "biweekly", "monthly", "yearly"] as const;
@@ -179,7 +179,7 @@ export function countdowns(members: { id: string; name: string; birthday: string
     let next = `${t.slice(0, 4)}-${String(bm).padStart(2, "0")}-${String(bd).padStart(2, "0")}`;
     if (next < t) next = `${Number(t.slice(0, 4)) + 1}-${next.slice(5)}`;
     const age = Number(next.slice(0, 4)) - by;
-    out.push({ title: `${m.name} wordt ${age}`, date: next, days: diffDays(t, next), icon: "🎂", memberId: m.id, kind: "birthday" });
+    out.push({ title: getSettings().language === "tr" ? `${m.name} ${age} yaşına giriyor` : `${m.name} wordt ${age}`, date: next, days: diffDays(t, next), icon: "🎂", memberId: m.id, kind: "birthday" });
   }
   const rows = all<EventRow>("SELECT * FROM events WHERE household_id=? AND countdown=1", hid());
   for (const r of rows) {

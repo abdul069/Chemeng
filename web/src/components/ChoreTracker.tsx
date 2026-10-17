@@ -2,6 +2,7 @@ import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import { Avatar, cvar } from "./ui";
 import { weekday } from "../dates";
+import { t } from "../i18n";
 
 /** "Taken vandaag": per gezinslid de icoontjes om af te vinken. */
 const MOMENT_LABEL: Record<string, string> = { ochtend: "🌅 Ochtendroutine", middag: "☀️ Middag", avond: "🌙 Avondroutine", altijd: "✅ Taken" };
@@ -16,10 +17,10 @@ export function ChoreTracker({ date, grouped = true, compact = false }: { date: 
   const set = new Set(done);
   const wd = weekday(date);
   const todays = data.chores.filter((c) => c.days.includes(wd));
-  if (!todays.length) return <p className="empty">Geen taken vandaag.</p>;
+  if (!todays.length) return <p className="empty">{t("Geen taken vandaag.")}</p>;
   const toggle = async (c: { id: string; points: number; streak: number }) => {
     const now = !set.has(`${date}|${c.id}`);
-    await act(() => api.put(`/chores/${c.id}/done`, { date, done: now }), now ? (c.streak >= 2 ? `🔥 ${c.streak + 1} dagen op rij!` : "Goed gedaan! ⭐") : undefined);
+    await act(() => api.put(`/chores/${c.id}/done`, { date, done: now }), now ? (c.streak >= 2 ? t("🔥 {n} dagen op rij!", { n: c.streak + 1 }) : t("Goed gedaan! ⭐")) : undefined);
     reload();
   };
   const cur = currentMoment();
@@ -28,15 +29,15 @@ export function ChoreTracker({ date, grouped = true, compact = false }: { date: 
     .map((m) => ({ m, chores: todays.filter((c) => c.memberId === m.id && (moment === "alles" || c.moment === moment)) }))
     .filter((r) => r.chores.length);
   return (
-    <div className={`routines${compact ? " compact" : ""}`}>
+    <div className={`routines${compact ? t(" compact") : ""}`}>
       {order.map((moment) => {
         const rs = rows(moment);
         if (!rs.length) return null;
         const all = rs.flatMap((r) => r.chores);
         const n = all.filter((c) => set.has(`${date}|${c.id}`)).length;
         return (
-          <section key={moment} className={`routine${moment === cur ? " now" : ""}`}>
-            {grouped && <div className="routine-h"><b>{MOMENT_LABEL[moment]}</b><span className="muted num">{n}/{all.length}</span></div>}
+          <section key={moment} className={`routine${moment === cur ? t(" now") : ""}`}>
+            {grouped && <div className="routine-h"><b>{t(MOMENT_LABEL[moment])}</b><span className="muted num">{n}/{all.length}</span></div>}
             {rs.map(({ m, chores }) => {
               const dn = chores.filter((c) => set.has(`${date}|${c.id}`)).length;
               return (

@@ -4,6 +4,7 @@ import { useAction, useData } from "../store";
 import type { Surah, SurahInfo } from "../types";
 import { player, setSurahLoader, usePlayer } from "../islam";
 import { Icon } from "./Icons";
+import { t } from "../i18n";
 
 const cache = new Map<string, Promise<Surah>>();
 const loadSurah = (n: number, translation: string) => {
@@ -29,7 +30,7 @@ export function QuranApp() {
   const p = usePlayer();
   const listRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { api.get<typeof meta>("/quran/surahs").then(setMeta).catch((e) => setErr(e instanceof Error ? e.message : "Laden mislukt")); }, []);
+  useEffect(() => { api.get<typeof meta>("/quran/surahs").then(setMeta).catch((e) => setErr(e instanceof Error ? e.message : t("Laden mislukt"))); }, []);
   useEffect(() => { player.set({ reciter: s.quran_reciter }); }, [s.quran_reciter]);
   useEffect(() => { setSurahLoader((n) => (n <= 114 ? loadSurah(n, s.quran_translation) : Promise.resolve(null))); }, [s.quran_translation]);
   useEffect(() => {
@@ -37,7 +38,7 @@ export function QuranApp() {
     try { localStorage.setItem(LAST_KEY, String(open)); } catch { /* */ }
     let live = true;
     setSurah(p.surah?.number === open && p.surah.translationId === s.quran_translation ? p.surah : null);
-    loadSurah(open, s.quran_translation).then((x) => live && setSurah(x)).catch((e) => live && setErr(e instanceof Error ? e.message : "Laden mislukt"));
+    loadSurah(open, s.quran_translation).then((x) => live && setSurah(x)).catch((e) => live && setErr(e instanceof Error ? e.message : t("Laden mislukt")));
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, s.quran_translation]);
@@ -66,40 +67,40 @@ export function QuranApp() {
     return (
       <div className="quran">
         <div className="quran-bar">
-          <button className="backbtn" onClick={() => setOpen(null)}><Icon.left /> Soera's</button>
-          {surah && <span className="quran-title"><b>{surah.number}. {surah.englishName}</b><small>{surah.englishNameTranslation} · {surah.numberOfAyahs} verzen · {surah.revelationType === "Meccan" ? "Mekkaans" : "Medinisch"}</small></span>}
+          <button className="backbtn" onClick={() => setOpen(null)}><Icon.left />{" "}{t("Soera's")}</button>
+          {surah && <span className="quran-title"><b>{surah.number}. {surah.englishName}</b><small>{surah.englishNameTranslation} · {surah.numberOfAyahs} verzen · {surah.revelationType === "Meccan" ? t("Mekkaans") : t("Medinisch")}</small></span>}
           <span className="quran-tools">
-            <button className="pill" onClick={() => setShowTr(!showTr)} aria-pressed={showTr}>{showTr ? "Vertaling aan" : "Alleen Arabisch"}</button>
-            <span className="seg" role="group" aria-label="Lettergrootte"><button onClick={() => setSize2(Math.max(22, size - 4))} aria-label="Kleiner">A−</button><button onClick={() => setSize2(Math.min(54, size + 4))} aria-label="Groter">A+</button></span>
-            <label className="check-row" title="Het spelende vers oplichten en in beeld houden"><input type="checkbox" checked={p.follow} onChange={(e) => player.set({ follow: e.target.checked })} /> Meevolgen</label>
+            <button className="pill" onClick={() => setShowTr(!showTr)} aria-pressed={showTr}>{showTr ? t("Vertaling aan") : t("Alleen Arabisch")}</button>
+            <span className="seg" role="group" aria-label={t("Lettergrootte")}><button onClick={() => setSize2(Math.max(22, size - 4))} aria-label={t("Kleiner")}>{t("A−")}</button><button onClick={() => setSize2(Math.min(54, size + 4))} aria-label={t("Groter")}>{t("A+")}</button></span>
+            <label className="check-row" title={t("Het spelende vers oplichten en in beeld houden")}><input type="checkbox" checked={p.follow} onChange={(e) => player.set({ follow: e.target.checked })} />{" "}{t("Meevolgen")}</label>
           </span>
         </div>
-        {!surah && <p className="empty">Soera laden…</p>}
+        {!surah && <p className="empty">{t("Soera laden…")}</p>}
         {surah && (
           <div className="quran-read" ref={listRef} style={{ "--ar": `${size}px` } as React.CSSProperties}>
             {surah.number !== 1 && surah.number !== 9 && <p className="basmala" lang="ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>}
             {surah.ayahs.map((a, i) => {
               const cur = isThis && p.index === i;
               return (
-                <button key={a.number} data-i={i} className={`ayah${cur ? " playing" : ""}`} onClick={() => (cur ? player.toggle() : player.play(surah, i))} title={cur ? (p.playing ? "Pauzeren" : "Verder") : "Vanaf hier luisteren"}>
+                <button key={a.number} data-i={i} className={`ayah${cur ? t(" playing") : ""}`} onClick={() => (cur ? player.toggle() : player.play(surah, i))} title={cur ? (p.playing ? t("Pauzeren") : t("Verder")) : t("Vanaf hier luisteren")}>
                   <span className="ayah-ar" lang="ar" dir="rtl">{surah.number !== 1 && i === 0 ? a.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ\s*/, "") : a.text} <span className="ayah-n">{toArabicNum(a.numberInSurah)}</span></span>
                   {showTr && <span className="ayah-tr"><small>{a.numberInSurah}</small> {a.translation}</span>}
                 </button>
               );
             })}
             <div className="quran-foot">
-              {surah.number < 114 && <button className="btn ghost" onClick={() => setOpen(surah.number + 1)}>Volgende soera →</button>}
+              {surah.number < 114 && <button className="btn ghost" onClick={() => setOpen(surah.number + 1)}>{t("Volgende soera →")}</button>}
             </div>
           </div>
         )}
         {surah && (
           <div className="quran-ctl">
-            <button className="iconbtn" onClick={() => player.prev()} aria-label="Vorig vers" disabled={!isThis}>⏮</button>
-            <button className="btn quran-play" onClick={() => (isThis ? player.toggle() : player.play(surah, 0))}>{isThis && p.playing ? "❚❚ Pauze" : isThis ? "▶ Verder" : "▶ Luisteren"}</button>
-            <button className="iconbtn" onClick={() => player.next()} aria-label="Volgend vers" disabled={!isThis}>⏭</button>
-            <label className="check-row"><input type="checkbox" checked={p.repeat} onChange={(e) => player.set({ repeat: e.target.checked })} /> Vers herhalen</label>
-            <label className="check-row"><input type="checkbox" checked={p.continueNext} onChange={(e) => player.set({ continueNext: e.target.checked })} /> Doorlopen naar volgende soera</label>
-            <span className="hint" style={{ marginLeft: "auto" }}>Het luisteren loopt door als je naar een ander scherm gaat.</span>
+            <button className="iconbtn" onClick={() => player.prev()} aria-label={t("Vorig vers")} disabled={!isThis}>⏮</button>
+            <button className="btn quran-play" onClick={() => (isThis ? player.toggle() : player.play(surah, 0))}>{isThis && p.playing ? t("❚❚ Pauze") : isThis ? t("▶ Verder") : t("▶ Luisteren")}</button>
+            <button className="iconbtn" onClick={() => player.next()} aria-label={t("Volgend vers")} disabled={!isThis}>⏭</button>
+            <label className="check-row"><input type="checkbox" checked={p.repeat} onChange={(e) => player.set({ repeat: e.target.checked })} />{" "}{t("Vers herhalen")}</label>
+            <label className="check-row"><input type="checkbox" checked={p.continueNext} onChange={(e) => player.set({ continueNext: e.target.checked })} />{" "}{t("Doorlopen naar volgende soera")}</label>
+            <span className="hint" style={{ marginLeft: "auto" }}>{t("Het luisteren loopt door als je naar een ander scherm gaat.")}</span>
           </div>
         )}
       </div>
@@ -109,17 +110,17 @@ export function QuranApp() {
   return (
     <div className="quran">
       <div className="quran-bar">
-        <label className="appsearch glass" style={{ flex: 1, maxWidth: 420 }}><Icon.search /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek een soera (naam of nummer)" aria-label="Zoek een soera" /></label>
-        <label className="field" style={{ minWidth: 200 }}><span>Voordrager</span>
+        <label className="appsearch glass" style={{ flex: 1, maxWidth: 420 }}><Icon.search /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Zoek een soera (naam of nummer)")} aria-label={t("Zoek een soera")} /></label>
+        <label className="field" style={{ minWidth: 200 }}><span>{t("Voordrager")}</span>
           <select value={s.quran_reciter} onChange={(e) => save({ quran_reciter: e.target.value }, "Voordrager gewijzigd")}>{(meta?.reciters ?? []).map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}</select>
         </label>
-        <label className="field" style={{ minWidth: 200 }}><span>Vertaling</span>
+        <label className="field" style={{ minWidth: 200 }}><span>{t("Vertaling")}</span>
           <select value={s.quran_translation} onChange={(e) => save({ quran_translation: e.target.value }, "Vertaling gewijzigd")}>{(meta?.translations ?? []).map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}</select>
         </label>
       </div>
       {p.surah && <button className="quran-resume glass" onClick={() => setOpen(p.surah!.number)}>▶ Verder met {p.surah.englishName}, vers {p.index + 1}</button>}
       <div className="page-scroll" style={{ flex: 1, minHeight: 0 }}>
-        {!meta && !err && <p className="empty">Soera's laden…</p>}
+        {!meta && !err && <p className="empty">{t("Soera's laden…")}</p>}
         <div className="surahs">
           {filtered.map((x) => (
             <button key={x.number} className={`surah${p.surah?.number === x.number ? " on" : ""}`} onClick={() => setOpen(x.number)}>
@@ -142,12 +143,12 @@ export function QuranMiniPlayer({ onOpen }: { onOpen: () => void }) {
   if (!p.surah) return null;
   const a = p.surah.ayahs[p.index];
   return (
-    <div className="miniplayer glass" role="region" aria-label="Koran-speler">
+    <div className="miniplayer glass" role="region" aria-label={t("Koran-speler")}>
       <button className="miniplayer-txt" onClick={onOpen}><b>{p.surah.englishName} · vers {a.numberInSurah}/{p.surah.numberOfAyahs}</b><small>{a.translation.slice(0, 90)}{a.translation.length > 90 ? "…" : ""}</small></button>
-      <button className="iconbtn" onClick={() => player.prev()} aria-label="Vorig vers">⏮</button>
-      <button className="iconbtn" onClick={() => player.toggle()} aria-label={p.playing ? "Pauzeren" : "Verder"}>{p.playing ? "❚❚" : "▶"}</button>
-      <button className="iconbtn" onClick={() => player.next()} aria-label="Volgend vers">⏭</button>
-      <button className="iconbtn" onClick={() => player.stop()} aria-label="Stoppen"><Icon.close /></button>
+      <button className="iconbtn" onClick={() => player.prev()} aria-label={t("Vorig vers")}>⏮</button>
+      <button className="iconbtn" onClick={() => player.toggle()} aria-label={p.playing ? t("Pauzeren") : t("Verder")}>{p.playing ? "❚❚" : "▶"}</button>
+      <button className="iconbtn" onClick={() => player.next()} aria-label={t("Volgend vers")}>⏭</button>
+      <button className="iconbtn" onClick={() => player.stop()} aria-label={t("Stoppen")}><Icon.close /></button>
     </div>
   );
 }

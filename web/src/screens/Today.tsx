@@ -4,13 +4,14 @@ import type { Meal, Occurrence, Weather } from "../types";
 import { DayView } from "../components/CalendarViews";
 import { ChoreTracker } from "../components/ChoreTracker";
 import type { EditorState } from "../components/EventEditor";
-import { RecipeThumb, openRecipe } from "../components/Recipes";
+import { RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { Icon } from "../components/Icons";
 import { addDays, cap, clock, greeting, longDate, todayIso } from "../dates";
 import type { PrayerDay } from "../types";
 import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
+import { t as tr } from "../i18n";
 
-const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
+const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: tr("Tussendoor") };
 const SLOT_ICON: Record<string, string> = { ontbijt: "🥣", lunch: "🥪", diner: "🍽️", snack: "🍎" };
 
 /** Voorbeeldvragen met de echte namen uit dit gezin. */
@@ -18,14 +19,14 @@ export function useSuggestions() {
   const { data } = useData();
   const members = data?.members ?? [];
   const kid = members.find((m) => m.role === "kind") ?? members[0];
-  const who = kid ? ` voor ${kid.name}` : "";
+  const who = kid ? ` ${tr("voor {n}", { n: kid.name })}` : "";
   return [
-    "🗓️ Wat staat er vandaag op de planning?",
-    "🍲 Wat kook ik vanavond?",
-    `📅 Zet zwemles op dinsdag om 17u${who}`,
-    "🎉 Wat kunnen we dit weekend doen?",
-    "🛒 Zet melk en eieren op de boodschappenlijst",
-    "✅ Wie heeft nog taken open?",
+    tr("🗓️ Wat staat er vandaag op de planning?"),
+    tr("🍲 Wat kook ik vanavond?"),
+    `${tr("📅 Zet zwemles op dinsdag om 17u")}${who}`,
+    tr("🎉 Wat kunnen we dit weekend doen?"),
+    tr("🛒 Zet melk en eieren op de boodschappenlijst"),
+    tr("✅ Wie heeft nog taken open?"),
   ];
 }
 
@@ -52,23 +53,23 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const visible = events.filter((e) => !e.members.length || e.members.some((m) => !hidden.has(m)));
   const hour = new Date().getHours();
   const mealOrder: ("ontbijt" | "lunch" | "diner")[] = hour < 10 ? ["ontbijt", "lunch", "diner"] : hour < 14 ? ["lunch", "diner", "ontbijt"] : ["diner", "lunch", "ontbijt"];
-  const mealTitle = hour < 10 ? "Vandaag eten" : hour < 14 ? "Straks eten" : "Vanavond eten";
+  const mealTitle = hour < 10 ? tr("Vandaag eten") : hour < 14 ? tr("Straks eten") : "Vanavond eten";
 
   return (
     <div className="bord">
       <div className="bord-top">
         <div className="bord-greet">
-          <button className="drop-btn" onClick={() => openAssistant()} aria-label="Assistent openen"><span className="drop" aria-hidden /></button>
+          <button className="drop-btn" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><span className="drop" aria-hidden /></button>
           <button className="bubble glass bord-bubble" onClick={() => openAssistant()}>
-            {greeting()}{data?.settings.family_name ? `, ${data.settings.family_name}` : ""}! Waarmee kan ik vandaag helpen?
+            {greeting()}{data?.settings.family_name ? `, ${data.settings.family_name}` : ""}! {tr("Waarmee kan ik vandaag helpen?")}
           </button>
         </div>
         <div className="bord-meta">
           <span className="bord-time num">{time}</span>
-          <span className="bord-date">{cap(longDate(t))}{!online && <span className="offline" style={{ marginLeft: 8 }}>Offline</span>}</span>
+          <span className="bord-date">{cap(longDate(t))}{!online && <span className="offline" style={{ marginLeft: 8 }}>{tr("Offline")}</span>}</span>
           {weather && <span className="bord-wx num" title={`${weather.city}: ${weather.current.label}`}>{weather.current.icon} {weather.current.temp}° <small>↑{weather.days[0]?.max}° ↓{weather.days[0]?.min}°</small></span>}
-          {nxt && <span className="bord-wx num" title="Volgend gebed">{PRAYER_ICON[nxt.prayer]} {PRAYER_NAME[nxt.prayer]} <small>{hm(new Date(nxt.at).toISOString())}</small></span>}
-          <button className="iconbtn glass" onClick={openSearch} aria-label="Zoeken in alles"><Icon.search /></button>
+          {nxt && <span className="bord-wx num" title={tr("Volgend gebed")}>{PRAYER_ICON[nxt.prayer]} {PRAYER_NAME[nxt.prayer]} <small>{hm(new Date(nxt.at).toISOString())}</small></span>}
+          <button className="iconbtn glass" onClick={openSearch} aria-label={tr("Zoeken in alles")}><Icon.search /></button>
         </div>
       </div>
       <div className="suggest bord-suggest">
@@ -80,35 +81,35 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
       </section>
       <div className="bord-widgets">
         <section className="glass widget-sm">
-          <div className="widget-h"><h2>{mealTitle}</h2><button className="linkbtn" onClick={() => goto("meals")}>Plannen</button></div>
+          <div className="widget-h"><h2>{mealTitle}</h2><button className="linkbtn" onClick={() => goto("meals")}>{tr("Plannen")}</button></div>
           <div className="mealstrip">
             {mealOrder.map((slot, i) => {
               const m = meals.find((x) => x.slot === slot);
               const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
               const open = () => (r ? openRecipe(r.id) : goto("meals"));
               return (
-                <button className={`mealtile${i === 0 ? " main" : ""}${m ? "" : " empty"}`} key={slot} onClick={open}>
+                <button className={`mealtile${i === 0 ? tr(" main") : ""}${m ? "" : tr(" empty")}`} key={slot} onClick={open}>
                   {m?.image || r ? <RecipeThumb r={{ image: m!.image, title: m!.title }} size={i === 0 ? 64 : 48} /> : <span className="mealtile-ic" aria-hidden>{SLOT_ICON[slot]}</span>}
-                  <span className="mealtile-txt"><small>{SLOT_LABEL[slot]}</small><b>{m?.title ?? "Nog niets"}</b></span>
+                  <span className="mealtile-txt"><small>{tr(SLOT_LABEL[slot])}</small><b>{(r ? recipeTitle(r) : m?.title) ?? tr("Nog niets")}</b></span>
                 </button>
               );
             })}
           </div>
         </section>
         <section className="glass widget-sm">
-          <div className="widget-h"><h2>Taken vandaag</h2><button className="linkbtn" onClick={() => goto("chores")}>Alles</button></div>
+          <div className="widget-h"><h2>{tr("Taken vandaag")}</h2><button className="linkbtn" onClick={() => goto("chores")}>{tr("Alles")}</button></div>
           <ChoreTracker date={t} grouped={false} compact />
         </section>
         {!!data?.countdowns.length && (
           <section className="glass widget-sm">
-            <div className="widget-h"><h2>Aftellen</h2></div>
+            <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>
             <div className="cdstrip">
               {data.countdowns.slice(0, 4).map((c) => {
                 const m = c.memberId ? data.members.find((x) => x.id === c.memberId) : null;
                 return (
                   <div className="cd-sm" key={c.kind + c.title + c.date} style={{ "--c": m?.color ?? "var(--accent)" } as React.CSSProperties}>
                     <span className="cd-ic" aria-hidden>{c.icon}</span>
-                    <span><b className="num">{c.days === 0 ? "Vandaag!" : c.days === 1 ? "Morgen" : `${c.days} dagen`}</b><small>{c.title}</small></span>
+                    <span><b className="num">{c.days === 0 ? tr("Vandaag!") : c.days === 1 ? tr("Morgen") : `${c.days} ${tr("dagen")}`}</b><small>{c.title}</small></span>
                   </div>
                 );
               })}

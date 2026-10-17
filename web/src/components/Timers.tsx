@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { t as tr } from "../i18n";
 
 // Kookwekkers en wekkers lopen op dit toestel, ook als je een ander scherm opent.
 export interface Timer { id: string; label: string; endsAt: number; total: number }
@@ -78,7 +79,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         const key = `${a.id}@${d.toDateString()}`;
         if (a.on && a.time === hm && (!a.days.length || a.days.includes(d.getDay())) && !fired.current.has(key)) {
           fired.current.add(key);
-          ring.push({ id: a.id, label: a.label || `Wekker ${a.time}`, kind: "alarm" });
+          ring.push({ id: a.id, label: a.label || tr("Wekker {t}", { t: a.time }), kind: "alarm" });
         }
       }
       if (ring.length) setRinging((r) => [...r, ...ring]);
@@ -100,14 +101,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     <C.Provider value={value}>
       {children}
       {ringing.length > 0 && (
-        <div className="ring" role="alertdialog" aria-label="Wekker gaat af">
+        <div className="ring" role="alertdialog" aria-label={tr("Wekker gaat af")}>
           <div className="ring-card">
             <div className="ring-bell" aria-hidden>⏰</div>
             {ringing.map((r) => <h2 key={r.id + r.kind}>{r.label}</h2>)}
-            <p className="hint">{ringing[0].kind === "timer" ? "De tijd is om." : "Tijd!"}</p>
+            <p className="hint">{ringing[0].kind === "timer" ? tr("De tijd is om.") : tr("Tijd!")}</p>
             <div className="actions" style={{ justifyContent: "center" }}>
-              {ringing.every((r) => r.kind === "timer") && <button className="btn ghost" onClick={() => { ringing.forEach((r) => value.addTimer(5, r.label)); setRinging([]); }}>Nog 5 minuten</button>}
-              <button className="btn" onClick={() => setRinging([])}>Stoppen</button>
+              {ringing.every((r) => r.kind === "timer") && <button className="btn ghost" onClick={() => { ringing.forEach((r) => value.addTimer(5, r.label)); setRinging([]); }}>{tr("Nog 5 minuten")}</button>}
+              <button className="btn" onClick={() => setRinging([])}>{tr("Stoppen")}</button>
             </div>
           </div>
         </div>

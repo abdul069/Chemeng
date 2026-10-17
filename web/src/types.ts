@@ -34,7 +34,7 @@ export interface Settings {
   screensaver_minutes: string; week_start: string; assistant_voice: string; holidays: string; has_pin: boolean;
   sleep_from: string; sleep_until: string; home_after_minutes: string;
   ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
-  quran_reciter: string; quran_translation: string;
+  quran_reciter: string; quran_translation: string; language: string;
 }
 export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
 export interface PrayerDay { date: string; times: Record<Prayer, string>; tomorrow: Record<Prayer, string>; methods: { id: string; label: string }[]; city: string }

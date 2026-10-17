@@ -9,15 +9,16 @@ import { Icon } from "../components/Icons";
 import { diffDays, shortDate, todayIso } from "../dates";
 import { AISLES, AISLE_INFO, aisleOf } from "../aisles";
 import { PantryCook } from "../components/LibraryBrowser";
+import { t } from "../i18n";
 
 /** Houdbaarheid van een voorraad-item: "verlopen", "vandaag", "nog 3 dagen" … */
 function expiry(i: ListItem): { label: string; cls: string } | null {
   if (!i.expires) return null;
   const d = diffDays(todayIso(), i.expires);
-  if (d < 0) return { label: `verlopen (${shortDate(i.expires)})`, cls: "exp bad" };
-  if (d === 0) return { label: "verloopt vandaag", cls: "exp bad" };
-  if (d <= 3) return { label: `verloopt over ${d} dag${d > 1 ? "en" : ""}`, cls: "exp warn" };
-  return { label: `tot ${shortDate(i.expires)}`, cls: "exp" };
+  if (d < 0) return { label: t("verlopen ({d})", { d: shortDate(i.expires) }), cls: "exp bad" };
+  if (d === 0) return { label: t("verloopt vandaag"), cls: "exp bad" };
+  if (d <= 3) return { label: d > 1 ? t("verloopt over {d} dagen", { d }) : t("verloopt over 1 dag"), cls: "exp warn" };
+  return { label: t("tot {d}", { d: shortDate(i.expires) }), cls: "exp" };
 }
 
 export function ListsScreen({ header }: { header: React.ReactNode }) {
@@ -62,15 +63,15 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
     <>
       <div className="topbar">
         {header}
-        <div className="right"><button className="pill" onClick={() => setNewList(true)}>+ Nieuwe lijst</button></div>
+        <div className="right"><button className="pill" onClick={() => setNewList(true)}>{t("+ Nieuwe lijst")}</button></div>
       </div>
       <div className="lists">
-        <nav className="list-nav" aria-label="Lijsten">
+        <nav className="list-nav" aria-label={t("Lijsten")}>
           {data.lists.map((l) => {
             const warn = l.kind === "pantry" ? l.items.filter((i) => !i.done && i.expires && diffDays(todayIso(), i.expires) <= 3).length : 0;
             return (
               <button key={l.id} aria-current={l.id === list?.id} onClick={() => setSel(l.id)}>
-                <span>{l.icon}</span>{l.name}<span className="n">{warn ? <i className="exp warn" title="bijna over datum">⚠️{warn} </i> : null}{l.items.filter((i) => !i.done).length}</span>
+                <span>{l.icon}</span>{l.name}<span className="n">{warn ? <i className="exp warn" title={t("bijna over datum")}>⚠️{warn} </i> : null}{l.items.filter((i) => !i.done).length}</span>
               </button>
             );
           })}
@@ -80,33 +81,33 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
             <div className="section-title">
               <h2>{list.icon} {list.name}</h2>
               <div style={{ display: "flex", gap: 6 }}>
-                {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? "Opgebruikte items gewist" : "Afgevinkte items gewist")}>{pantry ? "Opgebruikte wissen" : "Afgevinkte wissen"}</button>}
-                {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? "Per afdeling ✓" : "Per afdeling"}</button>}
-                <button className="iconbtn" aria-label="Lijst delen" title="Lijst delen (WhatsApp, sms…)" onClick={async () => {
+                {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? t("Opgebruikte items gewist") : t("Afgevinkte items gewist"))}>{pantry ? t("Opgebruikte wissen") : t("Afgevinkte wissen")}</button>}
+                {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? t("Per afdeling ✓") : t("Per afdeling")}</button>}
+                <button className="iconbtn" aria-label={t("Lijst delen")} title={t("Lijst delen (WhatsApp, sms…)")} onClick={async () => {
                   const open = list.items.filter((i) => !i.done);
                   const text = `${list.icon} ${list.name}\n${open.map((i) => `• ${i.text}${i.qty ? ` (${i.qty})` : ""}`).join("\n")}`;
-                  try { if (navigator.share) await navigator.share({ title: list.name, text }); else { await navigator.clipboard.writeText(text); toast("Lijst gekopieerd"); } } catch { /* geannuleerd */ }
+                  try { if (navigator.share) await navigator.share({ title: list.name, text }); else { await navigator.clipboard.writeText(text); toast(t("Lijst gekopieerd")); } } catch { /* geannuleerd */ }
                 }}>↗</button>
-                <button className="iconbtn" aria-label="Lijst verwijderen" onClick={() => setConfirm(true)}><Icon.trash /></button>
+                <button className="iconbtn" aria-label={t("Lijst verwijderen")} onClick={() => setConfirm(true)}><Icon.trash /></button>
               </div>
             </div>
-            {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>🍳 Koken met wat in huis is</button>}
+            {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>{t("🍳 Koken met wat in huis is")}</button>}
             {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is: het komt vanzelf op de boodschappenlijst. Wat je koopt en afvinkt op Boodschappen, komt hier terug.</p>}
             {isShop ? <StaplesInline list={list} /> : (
             <form className="addrow" onSubmit={(e) => { e.preventDefault(); add(); }}>
-              <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? "bv. yoghurt" : "Toevoegen… (meerdere met komma's)"} aria-label="Nieuw item" />
-              {pantry && <input id="item-qty" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="aantal" aria-label="Aantal" style={{ width: 90, flex: "none" }} />}
-              {pantry && <input id="item-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} aria-label="Houdbaar tot" style={{ width: 150, flex: "none" }} />}
-              <button className="btn" type="submit" disabled={!text.trim()}>Toevoegen</button>
+              <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? t("bv. yoghurt") : t("Toevoegen… (meerdere met komma's)")} aria-label={t("Nieuw item")} />
+              {pantry && <input id="item-qty" value={qty} onChange={(e) => setQty(e.target.value)} placeholder={t("aantal")} aria-label={t("Aantal")} style={{ width: 90, flex: "none" }} />}
+              {pantry && <input id="item-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} aria-label={t("Houdbaar tot")} style={{ width: 150, flex: "none" }} />}
+              <button className="btn" type="submit" disabled={!text.trim()}>{t("Toevoegen")}</button>
             </form>)}
             <div className="items">
               {sections.map((sec) => (<div key={sec.key || "all"} className="items">
-              {sec.key && <div className="aisle-h">{sec.key === "done" ? "✓ Afgevinkt" : `${AISLE_INFO[sec.key].icon} ${AISLE_INFO[sec.key].name}`}<span className="muted num">{sec.items.length}</span></div>}
+              {sec.key && <div className="aisle-h">{sec.key === "done" ? t("✓ Afgevinkt") : `${AISLE_INFO[sec.key].icon} ${t(AISLE_INFO[sec.key].name)}`}<span className="muted num">{sec.items.length}</span></div>}
               {sec.items.map((i) => {
                 const ex = pantry ? expiry(i) : null;
                 return (
-                  <div className={`item${i.done ? " done" : ""}`} key={i.id}>
-                    <button className="check" aria-pressed={i.done} aria-label={`${i.text} ${i.done ? "terug open zetten" : pantry ? "als op markeren" : "afvinken"}`} onClick={async () => { const r = await act(() => api.patch<{ ok: boolean; moved: { to: string } | null }>(`/items/${i.id}`, { done: !i.done })); if (r?.moved) toast(`${i.text} → ${r.moved.to}`); }}>{i.done ? "✓" : ""}</button>
+                  <div className={`item${i.done ? t(" done") : ""}`} key={i.id}>
+                    <button className="check" aria-pressed={i.done} aria-label={`${i.text} ${i.done ? t("terug open zetten") : pantry ? t("als op markeren") : "afvinken"}`} onClick={async () => { const r = await act(() => api.patch<{ ok: boolean; moved: { to: string } | null }>(`/items/${i.id}`, { done: !i.done })); if (r?.moved) toast(`${i.text} → ${r.moved.to}`); }}>{i.done ? "✓" : ""}</button>
                     <span className="txt" style={{ flex: 1, minWidth: 0 }}>
                       {i.text}{i.qty && <small className="muted"> · {i.qty}</small>}
                       {ex && <small className={ex.cls} style={{ display: "block" }}>{ex.label}</small>}
@@ -117,16 +118,16 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                 );
               })}
               </div>))}
-              {!list.items.length && <p className="empty">{pantry ? "Nog niets in voorraad. Voeg toe wat je in huis hebt, met houdbaarheidsdatum." : isShop ? "De lijst is leeg. Tik hierboven aan wat je nodig hebt." : "De lijst is leeg. Typ hierboven of vraag het aan de assistent."}</p>}
+              {!list.items.length && <p className="empty">{pantry ? t("Nog niets in voorraad. Voeg toe wat je in huis hebt, met houdbaarheidsdatum.") : isShop ? t("De lijst is leeg. Tik hierboven aan wat je nodig hebt.") : t("De lijst is leeg. Typ hierboven of vraag het aan de assistent.")}</p>}
             </div>
           </section>
-        ) : <p className="empty">Nog geen lijsten.</p>}
+        ) : <p className="empty">{t("Nog geen lijsten.")}</p>}
       </div>
       {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} hasShop={data.lists.some(isShopping)} />}
       {edit && <ItemEditor item={edit} shop={isShop} onClose={() => setEdit(null)} />}
       {cook && <PantryCook onClose={() => setCook(false)} />}
-      {confirm && list && <Confirm title={`${list.name} verwijderen?`} text="Alle items op deze lijst verdwijnen." onClose={() => setConfirm(false)}
-        actions={[{ label: "Verwijderen", run: () => { act(() => api.del(`/lists/${list.id}`), "Lijst verwijderd"); setSel(null); } }]} />}
+      {confirm && list && <Confirm title={`${list.name} verwijderen?`} text={t("Alle items op deze lijst verdwijnen.")} onClose={() => setConfirm(false)}
+        actions={[{ label: t("Verwijderen"), run: () => { act(() => api.del(`/lists/${list.id}`), t("Lijst verwijderd")); setSel(null); } }]} />}
     </>
   );
 }
@@ -136,22 +137,22 @@ function ItemEditor({ item, shop, onClose }: { item: ListItem; shop?: boolean; o
   const [f, setF] = useState({ text: item.text, qty: item.qty, expires: item.expires ?? "", aisle: item.aisle ?? "" });
   const auto = aisleOf(f.text);
   const save = async () => {
-    if (await act(() => api.patch(`/items/${item.id}`, { text: f.text, qty: f.qty, expires: f.expires || null, aisle: f.aisle || null }), "Bewaard")) onClose();
+    if (await act(() => api.patch(`/items/${item.id}`, { text: f.text, qty: f.qty, expires: f.expires || null, aisle: f.aisle || null }), t("Bewaard"))) onClose();
   };
   return (
-    <Modal title={shop ? "Boodschap" : "Voorraad-item"} onClose={onClose}>
-      <label className="field"><span>Wat</span><input id="ie-text" value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} /></label>
-      <label className="field"><span>Aantal</span><input id="ie-qty" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder="bv. 2 pakken" /></label>
+    <Modal title={shop ? t("Boodschap") : t("Voorraad-item")} onClose={onClose}>
+      <label className="field"><span>{t("Wat")}</span><input id="ie-text" value={f.text} onChange={(e) => setF({ ...f, text: e.target.value })} /></label>
+      <label className="field"><span>{t("Aantal")}</span><input id="ie-qty" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} placeholder={t("bv. 2 pakken")} /></label>
       {shop && (
-        <div className="field"><span>Afdeling</span>
+        <div className="field"><span>{t("Afdeling")}</span>
           <div className="picks">
-            <button type="button" className="pick" aria-pressed={!f.aisle} onClick={() => setF({ ...f, aisle: "" })}>Automatisch ({AISLE_INFO[auto].icon} {AISLE_INFO[auto].name})</button>
-            {[...AISLES.map((a) => a.key), "overig"].map((k) => <button type="button" key={k} className="pick" aria-pressed={f.aisle === k} onClick={() => setF({ ...f, aisle: k })}>{AISLE_INFO[k].icon} {AISLE_INFO[k].name}</button>)}
+            <button type="button" className="pick" aria-pressed={!f.aisle} onClick={() => setF({ ...f, aisle: "" })}>{t("Automatisch")} ({AISLE_INFO[auto].icon} {t(AISLE_INFO[auto].name)})</button>
+            {[...AISLES.map((a) => a.key), "overig"].map((k) => <button type="button" key={k} className="pick" aria-pressed={f.aisle === k} onClick={() => setF({ ...f, aisle: k })}>{AISLE_INFO[k].icon} {t(AISLE_INFO[k].name)}</button>)}
           </div>
         </div>
       )}
-      {!shop && <label className="field"><span>Houdbaar tot</span><input id="ie-exp" type="date" value={f.expires} onChange={(e) => setF({ ...f, expires: e.target.value })} /></label>}
-      <div className="actions"><button className="btn ghost" onClick={onClose}>Annuleren</button><button className="btn" disabled={!f.text.trim()} onClick={save}>Bewaren</button></div>
+      {!shop && <label className="field"><span>{t("Houdbaar tot")}</span><input id="ie-exp" type="date" value={f.expires} onChange={(e) => setF({ ...f, expires: e.target.value })} /></label>}
+      <div className="actions"><button className="btn ghost" onClick={onClose}>{t("Annuleren")}</button><button className="btn" disabled={!f.text.trim()} onClick={save}>{t("Bewaren")}</button></div>
     </Modal>
   );
 }
@@ -162,25 +163,25 @@ function NewList({ onClose, onCreated, hasPantry, hasShop }: { onClose: () => vo
   const [icon, setIcon] = useState("📝");
   const [kind, setKind] = useState<List["kind"]>("list");
   const save = async () => {
-    const r = await act(() => api.post<{ id: string }>("/lists", { name, icon, kind }), "Lijst gemaakt");
+    const r = await act(() => api.post<{ id: string }>("/lists", { name, icon, kind }), t("Lijst gemaakt"));
     if (r) { onCreated(r.id); onClose(); }
   };
   return (
-    <Modal title="Nieuwe lijst" onClose={onClose}>
+    <Modal title={t("Nieuwe lijst")} onClose={onClose}>
       <div className="addrow">
-        <input id="nl-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ width: 64, flex: "none" }} aria-label="Icoon" />
-        <input id="nl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="bv. Inpaklijst vakantie" aria-label="Naam" onKeyDown={(e) => e.key === "Enter" && name.trim() && save()} />
+        <input id="nl-icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ width: 64, flex: "none" }} aria-label={t("Icoon")} />
+        <input id="nl-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("bv. Inpaklijst vakantie")} aria-label={t("Naam")} onKeyDown={(e) => e.key === "Enter" && name.trim() && save()} />
       </div>
       {(!hasPantry || !hasShop) && (
-        <div className="field"><span>Soort</span>
+        <div className="field"><span>{t("Soort")}</span>
           <div className="picks">
-            <button type="button" className="pick" aria-pressed={kind === "list"} onClick={() => setKind("list")}>📝 Gewone lijst</button>
-            {!hasShop && <button type="button" className="pick" aria-pressed={kind === "shopping"} onClick={() => { setKind("shopping"); if (!name) setName("Boodschappen"); if (icon === "📝") setIcon("🛒"); }}>🛒 Boodschappen (per afdeling)</button>}
-            {!hasPantry && <button type="button" className="pick" aria-pressed={kind === "pantry"} onClick={() => { setKind("pantry"); if (!name) setName("Voorraad"); if (icon === "📝") setIcon("🥫"); }}>🥫 Voorraad (met houdbaarheid)</button>}
+            <button type="button" className="pick" aria-pressed={kind === "list"} onClick={() => setKind("list")}>{t("📝 Gewone lijst")}</button>
+            {!hasShop && <button type="button" className="pick" aria-pressed={kind === "shopping"} onClick={() => { setKind("shopping"); if (!name) setName("Boodschappen"); if (icon === "📝") setIcon("🛒"); }}>{t("🛒 Boodschappen (per afdeling)")}</button>}
+            {!hasPantry && <button type="button" className="pick" aria-pressed={kind === "pantry"} onClick={() => { setKind("pantry"); if (!name) setName("Voorraad"); if (icon === "📝") setIcon("🥫"); }}>{t("🥫 Voorraad (met houdbaarheid)")}</button>}
           </div>
         </div>
       )}
-      <div className="actions"><button className="btn ghost" onClick={onClose}>Annuleren</button><button className="btn" disabled={!name.trim()} onClick={save}>Maken</button></div>
+      <div className="actions"><button className="btn ghost" onClick={onClose}>{t("Annuleren")}</button><button className="btn" disabled={!name.trim()} onClick={save}>{t("Maken")}</button></div>
     </Modal>
   );
 }
@@ -219,26 +220,26 @@ function StaplesInline({ list }: { list: List }) {
   return (
     <div className="staples-inline">
       <form className="addrow" onSubmit={(e) => { e.preventDefault(); if (f && !exact) addNew(); else if (shown.length === 1) { toggle(shown[0]); setQ(""); } }}>
-        <input id="item-new" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek of typ een product… (nieuw = ook vast product)" aria-label="Zoek of typ een product" />
+        <input id="item-new" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Zoek of typ een product… (nieuw = ook vast product)")} aria-label={t("Zoek of typ een product")} />
         {f && !exact && <button className="btn" type="submit">+ “{q.trim()}” toevoegen</button>}
-        {q && <button type="button" className="iconbtn" onClick={() => setQ("")} aria-label="Wissen"><Icon.close /></button>}
+        {q && <button type="button" className="iconbtn" onClick={() => setQ("")} aria-label={t("Wissen")}><Icon.close /></button>}
       </form>
       <div className="section-title" style={{ marginBottom: 0 }}>
         <button className="linkbtn" onClick={toggleOpen} aria-expanded={open}>{open ? "▾" : "▸"} Vaste producten <span className="muted num">({staples.length})</span></button>
-        <span className="hint">Tik aan = op de lijst · nog eens = eraf{open ? <> · <button className="linkbtn" onClick={() => setManage(!manage)}>{manage ? "Klaar" : "Beheren"}</button></> : null}</span>
+        <span className="hint">Tik aan = op de lijst · nog eens = eraf{open ? <> · <button className="linkbtn" onClick={() => setManage(!manage)}>{manage ? t("Klaar") : t("Beheren")}</button></> : null}</span>
       </div>
       {(open || f) && (
         <div className="staples">
           {groups.map((g) => (
             <section key={g.k}>
-              <div className="aisle-h">{AISLE_INFO[g.k].icon} {AISLE_INFO[g.k].name}</div>
+              <div className="aisle-h">{AISLE_INFO[g.k].icon} {t(AISLE_INFO[g.k].name)}</div>
               <div className="picks">
                 {g.items.map((st) => {
                   const on = onList.has(st.text.toLocaleLowerCase("nl"));
                   return (
-                    <button key={st.id} type="button" className={`pick staple${manage ? " manage" : ""}`} aria-pressed={on}
-                      onClick={() => (manage ? act(() => api.del(`/staples/${st.id}`), `${st.text} is geen vast product meer`).then(() => reload()) : toggle(st))}
-                      title={manage ? "Uit de vaste producten halen" : on ? "Van de lijst halen" : "Op de lijst zetten"}>
+                    <button key={st.id} type="button" className={`pick staple${manage ? t(" manage") : ""}`} aria-pressed={on}
+                      onClick={() => (manage ? act(() => api.del(`/staples/${st.id}`), t("{x} is geen vast product meer", { x: st.text })).then(() => reload()) : toggle(st))}
+                      title={manage ? t("Uit de vaste producten halen") : on ? t("Van de lijst halen") : t("Op de lijst zetten")}>
                       {on && !manage ? "✓ " : manage ? "✕ " : ""}{st.text}
                     </button>
                   );

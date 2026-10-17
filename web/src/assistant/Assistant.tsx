@@ -8,6 +8,7 @@ import { RecipeThumb, openRecipe } from "../components/Recipes";
 import { useSuggestions } from "../screens/Today";
 import { canListen, listen, speak, stopSpeaking } from "./speech";
 import { cap, fmtRange, greeting, longDate, todayIso } from "../dates";
+import { t } from "../i18n";
 
 export interface Msg { role: "user" | "assistant"; content: string; changes?: Change[]; error?: boolean; rated?: 1 | -1 }
 
@@ -141,24 +142,24 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
   })();
 
   return (
-    <div className="assist" role="dialog" aria-modal="true" aria-label="Gezinsassistent">
+    <div className="assist" role="dialog" aria-modal="true" aria-label={t("Gezinsassistent")}>
       <div className="assist-inner">
         <div className="assist-top">
-          <div className={`mascot${listening ? " listening" : busy ? " thinking" : ""}`} />
+          <div className={`mascot${listening ? t(" listening") : busy ? t(" thinking") : ""}`} />
           <div className="assist-head">
             <div className="bubble">
-              {listening ? "Ik luister…" : busy ? "Even nadenken…" : convo.length ? "Nog iets?" : `${greeting()}! Waarmee kan ik helpen?`}
+              {listening ? t("Ik luister…") : busy ? t("Even nadenken…") : convo.length ? t("Nog iets?") : `${greeting()}! ${t("Waarmee kan ik helpen?")}`}
             </div>
             <div className="assist-date">
               <span>{longDate(todayIso()).toUpperCase()}</span>
               {weather && <span className="num">{weather.current.icon} {weather.current.temp}° · ↑{weather.days[0]?.max}° ↓{weather.days[0]?.min}°</span>}
             </div>
           </div>
-          {convo.length > 0 && <button className="pill" onClick={() => { stopSpeaking(); setConvo(() => []); }}>Nieuw gesprek</button>}
-          <button className="assist-close" onClick={onClose} aria-label="Sluiten"><Icon.close /></button>
+          {convo.length > 0 && <button className="pill" onClick={() => { stopSpeaking(); setConvo(() => []); }}>{t("Nieuw gesprek")}</button>}
+          <button className="assist-close" onClick={onClose} aria-label={t("Sluiten")}><Icon.close /></button>
         </div>
         {!data?.assistant.available && (
-          <div className="bubble">De assistent is nog niet ingesteld op de server. Een beheerder voegt een ANTHROPIC_API_KEY toe in Railway (Variables).</div>
+          <div className="bubble">{t("De assistent is nog niet ingesteld op de server. Een beheerder voegt een ANTHROPIC_API_KEY toe in Railway (Variables).")}</div>
         )}
         {!convo.length && (
           <div className="suggest">
@@ -170,20 +171,20 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
             ? <div key={i} className="bubble me">{m.content}</div>
             : (
               <div key={i} className="answer">
-                <div className={`bubble${m.error ? " error" : ""}`}>
+                <div className={`bubble${m.error ? t(" error") : ""}`}>
                   {!m.error && (
-                    <button className="playbtn" onClick={() => (speakingIdx === i ? (stopSpeaking(), setSpeakingIdx(null)) : play(i, m.content))} aria-label={speakingIdx === i ? "Voorlezen stoppen" : "Voorlezen"}>
+                    <button className="playbtn" onClick={() => (speakingIdx === i ? (stopSpeaking(), setSpeakingIdx(null)) : play(i, m.content))} aria-label={speakingIdx === i ? t("Voorlezen stoppen") : t("Voorlezen")}>
                       {speakingIdx === i ? "❚❚" : "▶"} <Wave on={speakingIdx === i} />
                     </button>
                   )}
                   <Markdown text={m.content} />
                   {m.error && i === convo.length - 1 && convo[i - 1]?.role === "user" && (
-                    <button className="pill" style={{ marginTop: 8 }} onClick={() => send(convo[i - 1].content)}>↻ Opnieuw proberen</button>
+                    <button className="pill" style={{ marginTop: 8 }} onClick={() => send(convo[i - 1].content)}>{t("↻ Opnieuw proberen")}</button>
                   )}
                   {!m.error && (
                     <div className="rate">
-                      <button aria-label="Goed antwoord" aria-pressed={m.rated === 1} onClick={() => rate(i, 1)}>👍</button>
-                      <button aria-label="Slecht antwoord" aria-pressed={m.rated === -1} onClick={() => rate(i, -1)}>👎</button>
+                      <button aria-label={t("Goed antwoord")} aria-pressed={m.rated === 1} onClick={() => rate(i, 1)}>👍</button>
+                      <button aria-label={t("Slecht antwoord")} aria-pressed={m.rated === -1} onClick={() => rate(i, -1)}>👎</button>
                     </div>
                   )}
                 </div>
@@ -198,19 +199,19 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
         {notice && <div className="bubble error">{notice}</div>}
         {handsfree ? (
           <div className="stopbar">
-            <button className="stopbar-x" onClick={stopHandsfree} aria-label="Gesprek stoppen"><Icon.close /></button>
-            <span className="stopbar-mid">{listening ? <><Wave on /> {text || "Ik luister…"}</> : busy ? "Even nadenken…" : speakingIdx !== null ? <><Wave on /> Aan het praten…</> : "…"}</span>
-            <button className="stopbar-stop" onClick={stopHandsfree}>● Stop</button>
+            <button className="stopbar-x" onClick={stopHandsfree} aria-label={t("Gesprek stoppen")}><Icon.close /></button>
+            <span className="stopbar-mid">{listening ? <><Wave on /> {text || t("Ik luister…")}</> : busy ? t("Even nadenken…") : speakingIdx !== null ? <><Wave on /> {t("Aan het praten…")}</> : "…"}</span>
+            <button className="stopbar-stop" onClick={stopHandsfree}>{t("● Stop")}</button>
           </div>
         ) : (
           <form className="composer" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-            <input id="assist-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Schrijf iets…" autoComplete="off" aria-label="Vraag aan de assistent" />
+            <input id="assist-input" value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Schrijf iets…")} autoComplete="off" aria-label={t("Vraag aan de assistent")} />
             {text.trim()
-              ? <button type="submit" className="talk" disabled={busy}><Icon.send /> Stuur</button>
-              : <button type="button" className="talk" onClick={startHandsfree} disabled={!canListen()} title={canListen() ? "Praat met de assistent zonder te tikken" : "Spraak werkt niet in deze browser"}><Icon.mic /> Praat</button>}
+              ? <button type="submit" className="talk" disabled={busy}><Icon.send />{" "}{t("Stuur")}</button>
+              : <button type="button" className="talk" onClick={startHandsfree} disabled={!canListen()} title={canListen() ? t("Praat met de assistent zonder te tikken") : t("Spraak werkt niet in deze browser")}><Icon.mic />{" "}{t("Praat")}</button>}
           </form>
         )}
-        <p className="disclaimer">De assistent kan fouten maken. Controleer belangrijke afspraken.</p>
+        <p className="disclaimer">{t("De assistent kan fouten maken. Controleer belangrijke afspraken.")}</p>
       </div>
     </div>
   );
@@ -223,7 +224,7 @@ function Changes({ changes }: { changes: Change[] }) {
   if (!events.length && !recipes.length && !other.length) return null;
   return (
     <div className="added">
-      {events.length > 0 && <h4>{events.length === 1 ? "1 afspraak toegevoegd" : `${events.length} afspraken toegevoegd`}</h4>}
+      {events.length > 0 && <h4>{events.length === 1 ? t("1 afspraak toegevoegd") : `${events.length} afspraken toegevoegd`}</h4>}
       {events.map(({ event: e }) => (
         <div className="row" key={e.id}>
           <span><b>{e.title}</b><small>📅 {cap(longDate(e.date))} · {fmtRange(e)}</small></span>
@@ -233,13 +234,13 @@ function Changes({ changes }: { changes: Change[] }) {
       {recipes.map((r) => (
         <button className="row rrow" key={r.id} onClick={() => openRecipe(r.id)}>
           <RecipeThumb r={r} size={44} />
-          <span style={{ flex: 1 }}><b>{r.title}</b><small>In je receptenbibliotheek · tik om te openen</small></span>
+          <span style={{ flex: 1 }}><b>{r.title}</b><small>{t("In je receptenbibliotheek · tik om te openen")}</small></span>
         </button>
       ))}
       {other.map((c, i) => (
         <div className="row" key={i}>
           <span>
-            {c.kind === "event_removed" && <><b>Verwijderd</b><small>{c.title}</small></>}
+            {c.kind === "event_removed" && <><b>{t("Verwijderd")}</b><small>{c.title}</small></>}
             {c.kind === "meal" && <><b>{c.title}</b><small>{cap(c.slot)} · {cap(longDate(c.date))}</small></>}
             {c.kind === "chore" && <><b>Nieuwe taak: {c.title}</b><small>voor {c.member}</small></>}
             {c.kind === "list" && <><b>{c.list}</b><small>{c.items.join(", ")}</small></>}

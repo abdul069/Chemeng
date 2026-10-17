@@ -4,6 +4,7 @@ import { useAction, useData } from "../store";
 import { Modal, Pic } from "./ui";
 import { openRecipe } from "./Recipes";
 import { navParam, useNavParam } from "../nav";
+import { t, getLang } from "../i18n";
 
 interface Cat { key: string; name: string; icon: string; n: number }
 interface Row { id: string; sourceUrl: string; site: string; category: string; title: string; titleTr: string; image: string | null; minutes: number | null; servings: string; translated: boolean; inLibrary: boolean }
@@ -28,7 +29,7 @@ export function LibraryBrowser() {
   const [open, setOpen] = useState<string | null>(null);
   const admin = data?.me.role === "beheerder";
   // namen in het Turks tonen (per toestel onthouden)
-  const [tr, setTr] = useState(() => { try { return localStorage.getItem("gb.libtr") === "1"; } catch { return false; } });
+  const [tr, setTr] = useState(() => { try { const v = localStorage.getItem("gb.libtr"); return v === null ? getLang() === "tr" : v === "1"; } catch { return getLang() === "tr"; } });
   const toggleTr = () => { setTr(!tr); try { localStorage.setItem("gb.libtr", tr ? "0" : "1"); } catch { /* */ } };
 
   const loadOverview = () => api.get<Overview>("/library/categories").then(setOv).catch(() => {});
@@ -52,25 +53,25 @@ export function LibraryBrowser() {
   };
   useEffect(() => { load(0); }, [cat, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!ov) return <p className="hint">Bibliotheek laden…</p>;
+  if (!ov) return <p className="hint">{t("Bibliotheek laden…")}</p>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {ov.crawl.running && <p className="hint">⏳ De bibliotheek wordt opgebouwd: {ov.crawl.site ?? "…"} · {ov.crawl.done}/{ov.crawl.total} pagina's gelezen, {ov.crawl.added} recepten toegevoegd. Je kunt ondertussen al bladeren.</p>}
       {!ov.total && !ov.crawl.running && (
-        <p className="empty">De gedeelde bibliotheek is nog leeg. {admin ? <button className="linkbtn" onClick={() => act(() => api.post("/library/crawl"), "Opbouwen gestart").then(loadOverview)}>Nu opbouwen</button> : "De beheerder kan ze laten opbouwen."}</p>
+        <p className="empty">De gedeelde bibliotheek is nog leeg. {admin ? <button className="linkbtn" onClick={() => act(() => api.post("/library/crawl"), t("Opbouwen gestart")).then(loadOverview)}>{t("Nu opbouwen")}</button> : t("De beheerder kan ze laten opbouwen.")}</p>
       )}
       <div className="addrow">
-        <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`Zoek in ${ov.total} Turkse recepten (Nederlands of Turks)`} aria-label="Zoek in alle Turkse recepten" />
-        {ov.total > 0 && <button className="btn ghost small" aria-pressed={tr} title="Namen in het Turks tonen" onClick={toggleTr}>{tr ? "🇹🇷" : "🇳🇱"}</button>}
-        {ov.total > 0 && <button className="btn ghost small" title="Een willekeurig recept uit deze selectie" onClick={async () => {
+        <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={t("Zoek in {n} Turkse recepten (Nederlands of Turks)", { n: ov.total })} aria-label={t("Zoek in alle Turkse recepten")} />
+        {ov.total > 0 && <button className="btn ghost small" aria-pressed={tr} title={t("Namen in het Turks tonen")} onClick={toggleTr}>{tr ? "🇹🇷" : "🇳🇱"}</button>}
+        {ov.total > 0 && <button className="btn ghost small" title={t("Een willekeurig recept uit deze selectie")} onClick={async () => {
           const params = new URLSearchParams({ limit: "1", random: "1" }); if (cat) params.set("category", cat); if (q) params.set("q", q);
           const r = await api.get<{ items: Row[] }>(`/library?${params}`).catch(() => null);
           if (r?.items[0]) setOpen(r.items[0].id);
-        }}>🎲 Verras me</button>}
-        {admin && !ov.crawl.running && ov.total > 0 && <button className="btn ghost small" title="Nieuwe recepten van de sites ophalen" onClick={() => act(() => api.post("/library/crawl"), "Bijwerken gestart").then(loadOverview)}>⟳</button>}
+        }}>{t("🎲 Verras me")}</button>}
+        {admin && !ov.crawl.running && ov.total > 0 && <button className="btn ghost small" title={t("Nieuwe recepten van de sites ophalen")} onClick={() => act(() => api.post("/library/crawl"), t("Bijwerken gestart")).then(loadOverview)}>⟳</button>}
       </div>
       <div className="picks catrow">
-        <button className="pick" aria-pressed={!cat} onClick={() => setCat(null)}>Alles <small className="muted">{ov.total}</small></button>
+        <button className="pick" aria-pressed={!cat} onClick={() => setCat(null)}>{t("Alles")}{" "}<small className="muted">{ov.total}</small></button>
         {ov.categories.map((c) => <button key={c.key} className="pick" aria-pressed={cat === c.key} onClick={() => setCat(c.key)}>{c.icon} {c.name} <small className="muted">{c.n}</small></button>)}
       </div>
       <div className="rgrid">
@@ -80,13 +81,13 @@ export function LibraryBrowser() {
             <span className="rcard-body">
               <b>{tr ? r.titleTr : r.title}</b>
               {r.title !== r.titleTr && <small lang={tr ? "nl" : "tr"}>{tr ? `🇳🇱 ${r.title}` : `🇹🇷 ${r.titleTr}`}</small>}
-              <small>{[r.minutes ? `${r.minutes} min` : null, r.site, r.inLibrary ? "✓ in je bibliotheek" : null].filter(Boolean).join(" · ")}</small>
+              <small>{[r.minutes ? `${r.minutes} min` : null, r.site, r.inLibrary ? t("✓ in je bibliotheek") : null].filter(Boolean).join(" · ")}</small>
             </span>
           </button>
         ))}
       </div>
       {!busy && !rows.length && ov.total > 0 && <p className="empty">Niets gevonden{q ? ` voor “${q}”` : ""}.</p>}
-      {rows.length < total && <button className="btn ghost" disabled={busy} onClick={() => load(rows.length)}>{busy ? "Laden…" : `Meer tonen (${rows.length} van ${total})`}</button>}
+      {rows.length < total && <button className="btn ghost" disabled={busy} onClick={() => load(rows.length)}>{busy ? t("Laden…") : `Meer tonen (${rows.length} van ${total})`}</button>}
       {open && <LibraryDetail id={open} onClose={() => setOpen(null)} onAdded={() => load(0)} />}
     </div>
   );
@@ -97,7 +98,7 @@ export function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: (
   const act = useAction();
   const [r, setR] = useState<Full | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [orig, setOrig] = useState(false);
+  const [orig, setOrig] = useState(getLang() === "tr");
   const [adding, setAdding] = useState(false);
   useEffect(() => { api.get<Full>(`/library/${id}`).then(setR).catch((e) => setErr((e as Error).message)); }, [id]);
   const v = r && orig && r.original ? r.original : r;
@@ -105,33 +106,33 @@ export function LibraryDetail({ id, onClose, onAdded }: { id: string; onClose: (
     setAdding(true);
     const res = await act(() => api.post<{ id: string; existing: boolean }>(`/library/${id}/add`));
     setAdding(false);
-    if (res) { toast(res.existing ? "Stond al in je bibliotheek" : "In je bibliotheek gezet"); onAdded(); onClose(); setTimeout(() => openRecipe(res.id), 400); }
+    if (res) { toast(res.existing ? t("Stond al in je bibliotheek") : t("In je bibliotheek gezet")); onAdded(); onClose(); setTimeout(() => openRecipe(res.id), 400); }
   };
   return (
-    <Modal title={v?.title ?? "Recept"} onClose={onClose} wide>
+    <Modal title={v?.title ?? t("Recept")} onClose={onClose} wide>
       {err && <p className="error">{err}</p>}
-      {!r && !err && <p className="hint">Recept laden{data?.assistant.available ? " en vertalen" : ""}…</p>}
+      {!r && !err && <p className="hint">{data?.assistant.available ? t("Recept laden en vertalen…") : t("Recept laden…")}</p>}
       {r && v && (
         <>
           <Pic src={r.image} className="rhero" phClass="rhero ph" />
           <div className="picks">
-            {r.original && <button className="pick" aria-pressed={!orig} onClick={() => setOrig(false)}>🇳🇱 Nederlands</button>}
-            {r.original && <button className="pick" aria-pressed={orig} onClick={() => setOrig(true)}>🇹🇷 Türkçe</button>}
-            {!r.original && r.lang === "tr" && <span className="badge">🇹🇷 Turks origineel{data?.assistant.available ? "" : " · vertalen kan zodra de assistent ingesteld is"}</span>}
+            {r.original && <button className="pick" aria-pressed={!orig} onClick={() => setOrig(false)}>{t("🇳🇱 Nederlands")}</button>}
+            {r.original && <button className="pick" aria-pressed={orig} onClick={() => setOrig(true)}>{t("🇹🇷 Türkçe")}</button>}
+            {!r.original && r.lang === "tr" && <span className="badge">🇹🇷 Turks origineel{data?.assistant.available ? "" : t(" · vertalen kan zodra de assistent ingesteld is")}</span>}
             {r.minutes && <span className="badge">⏱ {r.minutes} min</span>}
             {r.warnings?.length > 0 && <span className="badge warn">⚠️ Bevat: {r.warnings.join(", ")}</span>}
             {r.servings && <span className="badge">🍽 {r.servings}</span>}
           </div>
           <div className="recipe-cols">
-            <div><h3>Ingrediënten</h3><ul>{lines(v.ingredients).map((l, i) => <li key={i}>{l}</li>)}</ul></div>
-            <div><h3>Bereiding</h3><ol>{lines(v.instructions).map((l, i) => <li key={i}>{l.replace(/^\d+[.)]\s*/, "")}</li>)}</ol></div>
+            <div><h3>{t("Ingrediënten")}</h3><ul>{lines(v.ingredients).map((l, i) => <li key={i}>{l}</li>)}</ul></div>
+            <div><h3>{t("Bereiding")}</h3><ol>{lines(v.instructions).map((l, i) => <li key={i}>{l.replace(/^\d+[.)]\s*/, "")}</li>)}</ol></div>
           </div>
           <div className="actions">
-            {r.sourceUrl && <a className="btn ghost small left" href={r.sourceUrl} target="_blank" rel="noreferrer">Bron ↗</a>}
-            <button className="btn ghost" onClick={onClose}>Sluiten</button>
+            {r.sourceUrl && <a className="btn ghost small left" href={r.sourceUrl} target="_blank" rel="noreferrer">{t("Bron ↗")}</a>}
+            <button className="btn ghost" onClick={onClose}>{t("Sluiten")}</button>
             {r.inLibraryId
-              ? <button className="btn" onClick={() => { onClose(); openRecipe(r.inLibraryId!); }}>Openen in mijn bibliotheek</button>
-              : <button className="btn accent" disabled={adding} onClick={add}>{adding ? "Toevoegen…" : "+ In mijn bibliotheek"}</button>}
+              ? <button className="btn" onClick={() => { onClose(); openRecipe(r.inLibraryId!); }}>{t("Openen in mijn bibliotheek")}</button>
+              : <button className="btn accent" disabled={adding} onClick={add}>{adding ? t("Toevoegen…") : t("+ In mijn bibliotheek")}</button>}
           </div>
         </>
       )}
@@ -145,16 +146,16 @@ export function PantryCook({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   useEffect(() => { api.get<{ words: string[]; items: (Row & { score: number })[]; pantryCount: number }>("/library/from-pantry").then(setR).catch(() => setR({ words: [], items: [], pantryCount: 0 })); }, []);
   return (
-    <Modal title="Koken met wat in huis is" onClose={onClose} wide>
-      {!r && <p className="hint">Even kijken wat er in de voorraad staat…</p>}
-      {r && !r.pantryCount && <p className="empty">De voorraad is leeg. Zet erin wat je in huis hebt (Lijsten → Voorraad), dan zoeken we er recepten bij.</p>}
+    <Modal title={t("Koken met wat in huis is")} onClose={onClose} wide>
+      {!r && <p className="hint">{t("Even kijken wat er in de voorraad staat…")}</p>}
+      {r && !r.pantryCount && <p className="empty">{t("De voorraad is leeg. Zet erin wat je in huis hebt (Lijsten → Voorraad), dan zoeken we er recepten bij.")}</p>}
       {r && r.pantryCount > 0 && <p className="hint">Gezocht op: {r.words.join(", ")}. Hoe meer van je voorraad een recept gebruikt, hoe hoger het staat.</p>}
-      {r && r.pantryCount > 0 && !r.items.length && <p className="empty">Nog geen recepten gevonden met deze ingrediënten.</p>}
+      {r && r.pantryCount > 0 && !r.items.length && <p className="empty">{t("Nog geen recepten gevonden met deze ingrediënten.")}</p>}
       <div className="rgrid">
         {r?.items.map((x) => (
           <button className="rcard" key={x.id} onClick={() => setOpen(x.id)}>
             <Pic src={x.image} className="rcard-img" phClass="rcard-ph" />
-            <span className="rcard-body"><b>{x.title}</b><small>✓ {x.score} uit je voorraad{x.minutes ? ` · ${x.minutes} min` : ""}{x.inLibrary ? " · in je bibliotheek" : ""}</small></span>
+            <span className="rcard-body"><b>{x.title}</b><small>✓ {x.score} uit je voorraad{x.minutes ? ` · ${x.minutes} min` : ""}{x.inLibrary ? t(" · in je bibliotheek") : ""}</small></span>
           </button>
         ))}
       </div>
