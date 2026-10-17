@@ -163,9 +163,9 @@ function GameShell({ title, onClose, children, progress, icon }: { title: string
   return (
     <div className="learn-game kids">
       <div className="learn-bar">
-        <button className="backbtn kid-back" onClick={onClose}><Icon.left /> {tr("Spelletjes")}</button>
+        <button className="backbtn kid-back" onClick={onClose} aria-label={tr("Spelletjes")}><Icon.left /><span className="kid-back-txt"> {tr("Spelletjes")}</span></button>
         {icon && <Illu e={icon} className="learn-bar-ic bob" />}
-        <b>{title}</b>
+        <b title={title}>{kidText(title)}</b>
         {progress !== undefined && (
           <span className="kid-progress" aria-hidden>
             <i style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -316,12 +316,12 @@ function OrderGame({ onDone, onClose }: { onDone: (stars: number) => void; onClo
                 <div key={k} className={`path-step${done ? " done kid-pop" : k === placed.length ? " next" : ""}`}>
                   <span className="path-n">{k + 1}</span>
                   {done ? <Illu e={order.icons[k]} className="path-ic" /> : <span className="path-ic" aria-hidden>{k === placed.length ? "❓" : "·"}</span>}
-                  {done && <small>{bi(order.steps[k])}</small>}
+                  {done && <small>{kidText(bi(order.steps[k]))}</small>}
                 </div>
               );
             })}
           </div>
-          <div className="order-pool pics">{pool.map((i) => <button key={i} className={`learn-opt pic${shakeId === i ? " wrong shake" : ""}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0", "#6fb7ff", "#ff6b9d"][i % 6] } as React.CSSProperties} onClick={() => pick(i)}><Illu e={order.icons[i]} className="opt-ic" /><span>{bi(order.steps[i])}</span></button>)}</div>
+          <div className="order-pool pics">{pool.map((i) => <button key={i} className={`learn-opt pic${shakeId === i ? " wrong shake" : ""}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0", "#6fb7ff", "#ff6b9d"][i % 6] } as React.CSSProperties} onClick={() => pick(i)}><Illu e={order.icons[i]} className="opt-ic" /><span>{kidText(bi(order.steps[i]))}</span></button>)}</div>
           {mistakes > 0 && <p className="hint">{tr("{n} keer mis, geeft niet: probeer verder!", { n: mistakes })}</p>}
         </div>
       )}
