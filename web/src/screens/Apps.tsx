@@ -9,30 +9,32 @@ import { fmtLeft, useTimers, type Alarm } from "../components/Timers";
 import { BrandIcon, OWN_ICONS } from "../components/AppIcons";
 import { PrayerApp } from "../components/Prayer";
 import { QuranApp } from "../components/Quran";
+import { LearnApp } from "../components/Learn";
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
-export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran";
+export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn";
 
 interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals"; domain?: string }
 const TILES: Tile[] = [
-  { id: "photos", label: tr("Foto's"), icon: "🖼️", color: "#e9f6f4", view: "photos" },
-  { id: "weather", label: tr("Weer"), icon: "⛅", color: "#eaf2fd", view: "weather" },
-  { id: "clock", label: tr("Klok & timers"), icon: "⏰", color: "#fdf1e6", view: "clock" },
-  { id: "memos", label: tr("Spraakmemo's"), icon: "🎙️", color: "#f4edfb", view: "memos" },
-  { id: "recipes", label: tr("Recepten"), icon: "🍲", color: "#fdecea", goto: "meals" },
-  { id: "prayer", label: tr("Gebedstijden & ezan"), icon: "🕌", color: "#e9f6f4", view: "prayer" },
-  { id: "quran", label: tr("Koran"), icon: "📖", color: "#f3f0e4", view: "quran" },
-  { id: "yt", label: tr("YouTube"), icon: "▶️", color: "#fff", href: "https://www.youtube.com", domain: "youtube.com" },
-  { id: "ytm", label: tr("YouTube Music"), icon: "🎵", color: "#fff", href: "https://music.youtube.com", domain: "music.youtube.com" },
-  { id: "spotify", label: tr("Spotify"), icon: "🎧", color: "#fff", href: "https://open.spotify.com", domain: "open.spotify.com" },
-  { id: "gphotos", label: tr("Google Foto's"), icon: "📷", color: "#fff", href: "https://photos.google.com", domain: "photos.google.com" },
-  { id: "gcal", label: tr("Google Agenda"), icon: "📆", color: "#fff", href: "https://calendar.google.com", domain: "calendar.google.com" },
-  { id: "maps", label: tr("Google Maps"), icon: "🗺️", color: "#fff", href: "https://maps.google.com", domain: "maps.google.com" },
-  { id: "netflix", label: tr("Netflix"), icon: "🎬", color: "#fff", href: "https://www.netflix.com", domain: "netflix.com" },
-  { id: "disney", label: tr("Disney+"), icon: "✨", color: "#fff", href: "https://www.disneyplus.com", domain: "disneyplus.com" },
-  { id: "whatsapp", label: tr("WhatsApp"), icon: "💬", color: "#fff", href: "https://web.whatsapp.com", domain: "whatsapp.com" },
-  { id: "news", label: tr("Nieuws"), icon: "📰", color: "#eef0f3", href: "https://www.vrt.be/vrtnws/nl/" },
+  { id: "photos", label: "Foto's", icon: "🖼️", color: "#e9f6f4", view: "photos" },
+  { id: "weather", label: "Weer", icon: "⛅", color: "#eaf2fd", view: "weather" },
+  { id: "clock", label: "Klok & timers", icon: "⏰", color: "#fdf1e6", view: "clock" },
+  { id: "memos", label: "Spraakmemo's", icon: "🎙️", color: "#f4edfb", view: "memos" },
+  { id: "recipes", label: "Recepten", icon: "🍲", color: "#fdecea", goto: "meals" },
+  { id: "prayer", label: "Gebedstijden & ezan", icon: "🕌", color: "#e9f6f4", view: "prayer" },
+  { id: "quran", label: "Koran", icon: "📖", color: "#f3f0e4", view: "quran" },
+  { id: "learn", label: "Islam leren (kids)", icon: "🎒", color: "#fdf1e6", view: "learn" },
+  { id: "yt", label: "YouTube", icon: "▶️", color: "#fff", href: "https://www.youtube.com", domain: "youtube.com" },
+  { id: "ytm", label: "YouTube Music", icon: "🎵", color: "#fff", href: "https://music.youtube.com", domain: "music.youtube.com" },
+  { id: "spotify", label: "Spotify", icon: "🎧", color: "#fff", href: "https://open.spotify.com", domain: "open.spotify.com" },
+  { id: "gphotos", label: "Google Foto's", icon: "📷", color: "#fff", href: "https://photos.google.com", domain: "photos.google.com" },
+  { id: "gcal", label: "Google Agenda", icon: "📆", color: "#fff", href: "https://calendar.google.com", domain: "calendar.google.com" },
+  { id: "maps", label: "Google Maps", icon: "🗺️", color: "#fff", href: "https://maps.google.com", domain: "maps.google.com" },
+  { id: "netflix", label: "Netflix", icon: "🎬", color: "#fff", href: "https://www.netflix.com", domain: "netflix.com" },
+  { id: "disney", label: "Disney+", icon: "✨", color: "#fff", href: "https://www.disneyplus.com", domain: "disneyplus.com" },
+  { id: "whatsapp", label: "WhatsApp", icon: "💬", color: "#fff", href: "https://web.whatsapp.com", domain: "whatsapp.com" },
+  { id: "news", label: "Nieuws", icon: "📰", color: "#eef0f3", href: "https://www.vrt.be/vrtnws/nl/" },
 ];
 
 export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }: {
@@ -44,6 +46,7 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   if (view === "clock") return <><div className="topbar">{header(tr("Klok & timers"), back)}</div><ClockApp /></>;
   if (view === "memos") return <><div className="topbar">{header(tr("Spraakmemo's"), back)}</div><MemosApp /></>;
   if (view === "prayer") return <><div className="topbar">{header(tr("Gebedstijden & ezan"), back)}</div><PrayerApp /></>;
+  if (view === "learn") return <><div className="topbar">{header(tr("Islam leren (kids)"), back)}</div><LearnApp /></>;
   if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><QuranApp /></>;
   return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
 }

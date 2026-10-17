@@ -234,6 +234,15 @@ CREATE TABLE IF NOT EXISTS assistant_feedback (
   answer TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS learn_stars (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  game TEXT NOT NULL,
+  stars INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS staples (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,

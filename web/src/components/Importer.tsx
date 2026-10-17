@@ -12,7 +12,7 @@ interface Proposal {
   location: string; notes: string; members: string[]; repeat: "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly"; repeatUntil: string | null;
 }
 interface Result { summary: string; events: Proposal[]; listItems: string[] }
-const REPEAT: Record<Proposal["repeat"], string> = { none: "", daily: "elke dag", weekly: "elke week", biweekly: "om de twee weken", monthly: "elke maand", yearly: t("elk jaar") };
+const REPEAT: Record<Proposal["repeat"], string> = { none: "", daily: "elke dag", weekly: "elke week", biweekly: "om de twee weken", monthly: "elke maand", yearly: "elk jaar" };
 
 /** Slim importeren: foto van een brief, flyer of uitnodiging, of geplakte tekst. */
 export function Importer({ onClose }: { onClose: () => void }) {
@@ -100,7 +100,7 @@ export function Importer({ onClose }: { onClose: () => void }) {
                         <input type="time" value={e.endTime ?? ""} onChange={(ev) => update(i, { endTime: ev.target.value || null })} aria-label={t("Tot")} />
                       </>
                     ) : <span className="badge">{t("Hele dag")}</span>}
-                    {e.repeat !== "none" && <span className="badge">🔁 {REPEAT[e.repeat]}{e.repeatUntil ? ` t/m ${DSHORT[weekday(e.repeatUntil)]} ${Number(e.repeatUntil.slice(8))} ${MSHORT[Number(e.repeatUntil.slice(5, 7)) - 1]}` : ""}</span>}
+                    {e.repeat !== "none" && <span className="badge">🔁 {t(REPEAT[e.repeat])}{e.repeatUntil ? ` t/m ${DSHORT[weekday(e.repeatUntil)]} ${Number(e.repeatUntil.slice(8))} ${MSHORT[Number(e.repeatUntil.slice(5, 7)) - 1]}` : ""}</span>}
                   </div>
                   <div className="picks">
                     {data?.members.map((m) => {

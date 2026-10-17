@@ -15,6 +15,10 @@ Bij Instellingen → Taal kies je Nederlands of Türkçe voor de hele app: menu'
 - **Boodschappen en voorraad houden elkaar bij**: afvinken op Boodschappen (gekocht) zet het product in de Voorraad; afvinken in de Voorraad (op) zet het terug op Boodschappen. Terug aanvinken draait dat weer terug.
 - Bij een **recept** staan alle ingrediënten aangevinkt; vink af wat je al in huis hebt en zet de rest met één knop op de boodschappenlijst.
 
+## Spelend islam leren (kinderen)
+
+Apps → "Islam leren (kids)": een kind kiest zijn profiel en speelt in het Nederlands of Turks. Vier spelletjes: een **weetjesquiz** (zuilen, profeten, gebed, ramadan, goede manieren, Koran), **woordparen** (Arabische uitdrukkingen bij hun betekenis, als memory), **op volgorde** (abdest, de vijf gebeden, de zuilen, een rak'ah, een ramadandag) en **soera's leren** (korte soera's vers per vers beluisteren en nazeggen, met betekenis). Elke juiste stap is een ster; sterren tellen mee in de spaarpot (max. 10 per spel per dag).
+
 ## Gebedstijden, ezan en Koran
 
 - **Gebedstijden** worden op de server astronomisch berekend voor de ingestelde woonplaats, met keuze uit rekenmethodes (Diyanet, Muslim World League, ISNA, Egypte, Umm al-Qura, Karachi, UOIF, Koeweit, Singapore, Teheran, Jafari) en de asr-school (standaard of Hanafi). Per gebed kun je minuten bijstellen.

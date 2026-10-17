@@ -11,7 +11,7 @@ import type { PrayerDay } from "../types";
 import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
 import { t as tr } from "../i18n";
 
-const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: tr("Tussendoor") };
+const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
 const SLOT_ICON: Record<string, string> = { ontbijt: "🥣", lunch: "🥪", diner: "🍽️", snack: "🍎" };
 
 /** Voorbeeldvragen met de echte namen uit dit gezin. */

@@ -23,12 +23,12 @@ import { t as tr } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
-  { id: "today", label: tr("Bord"), icon: "home", title: tr("Bord") },
-  { id: "calendar", label: tr("Kalender"), icon: "calendar", title: tr("Kalender") },
-  { id: "chores", label: tr("Taken"), icon: "tasks", title: tr("Taken") },
-  { id: "meals", label: tr("Maaltijden"), icon: "meals", title: tr("Maaltijden") },
-  { id: "lists", label: tr("Lijsten"), icon: "lists", title: tr("Lijsten") },
-  { id: "apps", label: tr("Apps"), icon: "apps", title: tr("Apps") },
+  { id: "today", label: "Bord", icon: "home", title: "Bord" },
+  { id: "calendar", label: "Kalender", icon: "calendar", title: "Kalender" },
+  { id: "chores", label: "Taken", icon: "tasks", title: "Taken" },
+  { id: "meals", label: "Maaltijden", icon: "meals", title: "Maaltijden" },
+  { id: "lists", label: "Lijsten", icon: "lists", title: "Lijsten" },
+  { id: "apps", label: "Apps", icon: "apps", title: "Apps" },
 ];
 
 export function App() {

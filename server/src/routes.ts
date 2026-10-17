@@ -885,6 +885,15 @@ api.delete("/ezan/sounds/:id", requireAdmin, (req, res) => {
   broadcast("ezan");
 });
 
+// ---------- spelend islam leren (kinderen) ----------
+api.get("/learn/progress", (_req, res) => { res.json({ progress: S.learnProgress(), dailyMax: S.LEARN_DAILY_MAX }); });
+api.post("/learn/stars", (req, res) => {
+  const b = z.object({ memberId: z.string(), game: z.string().regex(/^[a-z-]{2,30}$/), stars: z.number().int().min(1).max(20) }).parse(req.body);
+  const given = S.addLearnStars(b.memberId, b.game, b.stars, today());
+  res.json({ given, today: S.learnStarsToday(b.memberId, b.game, today()), dailyMax: S.LEARN_DAILY_MAX });
+  broadcast("chores");
+});
+
 // ---------- koran ----------
 api.get("/quran/surahs", async (_req, res) => {
   try { res.json({ surahs: await quranSurahs(), reciters: RECITERS, translations: TRANSLATIONS }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "De Koran kon niet geladen worden." }); }

@@ -126,19 +126,48 @@ export function pointsBetween(from: string, to: string): Record<string, number> 
   const rows = all<{ member_id: string; n: number }>(
     "SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date BETWEEN ? AND ? GROUP BY c.member_id", hid(), from, to,
   );
-  return Object.fromEntries(rows.map((r) => [r.member_id, r.n]));
+  const learned = all<{ member_id: string; n: number }>("SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE household_id=? AND date BETWEEN ? AND ? GROUP BY member_id", hid(), from, to);
+  const out: Record<string, number> = Object.fromEntries(rows.map((r) => [r.member_id, r.n]));
+  for (const l of learned) out[l.member_id] = (out[l.member_id] ?? 0) + l.n;
+  return out;
+}
+
+// ---------- spelend leren: sterren per spel, met een dagelijks maximum per spel ----------
+export const LEARN_DAILY_MAX = 10;
+export function learnStarsToday(memberId: string, game: string, date: string) {
+  return get<{ n: number | null }>("SELECT SUM(stars) AS n FROM learn_stars WHERE household_id=? AND member_id=? AND game=? AND date=?", hid(), memberId, game, date)?.n ?? 0;
+}
+/** Kent sterren toe; geeft terug hoeveel er echt bijkwamen (rest van het dagmaximum). */
+export function addLearnStars(memberId: string, game: string, stars: number, date: string) {
+  if (!listMembers().some((m) => m.id === memberId)) throw new Error("Onbekend gezinslid");
+  const room = Math.max(0, LEARN_DAILY_MAX - learnStarsToday(memberId, game, date));
+  const give = Math.max(0, Math.min(stars, room));
+  if (give > 0) run("INSERT INTO learn_stars(id, household_id, member_id, game, stars, date) VALUES (?,?,?,?,?,?)", newId(), hid(), memberId, game, give, date);
+  return give;
+}
+export function learnProgress(): Record<string, { total: number; games: Record<string, number>; today: number }> {
+  const rows = all<{ member_id: string; game: string; n: number; today: number }>(
+    "SELECT member_id, game, SUM(stars) AS n, SUM(CASE WHEN date = date('now','localtime') THEN stars ELSE 0 END) AS today FROM learn_stars WHERE household_id=? GROUP BY member_id, game", hid(),
+  );
+  const out: Record<string, { total: number; games: Record<string, number>; today: number }> = {};
+  for (const r of rows) {
+    const o = (out[r.member_id] ??= { total: 0, games: {}, today: 0 });
+    o.total += r.n; o.games[r.game] = r.n; o.today += r.today;
+  }
+  return out;
 }
 export function points(): Record<string, { earned: number; spent: number; balance: number }> {
   const h = hid();
   const earned = all<{ member_id: string; n: number }>(
     "SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? GROUP BY c.member_id", h,
   );
+  const learned = all<{ member_id: string; n: number }>("SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE household_id=? GROUP BY member_id", h);
   const spent = all<{ member_id: string; n: number }>(
     "SELECT rc.member_id, SUM(rc.cost) AS n FROM reward_claims rc JOIN members m ON m.id = rc.member_id WHERE m.household_id=? GROUP BY rc.member_id", h,
   );
   const out: Record<string, { earned: number; spent: number; balance: number }> = {};
   for (const m of listMembers()) {
-    const e = earned.find((r) => r.member_id === m.id)?.n ?? 0;
+    const e = (earned.find((r) => r.member_id === m.id)?.n ?? 0) + (learned.find((r) => r.member_id === m.id)?.n ?? 0);
     const s = spent.find((r) => r.member_id === m.id)?.n ?? 0;
     out[m.id] = { earned: e, spent: s, balance: e - s };
   }

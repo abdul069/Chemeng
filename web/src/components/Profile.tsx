@@ -7,7 +7,7 @@ import { todayIso, weekday } from "../dates";
 import { t as tr } from "../i18n";
 
 /** Viering als alle taken van vandaag af zijn ("Ta-da!"). */
-export function Celebration({ name, onDone }: { name: string; onDone: () => void }) {
+export function Celebration({ name, onDone, text }: { name: string; onDone: () => void; text?: string }) {
   useEffect(() => { const t = setTimeout(onDone, 3200); return () => clearTimeout(t); }, [onDone]);
   return (
     <div className="celebrate" onPointerDown={onDone} role="status">
@@ -18,7 +18,7 @@ export function Celebration({ name, onDone }: { name: string; onDone: () => void
       <div className="celebrate-card">
         <span className="celebrate-badge">🏅</span>
         <b>{tr("Goed gedaan, {n}!", { n: name })}</b>
-        <p>{tr("Alles van vandaag is af. Lekker bezig — geniet van je vrije tijd.")}</p>
+        <p>{text ?? tr("Alles van vandaag is af. Lekker bezig — geniet van je vrije tijd.")}</p>
       </div>
     </div>
   );

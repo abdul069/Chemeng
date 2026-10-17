@@ -13,7 +13,7 @@ import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../date
 import { t as tr } from "../i18n";
 
 const SLOTS: Slot[] = ["ontbijt", "lunch", "diner"];
-const SLOT_NAME: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: tr("Tussendoor") };
+const SLOT_NAME: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
 type Tab = "week" | "recipes";
 
 export function MealsScreen({ header }: { header: React.ReactNode }) {
