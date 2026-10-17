@@ -66,7 +66,7 @@ export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
   | { valid: true; kind: "agenda"; from: string; level: string };
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }

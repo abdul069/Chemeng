@@ -169,3 +169,15 @@ Alles blijft op je eigen server. Alleen deze gegevens verlaten je netwerk:
 - de server haalt receptpagina's op van de receptsites die je kiest;
 - je ingestelde woonplaats (coördinaten) gaat naar Open-Meteo voor het weer;
 - de server haalt de gekoppelde iCal-adressen op.
+
+## Dieet & calorieën
+
+Onder **Apps → Dieet & calorieën** houdt elk gezinslid een voedingsdagboek bij.
+
+- **Caloriedoel per persoon**: geslacht, leeftijd, lengte, gewicht, beweging en doel (afvallen, behouden, aankomen) geven een dagdoel via Mifflin-St Jeor; een eigen getal mag ook. Macrodoelen: 25 % eiwit, 45 % koolhydraten, 30 % vet.
+- **Dagboek**: typ wat je at ("2 eieren", "150 g kip", "1 su bardağı pirinç"); de ingebouwde tabel met ruim 120 producten (Nederlandse en Turkse namen, per 100 g) rekent het om. Onbekend product: zelf kcal invullen. Ring en balken tonen de voortgang, plus de laatste zeven dagen.
+- **Gekoppeld aan recepten**: elk recept krijgt een geschatte voedingswaarde per portie uit zijn ingrediënten (handmatig te overschrijven). Vanuit het recept of het weekmenu zet je een portie met één tik in iemands dagboek.
+- **Verboden ingrediënten per persoon**: allergieën of wat iemand niet eet. Recepten tonen "Niet voor …" en het dagboek waarschuwt bij het noteren.
+- **Gewicht**: dagelijks noteren met een eenvoudige curve.
+
+API: `GET /diet/foods?q=`, `GET /diet/day?member=&date=`, `POST /diet/log`, `DELETE /diet/log/:id`, `PUT /diet/profile/:memberId`, `POST /diet/weight`, `GET /recipes/:id/nutrition`, `PUT /recipes/:id/kcal`.

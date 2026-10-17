@@ -200,6 +200,7 @@ function addColumn(table: string, col: string, def: string) {
   if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 }
 addColumn("recipes", "image", "TEXT");
+addColumn("recipes", "kcal", "INTEGER");
 addColumn("list_items", "aisle", "TEXT");
 addColumn("recipes", "source_url", "TEXT");
 addColumn("recipes", "servings", "TEXT NOT NULL DEFAULT ''");
@@ -242,6 +243,42 @@ CREATE TABLE IF NOT EXISTS learn_stars (
   stars INTEGER NOT NULL,
   date TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS diet_profiles (
+  member_id TEXT PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  sex TEXT NOT NULL DEFAULT 'v',
+  age INTEGER NOT NULL DEFAULT 35,
+  height_cm INTEGER NOT NULL DEFAULT 170,
+  weight_kg REAL NOT NULL DEFAULT 70,
+  activity REAL NOT NULL DEFAULT 1.4,
+  goal TEXT NOT NULL DEFAULT 'behouden',
+  kcal_goal INTEGER,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS diet_log (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  slot TEXT NOT NULL DEFAULT 'snack',
+  text TEXT NOT NULL,
+  grams REAL,
+  kcal REAL NOT NULL DEFAULT 0,
+  protein REAL NOT NULL DEFAULT 0,
+  carbs REAL NOT NULL DEFAULT 0,
+  fat REAL NOT NULL DEFAULT 0,
+  recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS diet_log_day ON diet_log(member_id, date);
+CREATE TABLE IF NOT EXISTS weights (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,
+  kg REAL NOT NULL,
+  UNIQUE(member_id, date)
 );
 CREATE TABLE IF NOT EXISTS staples (
   id TEXT PRIMARY KEY,

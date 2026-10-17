@@ -10,10 +10,11 @@ import { BrandIcon, OWN_ICONS } from "../components/AppIcons";
 import { PrayerApp } from "../components/Prayer";
 import { QuranApp } from "../components/Quran";
 import { LearnApp } from "../components/Learn";
+import { DietApp } from "../components/Diet";
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
-export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn";
+export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn" | "diet";
 
 interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals"; domain?: string }
 const TILES: Tile[] = [
@@ -25,6 +26,7 @@ const TILES: Tile[] = [
   { id: "prayer", label: "Gebedstijden & ezan", icon: "🕌", color: "#e9f6f4", view: "prayer" },
   { id: "quran", label: "Koran", icon: "📖", color: "#f3f0e4", view: "quran" },
   { id: "learn", label: "Leren & spelen (kids)", icon: "🎒", color: "#fdf1e6", view: "learn" },
+  { id: "diet", label: "Dieet & calorieën", icon: "🥗", color: "#e8f7ee", view: "diet" },
   { id: "yt", label: "YouTube", icon: "▶️", color: "#fff", href: "https://www.youtube.com", domain: "youtube.com" },
   { id: "ytm", label: "YouTube Music", icon: "🎵", color: "#fff", href: "https://music.youtube.com", domain: "music.youtube.com" },
   { id: "spotify", label: "Spotify", icon: "🎧", color: "#fff", href: "https://open.spotify.com", domain: "open.spotify.com" },
@@ -47,6 +49,7 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   if (view === "memos") return <><div className="topbar">{header(tr("Spraakmemo's"), back)}</div><MemosApp /></>;
   if (view === "prayer") return <><div className="topbar">{header(tr("Gebedstijden & ezan"), back)}</div><PrayerApp /></>;
   if (view === "learn") return <><div className="topbar">{header(tr("Leren & spelen (kids)"), back)}</div><LearnApp /></>;
+  if (view === "diet") return <><div className="topbar">{header(tr("Dieet & calorieën"), back)}</div><DietApp /></>;
   if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><QuranApp /></>;
   return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
 }

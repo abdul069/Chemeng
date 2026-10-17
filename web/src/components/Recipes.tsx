@@ -12,7 +12,8 @@ import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, addDays, todayIso, weekday, shortDate } from "../dates";
 import { parseServings, scaleLine } from "../portions";
 import { CookMode } from "./CookMode";
-import { avoidWords, dietHits } from "../diet";
+import { RecipeCalories } from "./Diet";
+
 import { CATS, catLabel } from "../categories";
 import { t } from "../i18n";
 
@@ -79,7 +80,6 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   const [skip, setSkip] = useState<Set<number>>(new Set());
   const missing = ingredients.filter((_, i) => !skip.has(i));
   // allergieën/voorkeuren uit de profielen
-  const warnings = dietHits(`${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`, avoidWords(data?.members ?? []));
   const toggle = (i: number) => setSkip((h) => { const n = new Set(h); if (n.has(i)) n.delete(i); else n.add(i); return n; });
 
   const toList = async () => {
@@ -123,7 +123,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         {recipe.category && <span className="badge">{catLabel(recipe.category)}</span>}
         {recipe.cooked > 0 && <span className="badge">🍳 {recipe.cooked}× gekookt</span>}
         <button className={`badge favbtn${recipe.favorite ? " on" : ""}`} aria-pressed={recipe.favorite} onClick={() => act(() => api.put(`/recipes/${recipe.id}/favorite`, { favorite: !recipe.favorite }), recipe.favorite ? t("Niet meer bij de lievelingen") : t("Bij de lievelingen ★"))}>{recipe.favorite ? t("★ Lieveling") : t("☆ Lieveling")}</button>
-        {warnings.length > 0 && <span className="badge warn" title={t("Volgens de profielen vermijdt iemand dit")}>⚠️ Bevat: {warnings.join(", ")}</span>}
+        <RecipeCalories recipeId={recipe.id} servingsShown={servings} />
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>
       <div className="actions" style={{ justifyContent: "flex-start" }}>

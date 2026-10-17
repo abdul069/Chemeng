@@ -28,6 +28,7 @@ import { holidayOccurrences, holidaysBetween, localizeHoliday, type Holiday } fr
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
+import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
 export const api = express.Router();
@@ -906,6 +907,62 @@ api.post("/learn/stars", (req, res) => {
   res.json({ given, today: S.learnStarsToday(b.memberId, b.game, today()), dailyMax: S.LEARN_DAILY_MAX });
   broadcast("chores");
 });
+
+// ---------- dieet & calorieën ----------
+api.get("/diet/foods", (req, res) => { res.json(searchFoods(String(req.query.q ?? ""), 20).map((f) => ({ id: f.id, label: f.label, names: f.names.slice(0, 4), kcal: f.kcal, protein: f.protein, carbs: f.carbs, fat: f.fat, unit: f.unit ?? null, cat: f.cat }))); });
+api.get("/diet/day", (req, res) => {
+  const memberId = String(req.query.member ?? ""); const date = isDate(req.query.date) ? String(req.query.date) : today();
+  if (!memberId) return void res.status(400).json({ error: "member ontbreekt" });
+  const profile = S.dietProfile(memberId);
+  const entries = S.dietEntries(memberId, date);
+  const totals = entries.reduce((a, e) => ({ kcal: a.kcal + e.kcal, protein: a.protein + e.protein, carbs: a.carbs + e.carbs, fat: a.fat + e.fat }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  const planned = S.mealsBetween(date, date).filter((m) => m.title).map((m) => { const n = m.recipeId ? S.recipeNutrition(m.recipeId) : null; return { slot: m.slot, title: m.title, recipeId: m.recipeId, kcal: n?.kcal ?? null, logged: entries.some((e) => e.slot === m.slot && ((m.recipeId !== null && e.recipeId === m.recipeId) || e.text === m.title || e.text.startsWith(m.title + " ×"))) }; });
+  res.json({ date, profile, entries, totals: { kcal: Math.round(totals.kcal), protein: Math.round(totals.protein), carbs: Math.round(totals.carbs), fat: Math.round(totals.fat) }, week: S.dietWeek(memberId, date), weights: S.weights(memberId), planned });
+});
+api.put("/diet/profile/:memberId", (req, res) => { res.json(S.saveDietProfile(req.params.memberId, S.parseDietProfile(req.body))); broadcast("diet"); });
+api.post("/diet/weight", (req, res) => {
+  const b = z.object({ memberId: z.string(), date: z.string().refine(isDate), kg: z.number().min(10).max(350) }).parse(req.body);
+  S.addWeight(b.memberId, b.date, b.kg); res.json({ ok: true }); broadcast("diet");
+});
+const SlotZ = z.enum(["ontbijt", "lunch", "diner", "snack"]);
+api.post("/diet/log", (req, res) => {
+  const b = z.object({
+    memberId: z.string(), date: z.string().refine(isDate), slot: SlotZ.default("snack"),
+    foodId: z.string().optional(), grams: z.number().min(1).max(5000).optional(),
+    recipeId: z.string().optional(), portions: z.number().min(0.25).max(10).optional(),
+    text: z.string().max(200).optional(), kcal: z.number().min(0).max(10000).optional(), protein: z.number().min(0).optional(), carbs: z.number().min(0).optional(), fat: z.number().min(0).optional(),
+  }).parse(req.body);
+  let entry: Omit<S.DietEntry, "id">;
+  if (b.recipeId) {
+    const r = S.getRecipe(b.recipeId); const n = S.recipeNutrition(b.recipeId);
+    if (!r || !n) return void res.status(404).json({ error: "Recept niet gevonden" });
+    const p = b.portions ?? 1; const per = n.perServing;
+    entry = { memberId: b.memberId, date: b.date, slot: b.slot, text: `${r.title}${p !== 1 ? ` × ${p}` : ""}`, grams: null, kcal: (n.manualKcal ?? per.kcal) * p, protein: per.protein * p, carbs: per.carbs * p, fat: per.fat * p, recipeId: b.recipeId };
+  } else if (b.foodId) {
+    const f = FOODS.find((x) => x.id === b.foodId); if (!f) return void res.status(404).json({ error: "Onbekend voedingsmiddel" });
+    const grams = b.grams ?? f.unit ?? 100; const m = macrosFor(f, grams);
+    entry = { memberId: b.memberId, date: b.date, slot: b.slot, text: `${b.text?.trim() || f.names[0]} (${Math.round(grams)} g)`, grams, ...m, recipeId: null };
+  } else if (b.text && b.kcal === undefined) {
+    // vrije tekst zoals "2 eieren" of "1 banaan": schatten uit de tabel
+    const est = estimateLine(b.text); const f = est.food ? FOODS.find((x) => x.id === est.food) : null;
+    if (!f || est.grams === null) return void res.status(422).json({ error: "Onbekend product: geef de calorieën zelf op." });
+    const m = macrosFor(f, est.grams);
+    entry = { memberId: b.memberId, date: b.date, slot: b.slot, text: `${b.text.trim()} (${est.grams} g)`, grams: est.grams, ...m, recipeId: null };
+  } else {
+    if (!b.text || b.kcal === undefined) return void res.status(400).json({ error: "Geef een omschrijving en calorieën op." });
+    entry = { memberId: b.memberId, date: b.date, slot: b.slot, text: b.text.trim(), grams: b.grams ?? null, kcal: b.kcal, protein: b.protein ?? 0, carbs: b.carbs ?? 0, fat: b.fat ?? 0, recipeId: null };
+  }
+  const saved = S.addDietEntry(entry);
+  const warn = S.forbiddenFor(saved.text + " " + (b.recipeId ? (S.getRecipe(b.recipeId)?.ingredients ?? "") : "")).find((w) => w.memberId === b.memberId);
+  res.json({ entry: saved, warning: warn ? warn.hits : [] }); broadcast("diet");
+});
+api.delete("/diet/log/:id", (req, res) => { S.deleteDietEntry(req.params.id); res.json({ ok: true }); broadcast("diet"); });
+api.get("/recipes/:id/nutrition", (req, res) => {
+  const n = S.recipeNutrition(req.params.id); if (!n) return void res.status(404).json({ error: "Recept niet gevonden" });
+  const r = S.getRecipe(req.params.id);
+  res.json({ ...n, forbidden: S.forbiddenFor(`${r?.title ?? ""}\n${r?.ingredients ?? ""}\n${r?.original?.ingredients ?? ""}`) });
+});
+api.put("/recipes/:id/kcal", (req, res) => { const b = z.object({ kcal: z.number().int().min(0).max(5000).nullable() }).parse(req.body); S.setRecipeKcal(req.params.id, b.kcal); res.json({ ok: true }); broadcast("recipes", "diet"); });
 
 // ---------- koran ----------
 api.get("/quran/surahs", async (_req, res) => {

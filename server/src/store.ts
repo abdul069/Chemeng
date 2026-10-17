@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { all, get, run, newId, tx, hid } from "./db.js";
 import { weekday, today as todayStr, addDays as addDaysStr } from "./dates.js";
+import { energyNeed, macroTargets, estimateRecipe, type Goal, type Sex, type Macros } from "./nutrition.js";
 
 // ---------- gezinsleden ----------
 export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string }
@@ -253,6 +254,7 @@ export const mealsBetween = (from: string, to: string) =>
 export function setMealImage(date: string, slot: string, image: string | null) {
   run("UPDATE meals SET image=? WHERE household_id=? AND date=? AND slot=?", image, hid(), date, slot);
 }
+export const getRecipe = (id: string): Recipe | undefined => listRecipes().find((r) => r.id === id);
 export function setRecipeImage(id: string, image: string | null) {
   run("UPDATE recipes SET image=? WHERE id=? AND household_id=?", image, id, hid());
 }
@@ -286,6 +288,73 @@ export function createList(name: string, icon = "📝", h = hid(), kind: ListKin
 export const pantryList = () => listLists().find((l) => l.kind === "pantry");
 export const shoppingList = () => { const ls = listLists(); return ls.find((l) => l.kind === "shopping") ?? ls.find((l) => l.kind === "list" && /boodschap/i.test(l.name)); };
 /** Elk gezin heeft één boodschappenlijst; bestaat die nog niet, dan maken we ze. */
+// ---------- dieet: profiel, dagboek, gewicht ----------
+export interface DietProfile { memberId: string; sex: Sex; age: number; heightCm: number; weightKg: number; activity: number; goal: Goal; kcalGoal: number | null; bmr: number; tdee: number; goal_kcal: number; targets: Omit<Macros, "kcal"> }
+export interface DietEntry { id: string; memberId: string; date: string; slot: string; text: string; grams: number | null; kcal: number; protein: number; carbs: number; fat: number; recipeId: string | null }
+const DietProfileIn = z.object({ sex: z.enum(["m", "v"]), age: z.number().int().min(2).max(110), heightCm: z.number().int().min(60).max(250), weightKg: z.number().min(10).max(350), activity: z.number().min(1.1).max(2.2), goal: z.enum(["afvallen", "behouden", "aankomen"]), kcalGoal: z.number().int().min(800).max(6000).nullable().optional() });
+export type DietProfileInput = z.infer<typeof DietProfileIn>;
+export const parseDietProfile = (b: unknown) => DietProfileIn.parse(b);
+export function dietProfile(memberId: string): DietProfile | null {
+  const r = get<{ member_id: string; sex: Sex; age: number; height_cm: number; weight_kg: number; activity: number; goal: Goal; kcal_goal: number | null }>("SELECT * FROM diet_profiles WHERE member_id=? AND household_id=?", memberId, hid());
+  if (!r) return null;
+  const need = energyNeed({ sex: r.sex, age: r.age, heightCm: r.height_cm, weightKg: r.weight_kg, activity: r.activity, goal: r.goal });
+  const goalKcal = r.kcal_goal ?? need.goalKcal;
+  return { memberId, sex: r.sex, age: r.age, heightCm: r.height_cm, weightKg: r.weight_kg, activity: r.activity, goal: r.goal, kcalGoal: r.kcal_goal, bmr: need.bmr, tdee: need.tdee, goal_kcal: goalKcal, targets: macroTargets(goalKcal) };
+}
+export function saveDietProfile(memberId: string, i: DietProfileInput) {
+  if (!listMembers().some((m) => m.id === memberId)) throw new Error("Onbekend gezinslid");
+  run(`INSERT INTO diet_profiles(member_id, household_id, sex, age, height_cm, weight_kg, activity, goal, kcal_goal, updated_at) VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))
+       ON CONFLICT(member_id) DO UPDATE SET sex=excluded.sex, age=excluded.age, height_cm=excluded.height_cm, weight_kg=excluded.weight_kg, activity=excluded.activity, goal=excluded.goal, kcal_goal=excluded.kcal_goal, updated_at=datetime('now')`,
+    memberId, hid(), i.sex, i.age, i.heightCm, i.weightKg, i.activity, i.goal, i.kcalGoal ?? null);
+  // gewicht van vandaag meteen in de curve
+  run("INSERT INTO weights(id, household_id, member_id, date, kg) VALUES (?,?,?,date('now','localtime'),?) ON CONFLICT(member_id, date) DO UPDATE SET kg=excluded.kg", newId(), hid(), memberId, i.weightKg);
+  return dietProfile(memberId)!;
+}
+const dietRow = (r: { id: string; member_id: string; date: string; slot: string; text: string; grams: number | null; kcal: number; protein: number; carbs: number; fat: number; recipe_id: string | null }): DietEntry =>
+  ({ id: r.id, memberId: r.member_id, date: r.date, slot: r.slot, text: r.text, grams: r.grams, kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, recipeId: r.recipe_id });
+export function dietEntries(memberId: string, date: string): DietEntry[] {
+  return all<Parameters<typeof dietRow>[0]>("SELECT * FROM diet_log WHERE household_id=? AND member_id=? AND date=? ORDER BY created_at", hid(), memberId, date).map(dietRow);
+}
+export function addDietEntry(e: Omit<DietEntry, "id">): DietEntry {
+  if (!listMembers().some((m) => m.id === e.memberId)) throw new Error("Onbekend gezinslid");
+  const id = newId();
+  run("INSERT INTO diet_log(id, household_id, member_id, date, slot, text, grams, kcal, protein, carbs, fat, recipe_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", id, hid(), e.memberId, e.date, e.slot, e.text, e.grams, Math.round(e.kcal), Math.round(e.protein * 10) / 10, Math.round(e.carbs * 10) / 10, Math.round(e.fat * 10) / 10, e.recipeId);
+  return { ...e, id };
+}
+export const deleteDietEntry = (id: string) => run("DELETE FROM diet_log WHERE id=? AND household_id=?", id, hid());
+/** Dagtotalen van de laatste `days` dagen, oudste eerst. */
+export function dietWeek(memberId: string, upto: string, days = 7): { date: string; kcal: number }[] {
+  const rows = all<{ date: string; kcal: number }>("SELECT date, SUM(kcal) AS kcal FROM diet_log WHERE household_id=? AND member_id=? AND date > date(?, ?) AND date <= ? GROUP BY date", hid(), memberId, upto, `-${days} days`, upto);
+  const out: { date: string; kcal: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(upto + "T12:00:00"); d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    out.push({ date: iso, kcal: Math.round(rows.find((r) => r.date === iso)?.kcal ?? 0) });
+  }
+  return out;
+}
+export function weights(memberId: string, limit = 30): { date: string; kg: number }[] {
+  return all<{ date: string; kg: number }>("SELECT date, kg FROM weights WHERE household_id=? AND member_id=? ORDER BY date DESC LIMIT ?", hid(), memberId, limit).reverse();
+}
+export function addWeight(memberId: string, date: string, kg: number) {
+  run("INSERT INTO weights(id, household_id, member_id, date, kg) VALUES (?,?,?,?,?) ON CONFLICT(member_id, date) DO UPDATE SET kg=excluded.kg", newId(), hid(), memberId, date, kg);
+  run("UPDATE diet_profiles SET weight_kg=? WHERE member_id=? AND household_id=?", kg, memberId, hid());
+}
+/** Voedingswaarde per portie van een recept: handmatig ingevuld of geschat uit de ingrediënten. */
+export function recipeNutrition(recipeId: string) {
+  const r = get<{ ingredients: string; servings: string; kcal: number | null; orig_ingredients: string | null }>("SELECT ingredients, servings, kcal, orig_ingredients FROM recipes WHERE id=? AND household_id=?", recipeId, hid());
+  if (!r) return null;
+  const est = estimateRecipe(r.ingredients, r.servings);
+  const est2 = r.orig_ingredients ? estimateRecipe(r.orig_ingredients, r.servings) : null;
+  const best = est2 && est2.matched > est.matched ? est2 : est;
+  return { ...best, manualKcal: r.kcal, kcal: r.kcal ?? best.perServing.kcal, source: r.kcal != null ? "manual" as const : "estimate" as const };
+}
+export const setRecipeKcal = (recipeId: string, kcal: number | null) => run("UPDATE recipes SET kcal=? WHERE id=? AND household_id=?", kcal, recipeId, hid());
+/** Verboden ingrediënten per gezinslid (uit het profiel) die in een tekst voorkomen. */
+export function forbiddenFor(text: string): { memberId: string; name: string; hits: string[] }[] {
+  return listMembers().map((m) => ({ memberId: m.id, name: m.name, hits: dietHits(text, [...new Set(m.diet.split(/[,;\n]/).map((w) => w.trim().toLocaleLowerCase("tr")).filter((w) => w.length > 1))]) })).filter((x) => x.hits.length);
+}
+
 export function ensureShoppingList() {
   const existing = shoppingList();
   if (existing) return existing.id;
