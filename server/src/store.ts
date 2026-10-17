@@ -262,6 +262,49 @@ export function ensureShoppingList() {
   if (existing) return existing.id;
   return createList("Boodschappen", "🛒", hid(), "shopping");
 }
+/** Elk gezin heeft ook één voorraadlijst. */
+export function ensurePantryList() {
+  const existing = pantryList();
+  if (existing) return existing.id;
+  return createList("Voorraad", "🥫", hid(), "pantry");
+}
+/**
+ * Boodschappen en voorraad houden elkaar bij: gekocht (afgevinkt op Boodschappen) komt in de Voorraad,
+ * op (afgevinkt in de Voorraad) komt terug op Boodschappen. Terug aanvinken draait dat weer terug.
+ */
+export function syncShopPantry(itemId: string, done: boolean) {
+  const lists = listLists();
+  const list = lists.find((l) => l.items.some((i) => i.id === itemId));
+  const item = list?.items.find((i) => i.id === itemId);
+  if (!list || !item) return null;
+  const key = item.text.toLocaleLowerCase("nl");
+  const isShop = list.kind === "shopping" || (list.kind === "list" && /boodschap/i.test(list.name));
+  if (isShop) {
+    const pantryId = ensurePantryList();
+    const pantry = listLists().find((l) => l.id === pantryId)!;
+    const inPantry = pantry.items.find((i) => i.text.toLocaleLowerCase("nl") === key);
+    if (done) {
+      if (inPantry) { if (inPantry.done) updateItem(inPantry.id, { done: false }); }
+      else addItem(pantryId, item.text, { qty: item.qty });
+      return { to: pantry.name };
+    }
+    if (inPantry && !inPantry.done) deleteItem(inPantry.id);
+    return null;
+  }
+  if (list.kind === "pantry") {
+    const shopId = ensureShoppingList();
+    const shop = listLists().find((l) => l.id === shopId)!;
+    const onShop = shop.items.find((i) => i.text.toLocaleLowerCase("nl") === key);
+    if (done) {
+      if (onShop) { if (onShop.done) updateItem(onShop.id, { done: false }); }
+      else addItem(shopId, item.text, { aisle: null });
+      return { to: shop.name };
+    }
+    if (onShop && !onShop.done) deleteItem(onShop.id);
+    return null;
+  }
+  return null;
+}
 export const AISLE_KEYS = ["groente", "zuivel", "vlees", "brood", "droog", "diepvries", "drank", "huishouden", "overig"] as const;
 export function updateItem(id: string, patch: { text?: string; done?: boolean; expires?: string | null; qty?: string; memberId?: string | null; aisle?: string | null }) {
   const h = hid();

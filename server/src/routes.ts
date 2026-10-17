@@ -279,7 +279,7 @@ api.get("/bootstrap", (req, res) => {
   res.json({
     members, shared: A.sharedPeople(userId, householdId), countdowns: withHolidayCountdowns(countdowns(members)),
     chores: S.listChores(), rewards: S.listRewards(), points: withPeriods(S.points()),
-    lists: (S.ensureShoppingList(), S.listLists()), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
+    lists: (S.ensureShoppingList(), S.ensurePantryList(), S.listLists()), recipes: S.listRecipes(), calendars: S.listCalendars(), photos: S.listPhotos(),
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
     build: process.env.GB_BUILD || null,
@@ -705,8 +705,9 @@ api.delete("/staples/:id", (req, res) => { S.deleteStaple(p(req)); res.json(S.li
 api.post("/lists/:id/clear-done", (req, res) => { S.clearDone(p(req)); res.json({ ok: true }); broadcast("lists"); });
 api.patch("/items/:id", (req, res) => {
   const b = z.object({ done: z.boolean().optional(), text: z.string().trim().min(1).max(200).optional(), expires: day.nullable().optional(), qty: z.string().max(40).optional(), memberId: z.string().nullable().optional(), aisle }).parse(req.body);
-  S.updateItem(p(req), b);
-  res.json({ ok: true });
+  let moved: { to: string } | null = null;
+  tx(() => { S.updateItem(p(req), b); if (b.done !== undefined) moved = S.syncShopPantry(p(req), b.done); });
+  res.json({ ok: true, moved });
   broadcast("lists");
 });
 /** Gekochte (afgevinkte) boodschappen naar de voorraad verplaatsen. */

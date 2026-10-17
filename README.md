@@ -8,6 +8,7 @@ Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 
 - Elk gezin heeft een eigen **boodschappenlijst** (soort "Boodschappen"), automatisch gesorteerd per afdeling in de winkel (groenten, zuivel, vlees, brood, droge voeding, diepvries, dranken, huishouden). De afdeling van een item kun je zelf kiezen via ✎.
 - **Vaste boodschappen**: een standaardlijst van het gezin (Nederlandse en Turkse basisproducten, zelf uit te breiden) die je aanvinkt in plaats van te typen. Aangevinkt staat meteen op de lijst; nog eens tikken haalt het er weer af.
+- **Boodschappen en voorraad houden elkaar bij**: afvinken op Boodschappen (gekocht) zet het product in de Voorraad; afvinken in de Voorraad (op) zet het terug op Boodschappen. Terug aanvinken draait dat weer terug.
 - Bij een **recept** staan alle ingrediënten aangevinkt; vink af wat je al in huis hebt en zet de rest met één knop op de boodschappenlijst.
 
 ## Gebedstijden, ezan en Koran

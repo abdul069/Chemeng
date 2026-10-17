@@ -29,7 +29,7 @@ export function createHousehold(userId: string, name: string) {
     run("INSERT INTO households(id, name) VALUES (?,?)", hid, name);
     const m = createMember({ name: user.name, color: user.color, avatar: "🙂", role: "ouder" }, hid);
     run("INSERT INTO household_users(household_id, user_id, role, member_id) VALUES (?,?,?,?)", hid, userId, "beheerder", m.id);
-    createList("Boodschappen", "🛒", hid);
+    createList("Boodschappen", "🛒", hid, "shopping");
     createList("To-do", "✅", hid);
     createList("Voorraad", "🥫", hid, "pantry");
   });

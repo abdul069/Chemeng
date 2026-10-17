@@ -56,10 +56,6 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
     for (const p of parts) await act(() => api.post(`/lists/${list.id}/items`, pantry ? { text: p, qty, expires: expires || null } : { text: p }));
     setQty(""); setExpires("");
   };
-  const toShopping = async (i: ListItem) => {
-    const r = await act(() => api.post<{ list: string; existed: boolean }>(`/items/${i.id}/to-shopping`));
-    if (r) toast(r.existed ? `${i.text} staat al op ${r.list}` : `${i.text} → ${r.list}`);
-  };
   const soon = pantry ? list.items.filter((i) => !i.done && i.expires && diffDays(todayIso(), i.expires) <= 3).length : 0;
 
   return (
@@ -85,10 +81,6 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               <h2>{list.icon} {list.name}</h2>
               <div style={{ display: "flex", gap: 6 }}>
                 {list.items.some((i) => i.done) && <button className="linkbtn" onClick={() => act(() => api.post(`/lists/${list.id}/clear-done`), pantry ? "Opgebruikte items gewist" : "Afgevinkte items gewist")}>{pantry ? "Opgebruikte wissen" : "Afgevinkte wissen"}</button>}
-                {isShop && list.items.some((i) => i.done) && data.lists.some((l) => l.kind === "pantry") && <button className="linkbtn" title="Gekochte items in de voorraad zetten" onClick={async () => {
-                  const r = await act(() => api.post<{ moved: number; pantry: string }>(`/lists/${list.id}/done-to-pantry`));
-                  if (r) toast(`${r.moved} naar ${r.pantry}`);
-                }}>Gekocht → Voorraad</button>}
                 {isShop && <button className="linkbtn" onClick={toggleGrouped}>{grouped ? "Per afdeling ✓" : "Per afdeling"}</button>}
                 <button className="iconbtn" aria-label="Lijst delen" title="Lijst delen (WhatsApp, sms…)" onClick={async () => {
                   const open = list.items.filter((i) => !i.done);
@@ -99,7 +91,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               </div>
             </div>
             {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>🍳 Koken met wat in huis is</button>}
-            {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is en zet het met 🛒 op de boodschappenlijst.</p>}
+            {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is: het komt vanzelf op de boodschappenlijst. Wat je koopt en afvinkt op Boodschappen, komt hier terug.</p>}
             {isShop ? <StaplesInline list={list} /> : (
             <form className="addrow" onSubmit={(e) => { e.preventDefault(); add(); }}>
               <input id="item-new" value={text} onChange={(e) => setText(e.target.value)} placeholder={pantry ? "bv. yoghurt" : "Toevoegen… (meerdere met komma's)"} aria-label="Nieuw item" />
@@ -114,12 +106,11 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                 const ex = pantry ? expiry(i) : null;
                 return (
                   <div className={`item${i.done ? " done" : ""}`} key={i.id}>
-                    <button className="check" aria-pressed={i.done} aria-label={`${i.text} ${i.done ? "terug open zetten" : pantry ? "als op markeren" : "afvinken"}`} onClick={() => act(() => api.patch(`/items/${i.id}`, { done: !i.done }))}>{i.done ? "✓" : ""}</button>
+                    <button className="check" aria-pressed={i.done} aria-label={`${i.text} ${i.done ? "terug open zetten" : pantry ? "als op markeren" : "afvinken"}`} onClick={async () => { const r = await act(() => api.patch<{ ok: boolean; moved: { to: string } | null }>(`/items/${i.id}`, { done: !i.done })); if (r?.moved) toast(`${i.text} → ${r.moved.to}`); }}>{i.done ? "✓" : ""}</button>
                     <span className="txt" style={{ flex: 1, minWidth: 0 }}>
                       {i.text}{i.qty && <small className="muted"> · {i.qty}</small>}
                       {ex && <small className={ex.cls} style={{ display: "block" }}>{ex.label}</small>}
                     </span>
-                    {pantry && <button className="iconbtn" style={{ width: 36, height: 36 }} title="Op de boodschappenlijst zetten" aria-label={`${i.text} op de boodschappenlijst`} onClick={() => toShopping(i)}>🛒</button>}
                     {(pantry || isShop) && <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={`${i.text} bewerken`} onClick={() => setEdit(i)}>✎</button>}
                     <button className="iconbtn" style={{ width: 36, height: 36 }} aria-label={`${i.text} verwijderen`} onClick={() => act(() => api.del(`/items/${i.id}`))}><Icon.trash /></button>
                   </div>
