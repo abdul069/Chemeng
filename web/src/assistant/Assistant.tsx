@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { api } from "../api";
+import { api, ApiError } from "../api";
 import { useData, useRemote } from "../store";
 import type { Change, Weather } from "../types";
 import { Icon } from "../components/Icons";
@@ -103,11 +103,18 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
     setText("");
     setNotice(null);
     stopSpeaking();
-    const history: Msg[] = [...convo.filter((m) => !m.error), { role: "user", content: question }];
+    const base = convo.filter((m) => !m.error);
+    if (base.length && base[base.length - 1].role === "user" && base[base.length - 1].content === question) base.pop(); // opnieuw proberen: vraag niet dubbel
+    const history: Msg[] = [...base, { role: "user", content: question }];
     setConvo(() => history);
     setBusy(true);
     try {
-      const r = await api.post<{ reply: string; changes: Change[] }>("/assistant", { messages: history.map(({ role, content }) => ({ role, content })) });
+      const ask = () => api.post<{ reply: string; changes: Change[] }>("/assistant", { messages: history.map(({ role, content }) => ({ role, content })) });
+      let r: Awaited<ReturnType<typeof ask>>;
+      try { r = await ask(); } catch (e) {
+        // netwerk even weg (bv. wifi zonder internet): één keer stil opnieuw proberen
+        if (e instanceof ApiError && e.status === 0) { await new Promise((ok) => setTimeout(ok, 2000)); r = await ask(); } else throw e;
+      }
       const idx = history.length;
       setConvo((c) => [...c, { role: "assistant", content: r.reply, changes: r.changes }]);
       // handsfree: na het voorlezen meteen opnieuw luisteren
@@ -170,6 +177,9 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
                     </button>
                   )}
                   <Markdown text={m.content} />
+                  {m.error && i === convo.length - 1 && convo[i - 1]?.role === "user" && (
+                    <button className="pill" style={{ marginTop: 8 }} onClick={() => send(convo[i - 1].content)}>↻ Opnieuw proberen</button>
+                  )}
                   {!m.error && (
                     <div className="rate">
                       <button aria-label="Goed antwoord" aria-pressed={m.rated === 1} onClick={() => rate(i, 1)}>👍</button>
