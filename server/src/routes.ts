@@ -27,6 +27,7 @@ import { isDate, today, addDays } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, type Holiday } from "./holidays.js";
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
+import { searchEzan } from "./ezan.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
 export const api = express.Router();
@@ -869,6 +870,12 @@ api.post("/ezan/sounds/url", requireAdmin, async (req, res) => {
   run("INSERT INTO ezan_sounds(id, household_id, name, filename) VALUES (?,?,?,?)", newId(), hid(), name, filename);
   res.json(listEzanSounds());
   broadcast("ezan");
+});
+/** Online ezan-opnames zoeken (Internet Archive). */
+api.get("/ezan/search", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  if (q.length < 2) return void res.json([]);
+  try { res.json(await searchEzan(q)); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Zoeken mislukt." }); }
 });
 api.delete("/ezan/sounds/:id", requireAdmin, (req, res) => {
   const m = get<{ filename: string }>("SELECT filename FROM ezan_sounds WHERE id=? AND household_id=?", p(req), hid());

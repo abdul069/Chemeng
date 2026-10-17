@@ -140,8 +140,10 @@ export function PrayerApp() {
           ))}
           {!sounds.length && <p className="empty">Nog geen ezan toegevoegd. Zonder geluid klinkt een zacht belletje.</p>}
         </div>
+        {admin && <EzanSearch onSaved={() => reloadSounds()} volume={Number(s.ezan_volume) / 100} />}
         {admin && (
           <>
+            <p className="hint" style={{ marginTop: 4 }}>Of zelf toevoegen: plak een link naar een mp3 of kies een bestand van dit toestel.</p>
             <div className="addrow">
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… /ezan.mp3" aria-label="Link naar een ezan-bestand" />
               <button className="btn ghost" onClick={fromUrl} disabled={busy || !url.trim()}>{busy ? "Bezig…" : "Ophalen"}</button>
@@ -152,6 +154,60 @@ export function PrayerApp() {
         )}
       </section>
       {del && <Confirm title={`${del.name} verwijderen?`} onClose={() => setDel(null)} actions={[{ label: "Verwijderen", run: async () => { await act(() => api.del(`/ezan/sounds/${del.id}`), "Verwijderd"); reloadSounds(); } }]} />}
+    </div>
+  );
+}
+
+const PRESETS = ["Mekke ezanı", "Medine ezanı", "İstanbul ezan", "Diyanet ezan", "Sabah ezanı", "adhan makkah", "adhan madinah", "adhan Mishary Alafasy"];
+
+/** Online zoeken naar ezan-opnames, beluisteren en bewaren in de bibliotheek. */
+function EzanSearch({ onSaved, volume }: { onSaved: () => void; volume: number }) {
+  const act = useAction();
+  const { toast } = useData();
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<{ id: string; title: string; url: string; size: number; source: string }[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [playing, setPlaying] = useState<{ url: string; a: HTMLAudioElement } | null>(null);
+  const search = async (term: string) => {
+    setQ(term); setBusy(true); setHits(null);
+    const r = await act(() => api.get<typeof hits>(`/ezan/search?q=${encodeURIComponent(term)}`));
+    setHits(r ?? []); setBusy(false);
+  };
+  const preview = (url: string) => {
+    if (playing?.url === url) { playing.a.pause(); setPlaying(null); return; }
+    playing?.a.pause();
+    const a = new Audio(url); a.volume = volume; a.play().catch(() => toast("Afspelen lukte niet; probeer een andere opname."));
+    a.addEventListener("ended", () => setPlaying((p) => (p?.url === url ? null : p)));
+    setPlaying({ url, a });
+  };
+  const save = async (h: { title: string; url: string }) => {
+    setSaving(h.url);
+    const r = await act(() => api.post("/ezan/sounds/url", { url: h.url, name: h.title.slice(0, 80) }), `“${h.title.slice(0, 40)}” bewaard. Kies het hierboven per gebed.`);
+    setSaving(null); if (r) onSaved();
+  };
+  useEffect(() => () => playing?.a.pause(), [playing]);
+  return (
+    <div className="ezan-search">
+      <b style={{ fontSize: 14 }}>Online ezan-opnames</b>
+      <form className="addrow" onSubmit={(e) => { e.preventDefault(); if (q.trim().length >= 2) search(q.trim()); }}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Zoek bv. Mekke ezanı, Diyanet, Alafasy…" aria-label="Zoek een ezan-opname" />
+        <button className="btn ghost" type="submit" disabled={busy || q.trim().length < 2}>{busy ? "Zoeken…" : "Zoeken"}</button>
+      </form>
+      <div className="picks">{PRESETS.map((p) => <button key={p} type="button" className="pick" aria-pressed={q === p} onClick={() => search(p)}>{p}</button>)}</div>
+      {busy && <p className="hint">Even zoeken in het Internet Archive…</p>}
+      {hits && !hits.length && !busy && <p className="hint">Niets gevonden. Probeer een andere zoekterm.</p>}
+      {!!hits?.length && (
+        <div className="upnext">
+          {hits.map((h) => (
+            <div className="item" key={h.id}>
+              <button className="iconbtn" onClick={() => preview(h.url)} aria-label={playing?.url === h.url ? "Stoppen" : "Beluisteren"}>{playing?.url === h.url ? "■" : <Icon.play />}</button>
+              <span style={{ flex: 1, minWidth: 0 }}><b style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</b><small className="muted">{h.source}{h.size ? ` · ${(h.size / 1048576).toFixed(1)} MB` : ""}</small></span>
+              <button className="btn small" onClick={() => save(h)} disabled={saving === h.url}>{saving === h.url ? "Bewaren…" : "Bewaren"}</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

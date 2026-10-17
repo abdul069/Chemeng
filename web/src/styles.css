@@ -1036,3 +1036,4 @@ h1, h2, h3 { font-family: var(--f-body); font-weight: 600; letter-spacing: -0.01
 .pick.staple { border-color: rgba(30,38,50,.12); font-weight: 500; }
 .pick.staple[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #05302c; }
 .pick.staple.manage { border-style: dashed; color: var(--danger); background: #fff; }
+.ezan-search { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: rgba(79,201,184,.08); border: 1px solid rgba(79,201,184,.25); }
