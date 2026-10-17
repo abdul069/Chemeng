@@ -15,9 +15,9 @@ Bij Instellingen → Taal kies je Nederlands of Türkçe voor de hele app: menu'
 - **Boodschappen en voorraad houden elkaar bij**: afvinken op Boodschappen (gekocht) zet het product in de Voorraad; afvinken in de Voorraad (op) zet het terug op Boodschappen. Terug aanvinken draait dat weer terug.
 - Bij een **recept** staan alle ingrediënten aangevinkt; vink af wat je al in huis hebt en zet de rest met één knop op de boodschappenlijst.
 
-## Spelend islam leren (kinderen)
+## Leren & spelen (kinderen)
 
-Apps → "Islam leren (kids)": een kind kiest zijn profiel en speelt in het Nederlands of Turks. Vier spelletjes: een **weetjesquiz** (zuilen, profeten, gebed, ramadan, goede manieren, Koran), **woordparen** (Arabische uitdrukkingen bij hun betekenis, als memory), **op volgorde** (abdest, de vijf gebeden, de zuilen, een rak'ah, een ramadandag) en **soera's leren** (korte soera's vers per vers beluisteren en nazeggen, met betekenis). Elke juiste stap is een ster; sterren tellen mee in de spaarpot (max. 10 per spel per dag).
+Apps → "Leren & spelen (kids)": een kind kiest zijn profiel en speelt in het Nederlands of Turks. **Islam**, vier spelletjes: een **weetjesquiz** (zuilen, profeten, gebed, ramadan, goede manieren, Koran), **woordparen** (Arabische uitdrukkingen bij hun betekenis, als memory), **op volgorde** (abdest, de vijf gebeden, de zuilen, een rak'ah, een ramadandag) en **soera's leren** (korte soera's vers per vers beluisteren en nazeggen, met betekenis). **Rekenen**: sommen in vijf niveaus (tot 10, tot 20, tot 100, keer en delen, alles door elkaar), de tafels van 1 tot 10 en een snelheidsronde van 60 seconden. Elke juiste stap is een ster; sterren tellen mee in de spaarpot (max. 10 per spel per dag).
 
 ## Gebedstijden, ezan en Koran
 

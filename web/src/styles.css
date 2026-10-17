@@ -1082,3 +1082,10 @@ h1, h2, h3 { font-family: var(--f-body); font-weight: 600; letter-spacing: -0.01
 .learn-dots { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .learn-dots i { width: 10px; height: 10px; border-radius: 50%; background: rgba(30,38,50,.15); } .learn-dots i.on { background: var(--accent); } .learn-dots i.cur { background: #ffb75e; }
 @media (max-width: 820px) { .memory { grid-template-columns: repeat(3, minmax(0, 1fr)); } .learn-stars { align-items: flex-start; text-align: left; } .learn-grid { grid-template-columns: 1fr 1fr; } .learn-tile { min-height: 100px; padding: 12px; } }
+.learn-subjects { align-self: flex-start; } .learn-subjects button { min-width: 120px; padding: 0 16px; }
+.math-sum { font-size: clamp(32px, 6vw, 56px); font-weight: 600; text-align: center; letter-spacing: .02em; }
+.math-q { display: inline-block; min-width: 1.4em; border-bottom: 3px solid var(--accent); color: var(--accent-ink); }
+.math-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.math-choices .learn-opt { text-align: center; font-size: 24px; font-weight: 600; padding: 18px 8px; }
+.tables-pick .pick { font-size: 16px; padding: 12px 16px; }
+@media (max-width: 820px) { .math-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

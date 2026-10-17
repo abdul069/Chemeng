@@ -24,7 +24,7 @@ const TILES: Tile[] = [
   { id: "recipes", label: "Recepten", icon: "🍲", color: "#fdecea", goto: "meals" },
   { id: "prayer", label: "Gebedstijden & ezan", icon: "🕌", color: "#e9f6f4", view: "prayer" },
   { id: "quran", label: "Koran", icon: "📖", color: "#f3f0e4", view: "quran" },
-  { id: "learn", label: "Islam leren (kids)", icon: "🎒", color: "#fdf1e6", view: "learn" },
+  { id: "learn", label: "Leren & spelen (kids)", icon: "🎒", color: "#fdf1e6", view: "learn" },
   { id: "yt", label: "YouTube", icon: "▶️", color: "#fff", href: "https://www.youtube.com", domain: "youtube.com" },
   { id: "ytm", label: "YouTube Music", icon: "🎵", color: "#fff", href: "https://music.youtube.com", domain: "music.youtube.com" },
   { id: "spotify", label: "Spotify", icon: "🎧", color: "#fff", href: "https://open.spotify.com", domain: "open.spotify.com" },
@@ -46,7 +46,7 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   if (view === "clock") return <><div className="topbar">{header(tr("Klok & timers"), back)}</div><ClockApp /></>;
   if (view === "memos") return <><div className="topbar">{header(tr("Spraakmemo's"), back)}</div><MemosApp /></>;
   if (view === "prayer") return <><div className="topbar">{header(tr("Gebedstijden & ezan"), back)}</div><PrayerApp /></>;
-  if (view === "learn") return <><div className="topbar">{header(tr("Islam leren (kids)"), back)}</div><LearnApp /></>;
+  if (view === "learn") return <><div className="topbar">{header(tr("Leren & spelen (kids)"), back)}</div><LearnApp /></>;
   if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><QuranApp /></>;
   return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
 }
