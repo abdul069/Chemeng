@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Meal, Slot } from "../types";
-import { Modal } from "../components/ui";
+import { Modal, useIsPhone } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { LibraryBrowser } from "../components/LibraryBrowser";
@@ -44,6 +44,10 @@ function WeekMenu() {
   const [meals] = useRemote<Meal[]>(`/meals?from=${start}&to=${end}`, ["meals", "recipes"], []);
   const [slot, setSlot] = useState<{ date: string; slot: Slot } | null>(null);
   const t = todayIso();
+  const phone = useIsPhone();
+  const [dayPick, setDayPick] = useState<string | null>(null);
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const shownDay = weekDays.includes(dayPick ?? "") ? dayPick! : weekDays.includes(t) ? t : weekDays[0];
   const recipe = (id: string | null) => (id ? data?.recipes.find((r) => r.id === id) : undefined);
 
   return (
@@ -69,10 +73,10 @@ function WeekMenu() {
           try { if (navigator.share) await navigator.share({ title: "Weekmenu", text }); else { await navigator.clipboard.writeText(text); toast(tr("Weekmenu gekopieerd")); } } catch { /* geannuleerd */ }
         }}>↗</button>
       </div>
+      {phone && <div className="picks day-picks">{weekDays.map((d) => <button type="button" key={d} className={`pick${d === t ? " today" : ""}`} aria-pressed={d === shownDay} onClick={() => setDayPick(d)}>{DSHORT[weekday(d)]} {Number(d.slice(8))}</button>)}</div>}
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
         <div className="mealweek">
-          {Array.from({ length: 7 }, (_, i) => {
-            const d = addDays(start, i);
+          {(phone ? [shownDay] : weekDays).map((d) => {
             return (
               <section className={`mealday${d === t ? tr(" today") : ""}`} key={d}>
                 <h3>{DSHORT[weekday(d)]} {Number(d.slice(8))}{d === t ? tr(" · vandaag") : ""}</h3>

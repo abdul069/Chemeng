@@ -192,7 +192,7 @@ function StaplesInline({ list }: { list: List }) {
   const [staples, reload] = useRemote<Staple[]>("/staples", ["lists"], []);
   const [q, setQ] = useState("");
   const [manage, setManage] = useState(false);
-  const [open, setOpen] = useState(() => { try { return localStorage.getItem("gb.staples.open") !== "0"; } catch { return true; } });
+  const [open, setOpen] = useState(() => { try { const v = localStorage.getItem("gb.staples.open"); if (v !== null) return v !== "0"; } catch { /* */ } return !(typeof matchMedia !== "undefined" && matchMedia("(max-width: 820px)").matches); });
   const toggleOpen = () => { setOpen(!open); try { localStorage.setItem("gb.staples.open", open ? "0" : "1"); } catch { /* */ } };
   const onList = new Map(list.items.filter((i) => !i.done).map((i) => [i.text.toLocaleLowerCase("nl"), i]));
   const fold = (x: string) => x.toLocaleLowerCase("nl").normalize("NFD").replace(/[\u0300-\u036f]/g, "");

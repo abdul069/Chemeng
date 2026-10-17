@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { CalendarSub, Member } from "../types";
-import { Avatar, Confirm, MemberPicks, Modal, cvar } from "../components/ui";
+import { Avatar, Confirm, Fold, MemberPicks, Modal, cvar } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 import { t, getLang, setLang } from "../i18n";
@@ -24,7 +24,7 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
   return (
     <>
       <div className="topbar">{header}</div>
-      <div className="page-scroll" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
+      <div className="page-scroll settings-grid" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
         <AccountSection />
         <Language />
         <Family />
@@ -63,12 +63,7 @@ function PinLock({ onOk }: { onOk: () => void }) {
 }
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
-  return (
-    <section className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="section-title" style={{ marginBottom: 0 }}><h2>{title}</h2>{action}</div>
-      {children}
-    </section>
-  );
+  return <Fold title={title} action={action}>{children}</Fold>;
 }
 
 function useSetting() {

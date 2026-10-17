@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, photoUrl } from "../api";
 import { useAction, useRemote } from "../store";
 import type { Memo, Weather } from "../types";
-import { Confirm } from "../components/ui";
+import { Confirm, Fold } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { PhotosScreen } from "./Photos";
 import { fmtLeft, useTimers, type Alarm } from "../components/Timers";
@@ -151,8 +151,7 @@ function ClockApp() {
           })}
         </div>
       </section>
-      <section className="card card-pad">
-        <div className="section-title"><h2>{tr("Wekkers")}</h2><span className="hint">{tr("op dit scherm")}</span></div>
+      <Fold title={tr("Wekkers")} hint={tr("op dit scherm")} gap={8}>
         {alarms.map((a) => (
           <div className="item" key={a.id}>
             <b className="num" style={{ fontSize: 24 }}>{a.time}</b>
@@ -170,7 +169,7 @@ function ClockApp() {
           {[1, 2, 3, 4, 5, 6, 0].map((x) => <button key={x} className="pick" aria-pressed={na.days.includes(x)} onClick={() => setNa({ ...na, days: na.days.includes(x) ? na.days.filter((y) => y !== x) : [...na.days, x] })}>{DSHORT[x]}</button>)}
           <span className="hint" style={{ alignSelf: "center" }}>{tr("Geen dag gekozen = elke dag")}</span>
         </div>
-      </section>
+      </Fold>
     </div>
   );
 }

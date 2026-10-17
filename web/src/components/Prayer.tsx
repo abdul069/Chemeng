@@ -4,7 +4,7 @@ import { useAction, useData, useRemote } from "../store";
 import type { EzanSound, Prayer, PrayerDay } from "../types";
 import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_ORDER, PRAYER_TR, hijri, hm, nextPrayer, untilText } from "../islam";
 import { Icon } from "./Icons";
-import { Confirm } from "./ui";
+import { Confirm, Fold } from "./ui";
 import { cap, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
@@ -86,10 +86,7 @@ export function PrayerApp() {
         )}
       </section>
 
-      <section className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}><h2>{tr("Ezan")}</h2>
-          <label className="switch"><input type="checkbox" checked={on} onChange={(e) => save({ ezan_on: e.target.checked ? "1" : "0" }, e.target.checked ? tr("Ezan staat aan") : tr("Ezan staat uit"))} /><span /> {on ? tr("Aan") : tr("Uit")}</label>
-        </div>
+      <Fold title={tr("Ezan")} gap={12} action={<><label className="switch"><input type="checkbox" checked={on} onChange={(e) => save({ ezan_on: e.target.checked ? "1" : "0" }, e.target.checked ? tr("Ezan staat aan") : tr("Ezan staat uit"))} /><span /> {on ? tr("Aan") : tr("Uit")}</label></>}>
         <p className="hint">{tr("Als de ezan aanstaat, klinkt op elk scherm van het gezin de oproep op de gebedstijd. Je kiest hieronder welke gebeden en welk geluid. Zet het per scherm uit als bv. een telefoon stil moet blijven.")}</p>
         <label className="check-row"><input type="checkbox" checked={device} onChange={(e) => { setDevice(e.target.checked); try { localStorage.setItem(DEVICE_KEY, e.target.checked ? "1" : "0"); } catch { /* */ } }} />{" "}{tr("Ezan laten horen op dit scherm")}</label>
         <div className="row2">
@@ -106,10 +103,9 @@ export function PrayerApp() {
           </label>
         </div>
         <label className="field"><span>{tr("Volume")}: {s.ezan_volume}%</span><input type="range" min={10} max={100} step={5} value={s.ezan_volume} onChange={(e) => save({ ezan_volume: e.target.value }, "Volume bewaard")} /></label>
-      </section>
+      </Fold>
 
-      <section className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}><h2>{tr("Per gebed")}</h2><span className="hint">{tr("welke ezan klinkt, en minuten bijstellen")}</span></div>
+      <Fold title={tr("Per gebed")} gap={10} hint={<>{tr("welke ezan klinkt, en minuten bijstellen")}</>}>
         {EZAN_PRAYERS.map((p) => (
           <div className="prayer-pref" key={p}>
             <label className="check-row prayer-pref-h"><input type="checkbox" checked={chosen.has(p)} onChange={() => togglePrayer(p)} /> <b>{PRAYER_ICON[p]} {PRAYER_NAME[p]}</b> <span className="muted">{PRAYER_TR[p]}{day ? ` · ${hm(day.times[p])}` : ""}</span></label>
@@ -126,10 +122,9 @@ export function PrayerApp() {
             </span>
           </div>
         ))}
-      </section>
+      </Fold>
 
-      <section className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}><h2>{tr("Ezan-geluiden")}</h2><span className="hint">{sounds.length} in de bibliotheek</span></div>
+      <Fold title={tr("Ezan-geluiden")} gap={10} hint={<>{sounds.length} in de bibliotheek</>}>
         <p className="hint">{tr("Voeg je favoriete ezan toe als mp3: upload een bestand of plak een link (bv. van een moskee- of Diyanet-site). De server bewaart het geluid, zodat het ook speelt als de link later verdwijnt.")}</p>
         <div className="upnext">
           {sounds.map((x) => (
@@ -153,7 +148,7 @@ export function PrayerApp() {
             </div>
           </>
         )}
-      </section>
+      </Fold>
       {del && <Confirm title={tr("{n} verwijderen?", { n: del.name })} onClose={() => setDel(null)} actions={[{ label: tr("Verwijderen"), run: async () => { await act(() => api.del(`/ezan/sounds/${del.id}`), tr("Verwijderd")); reloadSounds(); } }]} />}
     </div>
   );

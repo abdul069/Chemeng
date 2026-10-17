@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState as usePicState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, useState as usePicState, type CSSProperties, type ReactNode } from "react";
 import { photoUrl } from "../api";
 import type { Member } from "../types";
 import { useData } from "../store";
@@ -135,4 +135,29 @@ export function Pic({ src, className, phClass, ph = "🍲", alt = "", style }: {
   const [broken, setBroken] = usePicState<string | null>(null); // de src die niet laadde
   if (!src || broken === src) return <span className={phClass} style={style} aria-hidden>{ph}</span>;
   return <img className={className} src={src} alt={alt} style={style} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(src)} />;
+}
+
+/** Telefoonbreedte (≤ 820px): compacte lay-outs. */
+export function useIsPhone() {
+  const [p, setP] = useState(() => typeof matchMedia !== "undefined" && matchMedia("(max-width: 820px)").matches);
+  useEffect(() => { const mq = matchMedia("(max-width: 820px)"); const h = () => setP(mq.matches); mq.addEventListener("change", h); return () => mq.removeEventListener("change", h); }, []);
+  return p;
+}
+
+/** Kaart met titel die op de telefoon inklapt, zodat een scherm in één oogopslag past. Op grotere schermen altijd open. */
+export function Fold({ title, children, action, hint, open: defOpen = false, gap = 12 }: { title: ReactNode; children: ReactNode; action?: ReactNode; hint?: ReactNode; open?: boolean; gap?: number }) {
+  const phone = useIsPhone();
+  const [open, setOpen] = useState(defOpen);
+  const shown = !phone || open;
+  return (
+    <section className={`card card-pad fold${shown ? " open" : ""}`} style={{ display: "flex", flexDirection: "column", gap: shown ? gap : 0 }}>
+      <div className="section-title fold-h" style={{ marginBottom: 0 }} onClick={phone ? () => setOpen(!open) : undefined} role={phone ? "button" : undefined} aria-expanded={phone ? open : undefined}>
+        <h2>{title}</h2>
+        {hint && <span className="hint fold-hint">{hint}</span>}
+        {action && <span className="fold-action" onClick={(e) => e.stopPropagation()}>{action}</span>}
+        {phone && <span className="fold-chev" aria-hidden>{open ? "▾" : "▸"}</span>}
+      </div>
+      {shown && children}
+    </section>
+  );
 }

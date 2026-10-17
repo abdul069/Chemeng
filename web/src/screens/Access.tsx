@@ -2,16 +2,15 @@ import { useState } from "react";
 import { api, reconnectRealtime } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { HouseholdUser, Invite, Me, ShareRow } from "../types";
-import { Avatar, Confirm, Modal } from "../components/ui";
+import { Avatar, Confirm, Fold, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { t, getLang } from "../i18n";
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <section className="card card-pad" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="section-title" style={{ marginBottom: 0 }}><h2>{title}</h2>{action}</div>
+    <Fold title={title} action={action}>
       {children}
-    </section>
+    </Fold>
   );
 }
 

@@ -114,23 +114,25 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
 }
 
 /** Sterrenklassement van de week. */
-export function StarsRanking() {
+export function StarsRanking({ bare = false }: { bare?: boolean } = {}) {
   const { data } = useData();
   if (!data) return null;
   const rows = data.members.filter((m) => m.role !== "huisdier").map((m) => ({ m, week: data.points[m.id]?.week ?? 0, balance: data.points[m.id]?.balance ?? 0 })).sort((a, b) => b.week - a.week || b.balance - a.balance);
   const medals = ["🥇", "🥈", "🥉"];
   const max = Math.max(1, ...rows.map((r) => r.week));
-  return (
-    <aside className="ranking card card-pad">
-      <div className="section-title"><h3>{tr("Wie schittert deze week?")}</h3></div>
-      {rows.map((r, i) => (
+  const body = rows.map((r, i) => (
         <div className="rank-row" key={r.m.id} style={cvar(r.m.color)}>
           <span className="medal">{medals[i] ?? `${i + 1}.`}</span>
           <Avatar m={r.m} size={34} dot={false} />
           <span className="rank-body"><b>{r.m.name}</b><i className="rank-bar"><em style={{ width: `${(r.week / max) * 100}%` }} /></i></span>
           <span className="num">⭐ {r.week}</span>
         </div>
-      ))}
+      ));
+  if (bare) return <>{body}{!rows.length && <p className="hint">{tr("Nog geen gezinsleden.")}</p>}</>;
+  return (
+    <aside className="ranking card card-pad">
+      <div className="section-title"><h3>{tr("Wie schittert deze week?")}</h3></div>
+      {body}
       {!rows.length && <p className="hint">{tr("Nog geen gezinsleden.")}</p>}
     </aside>
   );

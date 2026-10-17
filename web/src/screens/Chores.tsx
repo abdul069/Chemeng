@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Chore, Member } from "../types";
-import { Avatar, Confirm, EmojiPicker, Modal, cvar } from "../components/ui";
+import { Avatar, Confirm, EmojiPicker, Fold, Modal, cvar, useIsPhone } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { DSHORT, addDays, relDay, todayIso, weekday } from "../dates";
 import { Celebration, ProfileModal, StarsRanking } from "../components/Profile";
@@ -19,6 +19,8 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
   const [rewardsOpen, setRewardsOpen] = useState(false);
   const [profile, setProfile] = useState<Member | null>(null);
   const [celebrate, setCelebrate] = useState<string | null>(null);
+  const phone = useIsPhone();
+  const [who, setWho] = useState<string | null>(null);
   if (!data) return null;
   const set = new Set(done);
   const wd = weekday(date);
@@ -45,8 +47,11 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
       </div>
       <div className="page-scroll" style={{ flex: 1, minHeight: 0 }}>
         <div className="chores-layout">
+        {phone && data.members.length > 1 && (
+          <div className="picks who-picks">{data.members.map((m) => <button type="button" key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={m.id === (who ?? data.members[0]?.id)} onClick={() => setWho(m.id)}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}</div>
+        )}
         <div className="grid-cards">
-          {data.members.map((m) => {
+          {(phone ? data.members.filter((m) => m.id === (who ?? data.members[0]?.id)) : data.members).map((m) => {
             const all = data.chores.filter((c) => c.memberId === m.id);
             const today = all.filter((c) => c.days.includes(wd));
             const n = today.filter((c) => set.has(`${date}|${c.id}`)).length;
@@ -81,7 +86,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
             );
           })}
         </div>
-        <StarsRanking />
+        {phone ? <Fold title={t("Wie schittert deze week?")} gap={8}><StarsRanking bare /></Fold> : <StarsRanking />}
         </div>
       </div>
       {profile && <ProfileModal member={profile} onClose={() => setProfile(null)} />}

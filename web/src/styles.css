@@ -1314,3 +1314,81 @@ img.illu.path-ic { width: 48px; height: 48px; }
   /* resultaat */
   .learn-body .learn-result { flex: 1; min-height: 0; justify-content: center; }
 }
+
+/* ---------- telefoon: compacte schermen die in één oogopslag passen ---------- */
+.fold-h { cursor: default; }
+.fold-chev { color: var(--muted); font-size: 18px; margin-left: 6px; }
+.fold-action { display: inline-flex; align-items: center; }
+.fold-hint { flex: 1; min-width: 0; text-align: right; }
+@media (max-width: 820px) {
+  .page { gap: 8px; padding-block: calc(env(safe-area-inset-top, 0px) + 6px) 8px; padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  .topbar { gap: 6px; }
+  .topbar .titleblock { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; }
+  .topbar .eyebrow { order: 2; margin-left: auto; font-size: 12px; }
+  .topbar .backbtn { order: 0; }
+  .topbar .titlerow { order: 1; gap: 6px; }
+  .topbar h1 { font-size: 21px; }
+  .topbar .right { width: 100%; gap: 6px; }
+  .search-top { width: 32px; height: 32px; }
+  .card-pad { padding: 12px 14px; }
+  .card { border-radius: 18px; }
+  .section-title h2 { font-size: 17px; }
+  .fold-h { cursor: pointer; padding: 2px 0; }
+  .fold:not(.open) .fold-h { margin: -4px 0; }
+  .fold-hint { display: none; } .fold.open .fold-hint { display: inline; }
+  .pill { padding: 7px 11px; font-size: 14px; }
+  .iconbtn { width: 36px; height: 36px; }
+  .range { font-size: 16px; }
+  /* bord */
+  :root { --hour: 46px; }
+  /* taken en maaltijden: één persoon of dag per keer */
+  .who-picks, .day-picks { flex-wrap: nowrap; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+  .who-picks::-webkit-scrollbar, .day-picks::-webkit-scrollbar { display: none; }
+  .who-picks .pick, .day-picks .pick { flex: none; }
+  .day-picks .pick.today { border-color: var(--accent); }
+  .pick[aria-pressed="true"] { background: var(--fg); color: #fff; border-color: var(--fg); }
+  .mealweek { grid-template-columns: 1fr; min-width: 0; }
+  .member-card { padding: 12px; }
+  /* apps-raster: 4 kolommen, alles in beeld */
+  .appgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 6px; padding: 4px 0; }
+  .app { font-size: 11.5px; gap: 5px; line-height: 1.15; }
+  .app-ic, .app-ic svg { width: 52px; height: 52px; border-radius: 14px; }
+  .app-ic .brand { width: 32px; height: 32px; }
+  .appsearch { padding: 2px 4px 2px 12px; } .appsearch input { padding: 7px 0; font-size: 15px; }
+  /* gebedstijden */
+  .prayer-head .prayer-next b { font-size: 20px; }
+  .prayer-when { font-size: 30px !important; }
+  /* klok */
+  .bigclock .bc-time { font-size: 56px !important; } .bigclock { padding: 10px 14px; }
+  /* leren-hub */
+  .kids.learn { display: flex; flex-direction: column; gap: 8px; }
+  .kids.learn .learn-head { padding: 10px 12px; gap: 8px; }
+  .kids.learn .learn-stars b { font-size: 20px; } .kids.learn .learn-stars small.muted { display: none; }
+  .kids.learn .picks { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .kids.learn .pick { flex: none; padding: 5px 10px; font-size: 14px; }
+  .kids.learn .nuri .mbubble { font-size: 15px; padding: 8px 46px 8px 12px; } .kids.learn img.illu.nuri-ic { width: 48px; height: 48px; }
+  .kids.learn .kid-tabs button { padding: 7px 14px; font-size: 15px; }
+  .kids.learn .learn-grid { flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); gap: 8px; }
+  .kids.learn .learn-tile.kid { min-height: 0; padding: 8px; gap: 2px; }
+  .kids.learn .learn-tile.kid b { font-size: 15px; } .kids.learn .learn-tile.kid small { font-size: 12px; }
+  .kids.learn img.illu.learn-ic.big { width: auto; height: auto; flex: 1 1 0; min-height: 0; max-width: 100%; }
+  .kids.learn .learn-earned { font-size: 13px; margin: 0; }
+}
+@media (max-width: 820px) {
+  .fold:not(.open) { padding: 9px 14px; }
+  .fold:not(.open) .fold-h { margin: 0; } .fold:not(.open) .fold-h h2 { font-size: 16px; }
+  .fold:not(.open) .btn.small { padding: 5px 10px; font-size: 13px; }
+  .page-scroll { gap: 8px !important; }
+  .items { gap: 5px; } .items .item { padding: 7px 10px; } .items .item .iconbtn { width: 32px; height: 32px; }
+  .list-nav .pill { padding: 6px 10px; }
+}
+@media (max-width: 820px) {
+  /* instellingen: ingeklapte kaarten twee naast elkaar, een open kaart over de volle breedte */
+  .settings-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; align-content: start; }
+  .settings-grid .fold.open { grid-column: 1 / -1; }
+  .settings-grid .fold:not(.open) { padding: 10px 12px; min-height: 58px; display: flex; align-items: center; }
+  .settings-grid .fold:not(.open) .fold-h { width: 100%; }
+  .settings-grid .fold:not(.open) .fold-h h2 { font-size: 15px; line-height: 1.2; }
+  .fold:not(.open) .fold-action { display: none; }
+  .staples-inline .hint { display: none; }
+}
