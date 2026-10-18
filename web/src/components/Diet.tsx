@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Member, Slot } from "../types";
-import { Avatar, Fold, Modal, cvar } from "./ui";
+import { Avatar, Fold, Modal, cvar, useIsPhone } from "./ui";
 import { Icon } from "./Icons";
 import { addDays, relDay, todayIso } from "../dates";
 import { t as tr, getLang } from "../i18n";
@@ -50,10 +50,10 @@ export function DietApp() {
 
   return (
     <div className="page-scroll diet" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-      <div className="picks who-picks">
-        {members.map((m: Member) => <button key={m.id} type="button" className="pick pick-person" style={cvar(m.color)} aria-pressed={m.id === me.id} onClick={() => setWho(m.id)}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}
+      <div className="picks who-picks diet-who">
+        {members.map((m: Member) => <button key={m.id} type="button" className="pick pick-person" style={cvar(m.color)} aria-pressed={m.id === me.id} onClick={() => setWho(m.id)} title={m.name}><Avatar m={m} size={22} dot={false} /> <span className="pick-name">{m.name.split(" ")[0]}</span></button>)}
       </div>
-      <div className="weeknav">
+      <div className="weeknav diet-nav">
         <button className="iconbtn" onClick={() => setDate(addDays(date, -1))} aria-label={tr("Vorige dag")}><Icon.left /></button>
         <span className="range">{relDay(date)}</span>
         <button className="iconbtn" onClick={() => setDate(addDays(date, 1))} aria-label={tr("Volgende dag")}><Icon.right /></button>
@@ -79,6 +79,7 @@ export function DietApp() {
 
       <AddRow onAdd={addEntry} onRecipe={() => setPickRecipe(true)} />
 
+      <div className="diet-body">
       {!!day?.planned.length && (
         <div className="diet-planned">
           <span className="hint">{tr("Gepland vandaag")}:</span>
@@ -107,11 +108,14 @@ export function DietApp() {
           </div>
         ))}
       </section>
+      </div>
 
-      {day && <WeekBars week={day.week} goal={goal} />}
-      <ProfileFold me={me} profile={day?.profile ?? null} onSaved={reload} />
-      <ForbiddenFold me={me} />
-      <WeightFold me={me} weights={day?.weights ?? []} onSaved={reload} />
+      <div className="diet-folds">
+        {day && <WeekBars week={day.week} goal={goal} />}
+        <ProfileFold me={me} profile={day?.profile ?? null} onSaved={reload} />
+        <ForbiddenFold me={me} />
+        <WeightFold me={me} weights={day?.weights ?? []} onSaved={reload} />
+      </div>
       {pickRecipe && <RecipePicker onClose={() => setPickRecipe(false)} onPick={async (id, portions, slot) => { if (await addEntry({ recipeId: id, portions, slot })) setPickRecipe(false); }} />}
     </div>
   );
@@ -120,7 +124,7 @@ export function DietApp() {
 function Ring({ value, max }: { value: number; max: number }) {
   const r = 44; const c = 2 * Math.PI * r; const p = Math.min(1, value / Math.max(1, max)); const over = value > max;
   return (
-    <svg className="ring" viewBox="0 0 100 100" aria-hidden>
+    <svg className="kcal-ring" viewBox="0 0 100 100" aria-hidden>
       <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(30,38,50,.1)" strokeWidth="10" />
       <circle cx="50" cy="50" r={r} fill="none" stroke={over ? "var(--danger)" : "var(--c, var(--accent))"} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} transform="rotate(-90 50 50)" style={{ transition: "stroke-dasharray .5s ease" }} />
       <text x="50" y="47" textAnchor="middle" fontSize="20" fontWeight="700" fill="currentColor">{Math.round(p * 100)}%</text>
@@ -135,13 +139,12 @@ function WeekBars({ week, goal }: { week: { date: string; kcal: number }[]; goal
   const max = Math.max(goal ?? 0, ...week.map((w) => w.kcal), 1);
   const DAYS = getLang() === "tr" ? ["Pz", "Pt", "Sa", "Ça", "Pe", "Cu", "Ct"] : ["zo", "ma", "di", "wo", "do", "vr", "za"];
   return (
-    <section className="card card-pad">
-      <div className="section-title" style={{ marginBottom: 6 }}><h2>{tr("Deze week")}</h2>{goal !== null && <span className="hint">{tr("doel")} {goal} kcal/dag</span>}</div>
+    <Fold title={tr("Deze week")} hint={goal !== null ? `${tr("doel")} ${goal} kcal/dag` : undefined} gap={6}>
       <div className="weekbars">
         {goal !== null && <i className="goal-line" style={{ bottom: `calc(18px + (100% - 24px) * ${goal / max})` }} />}
         {week.map((w) => <span key={w.date} className={`wb${goal !== null && w.kcal > goal ? " over" : ""}`} title={`${w.date}: ${w.kcal} kcal`}><em style={{ height: `${(w.kcal / max) * 100}%` }} /><small>{DAYS[new Date(w.date + "T12:00:00").getDay()]}</small></span>)}
       </div>
-    </section>
+    </Fold>
   );
 }
 
@@ -214,6 +217,7 @@ function RecipePicker({ onClose, onPick }: { onClose: () => void; onPick: (id: s
 /* ---------- profiel & doel ---------- */
 function ProfileFold({ me, profile, onSaved }: { me: Member; profile: Profile | null; onSaved: () => void }) {
   const act = useAction();
+  const phone = useIsPhone();
   const [f, setF] = useState({ sex: profile?.sex ?? "v", age: String(profile?.age ?? ""), heightCm: String(profile?.heightCm ?? ""), weightKg: String(profile?.weightKg ?? ""), activity: profile?.activity ?? 1.4, goal: profile?.goal ?? "behouden", kcalGoal: profile?.kcalGoal ? String(profile.kcalGoal) : "" });
   useEffect(() => { setF({ sex: profile?.sex ?? "v", age: String(profile?.age ?? ""), heightCm: String(profile?.heightCm ?? ""), weightKg: String(profile?.weightKg ?? ""), activity: profile?.activity ?? 1.4, goal: profile?.goal ?? "behouden", kcalGoal: profile?.kcalGoal ? String(profile.kcalGoal) : "" }); }, [profile, me.id]);
   const valid = Number(f.age) >= 2 && Number(f.heightCm) >= 60 && Number(f.weightKg) >= 10;
@@ -222,7 +226,7 @@ function ProfileFold({ me, profile, onSaved }: { me: Member; profile: Profile | 
     if (r) onSaved();
   };
   return (
-    <Fold title={tr("Profiel en caloriedoel van {name}", { name: me.name })} open={!profile} hint={profile ? `${profile.goal_kcal} kcal/dag` : undefined}>
+    <Fold title={tr("Profiel en caloriedoel van {name}", { name: me.name })} open={!profile && !phone} hint={profile ? `${profile.goal_kcal} kcal/dag` : undefined}>
       <div className="diet-form">
         <label className="field"><span>{tr("Geslacht")}</span><select value={f.sex} onChange={(e) => setF({ ...f, sex: e.target.value as "m" | "v" })}><option value="v">{tr("Vrouw")}</option><option value="m">{tr("Man")}</option></select></label>
         <label className="field"><span>{tr("Leeftijd")}</span><input type="number" inputMode="numeric" min={2} max={110} value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></label>
