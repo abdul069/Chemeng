@@ -13,6 +13,8 @@ import { applyTheme } from "./screens/Settings";
 
 applyTheme();
 
+import { setupNative } from "./native";
+void setupNative();
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }

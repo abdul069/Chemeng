@@ -4,6 +4,7 @@ import { useData, useRemote } from "../store";
 import type { EzanSound, Prayer, PrayerDay } from "../types";
 import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_TR, hm } from "../islam";
 import { ezanOnThisDevice } from "./Prayer";
+import { scheduleEzan } from "../native";
 import { t } from "../i18n";
 
 const PLAYED_KEY = "gezinsbord.ezan.played";
@@ -37,6 +38,8 @@ export function useEzan() {
   const soundsRef = useRef(sounds); soundsRef.current = sounds;
   const settings = data?.settings;
   const settingsRef = useRef(settings); settingsRef.current = settings;
+  // Android-app: exacte alarmen voor de komende week, ook als de app dicht is
+  useEffect(() => { if (settings) void scheduleEzan(settings, day); }, [settings?.ezan_on, settings?.ezan_prayers, settings?.ezan_adjust, settings?.ezan_method, day?.date, day?.times?.fajr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!on) return;

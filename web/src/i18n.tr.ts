@@ -924,4 +924,9 @@ export const TR: Record<string, string> = {
   "Genoteerd voor {name}": "{name} için kaydedildi",
   "Profiel en caloriedoel": "Profil ve kalori hedefi",
   "Verboden ingrediënten": "Yasak malzemeler",
+  "Android-app": "Android uygulaması",
+  "batterijbeperking staat aan": "pil kısıtlaması açık",
+  "De ezan gaat in de app ook af als hij gesloten is: Gezinsbord plant een week vooruit exacte alarmen. Daarvoor moeten meldingen aan staan en moet Android de app niet in slaap zetten.": "Ezan uygulama kapalıyken de çalar: Gezinsbord bir hafta öncesinden tam zamanlı alarmlar kurar. Bunun için bildirimler açık olmalı ve Android uygulamayı uyutmamalı.",
+  "Meldingen toestaan": "Bildirimlere izin ver",
+  "Batterijbeperking uitzetten": "Pil kısıtlamasını kapat",
 };

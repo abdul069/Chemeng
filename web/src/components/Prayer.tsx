@@ -5,6 +5,7 @@ import type { EzanSound, Prayer, PrayerDay } from "../types";
 import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_ORDER, PRAYER_TR, hijri, hm, nextPrayer, untilText } from "../islam";
 import { Icon } from "./Icons";
 import { Confirm, Fold } from "./ui";
+import { isNative, notificationsAllowed, batteryStatus, requestBattery } from "../native";
 import { cap, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
@@ -104,6 +105,8 @@ export function PrayerApp() {
         </div>
         <label className="field"><span>{tr("Volume")}: {s.ezan_volume}%</span><input type="range" min={10} max={100} step={5} value={s.ezan_volume} onChange={(e) => save({ ezan_volume: e.target.value }, "Volume bewaard")} /></label>
       </Fold>
+
+      {isNative() && <AndroidFold />}
 
       <Fold title={tr("Per gebed")} gap={10} hint={<>{tr("welke ezan klinkt, en minuten bijstellen")}</>}>
         {EZAN_PRAYERS.map((p) => (
@@ -205,5 +208,22 @@ function EzanSearch({ onSaved, volume }: { onSaved: () => void; volume: number }
         </div>
       )}
     </div>
+  );
+}
+
+/** Alleen in de Android-app: meldingen en batterijbeperking. */
+function AndroidFold() {
+  const [notif, setNotif] = useState<boolean | null>(null);
+  const [batt, setBatt] = useState<boolean | null>(null);
+  const refresh = () => { void batteryStatus().then(setBatt); };
+  useEffect(() => { refresh(); const h = () => refresh(); document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h); }, []);
+  return (
+    <Fold title={tr("Android-app")} gap={10} open hint={batt === false ? tr("batterijbeperking staat aan") : undefined}>
+      <p className="hint">{tr("De ezan gaat in de app ook af als hij gesloten is: Gezinsbord plant een week vooruit exacte alarmen. Daarvoor moeten meldingen aan staan en moet Android de app niet in slaap zetten.")}</p>
+      <div className="picks">
+        <button className="pill" onClick={() => void notificationsAllowed().then(setNotif)}>🔔 {tr("Meldingen toestaan")}{notif === true ? " ✓" : notif === false ? " ✕" : ""}</button>
+        <button className="pill" onClick={() => void requestBattery().then(() => setTimeout(refresh, 1500))}>🔋 {tr("Batterijbeperking uitzetten")}{batt === true ? " ✓" : ""}</button>
+      </div>
+    </Fold>
   );
 }

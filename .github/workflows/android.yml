@@ -1,0 +1,64 @@
+name: Android-app
+on:
+  push:
+    paths:
+      - "web/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - name: Webbundel en Capacitor-sync
+        working-directory: web
+        run: |
+          npm run build
+          npx cap sync android
+      - name: APK bouwen (debug, direct installeerbaar)
+        working-directory: web/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Ondertekende release-APK (alleen als de keystore-secrets bestaan)
+        if: ${{ env.KEYSTORE_BASE64 != '' }}
+        working-directory: web/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=$PWD/release.keystore \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+      - name: APK's verzamelen
+        run: |
+          mkdir -p out
+          cp web/android/app/build/outputs/apk/debug/app-debug.apk out/gezinsbord-debug.apk
+          [ -f web/android/app/build/outputs/apk/release/app-release.apk ] && cp web/android/app/build/outputs/apk/release/app-release.apk out/gezinsbord-release.apk || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gezinsbord-apk
+          path: out/*.apk
+      - name: Vaste downloadlink bijwerken (release "android-latest")
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Gezinsbord Android-app (laatste build)
+          body: "Download gezinsbord-debug.apk, open het bestand op je telefoon en sta installatie uit onbekende bronnen toe. De app laadt de live Gezinsbord-server."
+          prerelease: true
+          files: out/*.apk

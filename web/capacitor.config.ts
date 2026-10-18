@@ -1,15 +1,16 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// De Android-app toont de Gezinsbord-server uit je thuisnetwerk.
-// Zet GEZINSBORD_URL op het adres van je server, bv. http://192.168.1.20:8080, vóór `npm run android:sync`.
-const url = process.env.GEZINSBORD_URL;
+// De Android-app laadt de live Gezinsbord-server, zodat elke update meteen in de app zit.
+// Eigen server? Zet GEZINSBORD_URL (bv. http://192.168.1.20:8080) vóór `npm run android:sync`.
+const url = process.env.GEZINSBORD_URL || "https://gezinsbord-production-69b1.up.railway.app";
 
 const config: CapacitorConfig = {
   appId: "be.gezinsbord.app",
   appName: "Gezinsbord",
   webDir: "dist",
-  server: url ? { url, cleartext: url.startsWith("http://") } : undefined,
-  android: { allowMixedContent: true },
+  server: { url, cleartext: url.startsWith("http://"), androidScheme: "https" },
+  android: { allowMixedContent: true, backgroundColor: "#e8f6f3" },
+  plugins: { LocalNotifications: { smallIcon: "ic_stat_ezan", iconColor: "#2bb3a8", sound: "ezan.wav" } },
 };
 
 export default config;
