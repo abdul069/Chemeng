@@ -79,6 +79,7 @@ export function DietApp() {
 
       <AddRow onAdd={addEntry} onRecipe={() => setPickRecipe(true)} />
 
+      <div className="diet-scroll">
       <div className="diet-body">
       {!!day?.planned.length && (
         <div className="diet-planned">
@@ -115,6 +116,7 @@ export function DietApp() {
         <ProfileFold me={me} profile={day?.profile ?? null} onSaved={reload} />
         <ForbiddenFold me={me} />
         <WeightFold me={me} weights={day?.weights ?? []} onSaved={reload} />
+      </div>
       </div>
       {pickRecipe && <RecipePicker onClose={() => setPickRecipe(false)} onPick={async (id, portions, slot) => { if (await addEntry({ recipeId: id, portions, slot })) setPickRecipe(false); }} />}
     </div>
@@ -226,7 +228,7 @@ function ProfileFold({ me, profile, onSaved }: { me: Member; profile: Profile | 
     if (r) onSaved();
   };
   return (
-    <Fold title={tr("Profiel en caloriedoel van {name}", { name: me.name })} open={!profile && !phone} hint={profile ? `${profile.goal_kcal} kcal/dag` : undefined}>
+    <Fold title={phone ? tr("Profiel en caloriedoel") : tr("Profiel en caloriedoel van {name}", { name: me.name })} open={!profile && !phone} hint={profile ? `${profile.goal_kcal} kcal/dag` : undefined}>
       <div className="diet-form">
         <label className="field"><span>{tr("Geslacht")}</span><select value={f.sex} onChange={(e) => setF({ ...f, sex: e.target.value as "m" | "v" })}><option value="v">{tr("Vrouw")}</option><option value="m">{tr("Man")}</option></select></label>
         <label className="field"><span>{tr("Leeftijd")}</span><input type="number" inputMode="numeric" min={2} max={110} value={f.age} onChange={(e) => setF({ ...f, age: e.target.value })} /></label>
@@ -246,12 +248,13 @@ function ProfileFold({ me, profile, onSaved }: { me: Member; profile: Profile | 
 const SUGGEST = ["noten", "pinda", "gluten", "lactose", "melk", "ei", "vis", "schaaldieren", "soja", "sesam", "varkensvlees", "alcohol", "gelatine", "suiker", "rundvlees", "kip"];
 function ForbiddenFold({ me }: { me: Member }) {
   const act = useAction();
+  const phone = useIsPhone();
   const words = (me.diet ?? "").split(/[,;\n]/).map((w) => w.trim()).filter(Boolean);
   const [txt, setTxt] = useState("");
   const save = (list: string[]) => act(() => api.put(`/members/${me.id}`, { name: me.name, color: me.color, avatar: me.avatar, photo: me.photo, role: me.role, birthday: me.birthday ?? null, diet: list.join(", ") }));
   const add = (w: string) => { const v = w.trim(); if (!v || words.some((x) => x.toLowerCase() === v.toLowerCase())) return; void save([...words, v]); setTxt(""); };
   return (
-    <Fold title={tr("Verboden ingrediënten voor {name}", { name: me.name })} hint={words.length ? words.join(", ") : tr("geen")}>
+    <Fold title={phone ? tr("Verboden ingrediënten") : tr("Verboden ingrediënten voor {name}", { name: me.name })} hint={words.length ? words.join(", ") : tr("geen")}>
       <p className="hint">{tr("Allergieën, intoleranties of wat {name} niet eet. Recepten en het dagboek waarschuwen als het erin zit.", { name: me.name })}</p>
       <div className="picks">
         {words.map((w) => <button key={w} className="pill on" onClick={() => void save(words.filter((x) => x !== w))} title={tr("Verwijderen")}>{w} ✕</button>)}

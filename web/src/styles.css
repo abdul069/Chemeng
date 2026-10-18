@@ -1433,7 +1433,8 @@ img.illu.path-ic { width: 48px; height: 48px; }
   .diet-sum > span.hint, .diet-left { font-size: 12px; }
   .macros { gap: 6px; } .macro small { font-size: 11px; }
   .diet-add { padding: 8px 10px; } .diet-add .addrow { gap: 6px; } .diet-add .addrow input:first-child { flex: 1 1 100%; } .diet-add select { max-width: 112px; font-size: 13px; padding-left: 8px; } .diet-add .btn, .diet-add .pill { padding: 8px 11px; font-size: 14px; } .diet-add .grams { width: 70px; }
-  .diet-body { flex: 1; min-height: 0; overflow: auto; gap: 6px; }
+  .diet-scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; overscroll-behavior: contain; }
+  .diet-body { gap: 6px; }
   .diet-planned .pill { padding: 5px 9px; font-size: 13px; }
   .diet-log { padding: 8px 10px; gap: 6px; } .diet-log > .hint { font-size: 12.5px; }
   .diet-item { padding: 6px 8px; } .diet-item .iconbtn { width: 30px; height: 30px; }
@@ -1441,6 +1442,6 @@ img.illu.path-ic { width: 48px; height: 48px; }
   .diet-folds .fold.open { grid-column: 1 / -1; }
   .diet-folds .fold:not(.open) { padding: 8px 10px; min-height: 46px; display: flex; align-items: center; }
   .diet-folds .fold:not(.open) .fold-h { width: 100%; margin: 0; } .diet-folds .fold:not(.open) .fold-h h2 { font-size: 14px; line-height: 1.2; }
-  .diet-folds .fold.open { max-height: 55vh; overflow: auto; }
+  .diet-folds .fold:not(.open) .fold-chev { margin-left: auto; }
   .weekbars { height: 80px; }
 }

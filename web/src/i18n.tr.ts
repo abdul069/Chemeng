@@ -922,4 +922,6 @@ export const TR: Record<string, string> = {
   "1 portie van dit recept wordt genoteerd op vandaag.": "Bu tarifin 1 porsiyonu bugüne kaydedilir.",
   "(Je bekijkt het recept voor {s} porties; per portie blijft gelijk.)": "(Tarifi {s} porsiyon için görüyorsun; porsiyon başına değer aynı kalır.)",
   "Genoteerd voor {name}": "{name} için kaydedildi",
+  "Profiel en caloriedoel": "Profil ve kalori hedefi",
+  "Verboden ingrediënten": "Yasak malzemeler",
 };
