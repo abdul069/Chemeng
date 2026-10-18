@@ -15,12 +15,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
+      # De ubuntu-runner heeft de Android SDK al (ANDROID_HOME); ontbrekende platforms downloadt Gradle zelf.
+      - name: SDK-licenties accepteren
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - run: npm ci
       - name: Webbundel en Capacitor-sync
         working-directory: web
