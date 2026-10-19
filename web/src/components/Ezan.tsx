@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { photoUrl } from "../api";
 import { useData, useRemote } from "../store";
 import type { EzanSound, Prayer, PrayerDay } from "../types";
-import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_TR, hm } from "../islam";
-import { ezanOnThisDevice } from "./Prayer";
+import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_TR, hm, ezanOnThisDevice } from "../islam";
 import { scheduleEzan } from "../native";
 import { t } from "../i18n";
 

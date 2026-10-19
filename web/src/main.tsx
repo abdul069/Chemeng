@@ -9,7 +9,7 @@ import "./styles.css";
 import { App } from "./App";
 import { DataProvider } from "./store";
 import { TimerProvider } from "./components/Timers";
-import { applyTheme } from "./screens/Settings";
+import { applyTheme } from "./theme";
 
 applyTheme();
 

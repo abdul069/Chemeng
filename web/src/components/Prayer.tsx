@@ -2,15 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { api, photoUrl } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { EzanSound, Prayer, PrayerDay } from "../types";
-import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_ORDER, PRAYER_TR, hijri, hm, nextPrayer, untilText } from "../islam";
+import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_ORDER, PRAYER_TR, hijri, hm, nextPrayer, untilText, DEVICE_KEY, ezanOnThisDevice } from "../islam";
 import { Icon } from "./Icons";
 import { Confirm, Fold } from "./ui";
 import { isNative, notificationsAllowed, batteryStatus, requestBattery } from "../native";
 import { cap, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
-const DEVICE_KEY = "gezinsbord.ezan.device";
-export const ezanOnThisDevice = () => { try { return localStorage.getItem(DEVICE_KEY) !== "0"; } catch { return true; } };
 
 /** Gebedstijden van vandaag, met de ezan-instellingen eronder. */
 export function PrayerApp() {

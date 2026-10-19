@@ -15,7 +15,8 @@ type Game = "quiz" | "match" | "order" | "surah" | "sums" | "tables" | "speed";
  *  anders de stilstaande tekening, en als het web niet meewerkt het emoji zelf. */
 const notoId = (e: string) => [...e].map((c) => c.codePointAt(0)!).filter((cp) => cp !== 0xfe0f).map((cp) => cp.toString(16).padStart(4, "0")).join("_");
 const NOTO = "https://fonts.gstatic.com/s/e/notoemoji/latest/";
-function Illu({ e, className = "", still = false }: { e: string; className?: string; still?: boolean }) {
+const PHONE = typeof matchMedia !== "undefined" && matchMedia("(max-width: 820px)").matches;
+function Illu({ e, className = "", still = PHONE }: { e: string; className?: string; still?: boolean }) {
   const [step, setStep] = useState(still ? 1 : 0);
   useEffect(() => setStep(still ? 1 : 0), [e, still]);
   if (!e || step > 1) return <span className={`illu-txt ${className}`} aria-hidden>{e}</span>;

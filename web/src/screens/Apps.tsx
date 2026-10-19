@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { api, photoUrl } from "../api";
 import { useAction, useRemote } from "../store";
 import type { Memo, Weather } from "../types";
 import { Confirm, Fold } from "../components/ui";
 import { Icon } from "../components/Icons";
-import { PhotosScreen } from "./Photos";
+const PhotosScreen = lazy(() => import("./Photos").then((m) => ({ default: m.PhotosScreen })));
 import { fmtLeft, useTimers, type Alarm } from "../components/Timers";
 import { BrandIcon, OWN_ICONS } from "../components/AppIcons";
-import { PrayerApp } from "../components/Prayer";
-import { QuranApp } from "../components/Quran";
-import { LearnApp } from "../components/Learn";
-import { DietApp } from "../components/Diet";
+const PrayerApp = lazy(() => import("../components/Prayer").then((m) => ({ default: m.PrayerApp })));
+const QuranApp = lazy(() => import("../components/Quran").then((m) => ({ default: m.QuranApp })));
+const LearnApp = lazy(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
+const DietApp = lazy(() => import("../components/Diet").then((m) => ({ default: m.DietApp })));
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
@@ -43,14 +43,14 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   header: (title: string, back?: () => void) => React.ReactNode; view: AppView; setView: (v: AppView) => void; gotoMeals: () => void; startSlideshow: () => void;
 }) {
   const back = () => setView("grid");
-  if (view === "photos") return <PhotosScreen header={header(tr("Foto's"), back)} startSlideshow={startSlideshow} />;
+  if (view === "photos") return <Suspense fallback={<p className="empty">…</p>}><PhotosScreen header={header(tr("Foto's"), back)} startSlideshow={startSlideshow} /></Suspense>;
   if (view === "weather") return <><div className="topbar">{header(tr("Weer"), back)}</div><WeatherApp /></>;
   if (view === "clock") return <><div className="topbar">{header(tr("Klok & timers"), back)}</div><ClockApp /></>;
   if (view === "memos") return <><div className="topbar">{header(tr("Spraakmemo's"), back)}</div><MemosApp /></>;
-  if (view === "prayer") return <><div className="topbar">{header(tr("Gebedstijden & ezan"), back)}</div><PrayerApp /></>;
-  if (view === "learn") return <><div className="topbar">{header(tr("Leren & spelen (kids)"), back)}</div><LearnApp /></>;
-  if (view === "diet") return <><div className="topbar">{header(tr("Dieet & calorieën"), back)}</div><DietApp /></>;
-  if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><QuranApp /></>;
+  if (view === "prayer") return <><div className="topbar">{header(tr("Gebedstijden & ezan"), back)}</div><Suspense fallback={<p className="empty">…</p>}><PrayerApp /></Suspense></>;
+  if (view === "learn") return <><div className="topbar">{header(tr("Leren & spelen (kids)"), back)}</div><Suspense fallback={<p className="empty">…</p>}><LearnApp /></Suspense></>;
+  if (view === "diet") return <><div className="topbar">{header(tr("Dieet & calorieën"), back)}</div><Suspense fallback={<p className="empty">…</p>}><DietApp /></Suspense></>;
+  if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><Suspense fallback={<p className="empty">…</p>}><QuranApp /></Suspense></>;
   return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
 }
 

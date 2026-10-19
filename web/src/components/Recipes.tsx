@@ -12,7 +12,7 @@ import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, addDays, todayIso, weekday, shortDate } from "../dates";
 import { parseServings, scaleLine } from "../portions";
 import { CookMode } from "./CookMode";
-import { RecipeCalories } from "./Diet";
+import { RecipeCalories } from "./RecipeCalories";
 
 import { CATS, catLabel } from "../categories";
 import { t } from "../i18n";

@@ -34,8 +34,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // nieuwe versie online? één keer verversen zodat niemand op een oud scherm blijft werken
         const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.match(/index-([A-Za-z0-9_-]+)\.js/)?.[1];
         if (d.build && mine && d.build !== mine && sessionStorage.getItem("gb.reloaded") !== d.build) { sessionStorage.setItem("gb.reloaded", d.build); location.reload(); return; }
-        setLang(d.settings.language === "tr" ? "tr" : "nl");
-        setData(d); setError(null); setErrorCode(null);
+        // eerst het woordenboek, dan tekenen: anders flitst Nederlands voor Turks
+        void setLang(d.settings.language === "tr" ? "tr" : "nl").then(() => { setData(d); setError(null); setErrorCode(null); });
       })
       .catch((e) => {
         setError(e.message);

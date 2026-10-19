@@ -1,5 +1,6 @@
 import "./env.js";
 import express from "express";
+import compression from "compression";
 import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
@@ -28,11 +29,13 @@ app.use((_req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()");
   next();
 });
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", api);
 
 if (fs.existsSync(WEB_DIR)) {
-  app.use(express.static(WEB_DIR, { index: false, maxAge: "1h" }));
+  // gehashte bestanden in /assets mogen een jaar in de cache; de rest een uur
+  app.use(express.static(WEB_DIR, { index: false, maxAge: "1h", setHeaders: (res, file) => { if (/[\\/]assets[\\/]/.test(file)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable"); } }));
   // alle andere routes horen bij de app zelf
   app.get(/^\/(?!api|ws).*/, (_req, res) => res.sendFile(path.join(WEB_DIR, "index.html"), { headers: { "Cache-Control": "no-cache" } }));
 }

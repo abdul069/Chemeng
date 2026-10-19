@@ -1,24 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { connectRealtime, onConnection } from "./api";
 import { AcceptInvite, AuthScreen, NoHousehold, ResetPassword, inviteTokenFromUrl, resetTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
 import { Icon } from "./components/Icons";
-import { EventEditor, type EditorState } from "./components/EventEditor";
-import { Screensaver } from "./components/Screensaver";
-import { Assistant, type Msg } from "./assistant/Assistant";
+import type { EditorState } from "./components/EventEditor";
+const EventEditor = lazy(() => import("./components/EventEditor").then((m) => ({ default: m.EventEditor })));
+const Screensaver = lazy(() => import("./components/Screensaver").then((m) => ({ default: m.Screensaver })));
+import type { Msg } from "./assistant/Assistant";
+const Assistant = lazy(() => import("./assistant/Assistant").then((m) => ({ default: m.Assistant })));
 import { TodayScreen } from "./screens/Today";
 import { CalendarScreen } from "./screens/Calendar";
-import { ChoresScreen } from "./screens/Chores";
-import { MealsScreen } from "./screens/Meals";
-import { ListsScreen } from "./screens/Lists";
-import { AppsScreen, type AppView } from "./screens/Apps";
-import { Search } from "./components/Search";
+const ChoresScreen = lazy(() => import("./screens/Chores").then((m) => ({ default: m.ChoresScreen })));
+const MealsScreen = lazy(() => import("./screens/Meals").then((m) => ({ default: m.MealsScreen })));
+const ListsScreen = lazy(() => import("./screens/Lists").then((m) => ({ default: m.ListsScreen })));
+import type { AppView } from "./screens/Apps";
+const AppsScreen = lazy(() => import("./screens/Apps").then((m) => ({ default: m.AppsScreen })));
+const Search = lazy(() => import("./components/Search").then((m) => ({ default: m.Search })));
 import { emitNav } from "./nav";
-import { RecipeHost } from "./components/Recipes";
-import { SettingsScreen } from "./screens/Settings";
+const RecipeHost = lazy(() => import("./components/Recipes").then((m) => ({ default: m.RecipeHost })));
+const SettingsScreen = lazy(() => import("./screens/Settings").then((m) => ({ default: m.SettingsScreen })));
 import { cap, clock, longDate, todayIso } from "./dates";
 import { EzanOverlay, useEzan } from "./components/Ezan";
-import { QuranMiniPlayer } from "./components/Quran";
+const QuranMiniPlayer = lazy(() => import("./components/Quran").then((m) => ({ default: m.QuranMiniPlayer })));
 import { t as tr } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
@@ -127,6 +130,7 @@ export function App() {
         <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>
       </nav>
       <main className={`page${screen === "today" ? tr(" page-bord") : ""}`}>
+        <Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}>
         {screen === "today" && <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />}
         {screen === "calendar" && <CalendarScreen header={header} openEditor={openEditor} />}
         {screen === "chores" && <ChoresScreen header={header} />}
@@ -134,18 +138,21 @@ export function App() {
         {screen === "lists" && <ListsScreen header={header} />}
         {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} startSlideshow={() => setSaver(true)} />}
         {screen === "settings" && <SettingsScreen header={header} />}
+        </Suspense>
       </main>
       {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label={tr("Afspraak toevoegen")}>+</button>}
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><div className="mascot" /></button>
-      {appView !== "quran" || screen !== "apps" ? <QuranMiniPlayer onOpen={() => { setScreenState("apps"); setAppView("quran"); }} /> : null}
+      <Suspense fallback={null}>{appView !== "quran" || screen !== "apps" ? <QuranMiniPlayer onOpen={() => { setScreenState("apps"); setAppView("quran"); }} /> : null}</Suspense>
+      <Suspense fallback={null}>
       {editor && <EventEditor state={editor} onClose={() => setEditor(null)} />}
-      <RecipeHost />
+      <Suspense fallback={null}><RecipeHost /></Suspense>
       {search && <Search onClose={() => setSearch(false)} goto={(sc, extra) => { emitNav(extra ?? {}); setScreen(sc as Screen); }} />}
       {assist && <Assistant key={assist.key} convo={convo} setConvo={setConvo} initial={assist.prompt} onClose={() => setAssist(null)} />}
       {inviteToken && <AcceptInvite token={inviteToken} onDone={() => { setInviteToken(null); reload(); }} />}
       {ezan.active && <EzanOverlay prayer={ezan.active.prayer} at={ezan.active.at} onClose={ezan.stop} />}
       {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
+      </Suspense>
     </div>
   );
 }

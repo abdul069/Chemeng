@@ -67,3 +67,7 @@ onEnded = () => { if (state.repeat && state.surah) player.play(state.surah, stat
 let nextSurahLoader: ((n: number) => Promise<Surah | null>) | null = null;
 export const setSurahLoader = (f: (n: number) => Promise<Surah | null>) => { nextSurahLoader = f; };
 export function usePlayer() { return useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => state); }
+
+/** Ezan op dit toestel aan/uit (per scherm). */
+export const DEVICE_KEY = "gezinsbord.ezan.device";
+export const ezanOnThisDevice = () => { try { return localStorage.getItem(DEVICE_KEY) !== "0"; } catch { return true; } };
