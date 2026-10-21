@@ -340,6 +340,38 @@ CREATE TABLE IF NOT EXISTS household_links (
   b_share TEXT NOT NULL DEFAULT 'events,photos,notes,birthdays',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- het huis: onderhoud en verplichtingen met logboek
+CREATE TABLE IF NOT EXISTS upkeep (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'overig', icon TEXT NOT NULL DEFAULT '🔧',
+  interval_months INTEGER NOT NULL DEFAULT 12, last_done TEXT, next_due TEXT, lead_days INTEGER NOT NULL DEFAULT 30,
+  member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+  provider TEXT NOT NULL DEFAULT '', provider_phone TEXT NOT NULL DEFAULT '', provider_url TEXT NOT NULL DEFAULT '', cost TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', attest TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS upkeep_log (
+  id TEXT PRIMARY KEY, upkeep_id TEXT NOT NULL REFERENCES upkeep(id) ON DELETE CASCADE,
+  done_on TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', photo TEXT
+);
+-- afvalkalender: handmatige regels en dagen uit een iCal-kalender
+CREATE TABLE IF NOT EXISTS waste (
+  id TEXT PRIMARY KEY, household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  fraction TEXT NOT NULL, weekday INTEGER NOT NULL, every_weeks INTEGER NOT NULL DEFAULT 1, start_date TEXT NOT NULL, notes TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS waste_dates (
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE, date TEXT NOT NULL, fraction TEXT NOT NULL,
+  PRIMARY KEY (household_id, date, fraction)
+);
+-- gezondheid: bezoeken, controles, vaccinaties en medicatie per gezinslid
+CREATE TABLE IF NOT EXISTS health (
+  id TEXT PRIMARY KEY, household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL, title TEXT NOT NULL, date TEXT, time TEXT,
+  provider TEXT NOT NULL DEFAULT '', provider_phone TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+  follow_up_months INTEGER NOT NULL DEFAULT 0, times TEXT NOT NULL DEFAULT '', days TEXT NOT NULL DEFAULT '[0,1,2,3,4,5,6]', stock INTEGER, done INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- prikbord: briefjes voor het hele gezin
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
@@ -414,6 +446,14 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   briefing_morning: "07:00",
   briefing_evening: "20:30",
   briefing_push: "1",
+  // afvalkalender: iCal-adres van de intercommunale en het uur van de melding de avond ervoor (leeg = geen)
+  waste_ical: "",
+  waste_notify: "20:00",
+  // slim huis via Home Assistant
+  ha_url: "",
+  ha_token: "",
+  ha_entities: "",
+  ha_scenes: "{}",
   // koran: voordrager en vertaling
   quran_reciter: "ar.alafasy",
   quran_translation: "nl.siregar",

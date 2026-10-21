@@ -6,7 +6,7 @@ import { viewersOfHousehold } from "./accounts.js";
 import { hid } from "./db.js";
 import { linkedHouseholdIds } from "./family.js";
 
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home";
 
 const sockets = new Map<WebSocket, { userId: string; householdId: string | null }>();
 

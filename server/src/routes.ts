@@ -30,6 +30,8 @@ import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
+import * as H from "./home.js";
+import * as HA from "./smarthome.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
@@ -232,8 +234,8 @@ api.delete("/invites/:id", (req, res) => {
 api.use(requireHousehold);
 
 function publicSettings() {
-  const { settings_pin, ...rest } = getSettings();
-  return { ...rest, has_pin: settings_pin.length > 0 };
+  const { settings_pin, ha_token, ...rest } = getSettings();
+  return { ...rest, has_pin: settings_pin.length > 0, ha_configured: !!(rest.ha_url && ha_token) };
 }
 
 /** Aftellen: ook de eerstvolgende feestdagen (volgens de instelling), tot 6 in totaal. */
@@ -316,14 +318,60 @@ api.get("/manager/briefing", async (req, res) => {
   const kind = q.kind ?? (new Date().getHours() >= 17 ? "evening" : "morning");
   res.json(await buildBriefing(kind, q.date ?? today(), q.member || null));
 });
-api.post("/manager/apply", (req, res) => {
-  const r = applyProposal(ProposalInput.parse(req.body));
-  res.json(r);
-  if (r.topics.length) broadcast(...r.topics);
+api.post("/manager/apply", async (req, res) => {
+  try {
+    const r = await applyProposal(ProposalInput.parse(req.body));
+    res.json(r);
+    if (r.topics.length) broadcast(...r.topics);
+  } catch (e) { if (e instanceof ZodError) throw e; res.status(400).json({ error: e instanceof Error ? e.message : "Mislukt" }); }
 });
 api.get("/memory", (_req, res) => { res.json(listMemory()); });
 api.post("/memory", (req, res) => { res.json({ id: remember(MemoryInput.parse(req.body)) }); broadcast("settings"); });
 api.delete("/memory/:id", (req, res) => { forget(p(req)); res.json({ ok: true }); broadcast("settings"); });
+
+// ---------- het huis: onderhoud, afval, gezondheid, slim huis ----------
+api.get("/upkeep", (_req, res) => { res.json(H.listUpkeep()); });
+api.get("/upkeep/templates", (_req, res) => { res.json(H.UPKEEP_TEMPLATES.map(({ key, title, titleTr, category, icon, intervalMonths, leadDays, notes }) => ({ key, title, titleTr, category, icon, intervalMonths, leadDays, notes }))); });
+api.post("/upkeep/templates", (req, res) => { const b = z.object({ keys: z.array(z.string()).min(1) }).parse(req.body); res.json({ added: H.applyTemplates(b.keys) }); broadcast("home"); });
+api.post("/upkeep", (req, res) => { res.json({ id: H.createUpkeep(H.UpkeepInput.parse(req.body)) }); broadcast("home"); });
+api.put("/upkeep/:id", (req, res) => { if (!H.updateUpkeep(p(req), H.UpkeepInput.parse(req.body))) return void res.status(404).json({ error: "Niet gevonden" }); res.json({ ok: true }); broadcast("home"); });
+api.post("/upkeep/:id/done", (req, res) => { const b = z.object({ date: day.default(today()), note: z.string().max(300).default("") }).parse(req.body ?? {}); const r = H.upkeepDone(p(req), b.date, b.note); if (!r) return void res.status(404).json({ error: "Niet gevonden" }); res.json(r); broadcast("home"); });
+const attestUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(f.mimetype)) });
+api.post("/upkeep/:id/attest", attestUpload.single("photo"), (req, res) => {
+  if (!req.file) return void res.status(400).json({ error: "Geen foto" });
+  const name = `attest-${crypto.randomUUID()}.${req.file.mimetype === "image/png" ? "png" : "jpg"}`;
+  fs.writeFileSync(path.join(PHOTO_DIR, name), req.file.buffer);
+  run("INSERT INTO photos(id, household_id, filename) VALUES (?,?,?)", newId(), hid(), name);
+  H.setUpkeepAttest(p(req), name); res.json({ filename: name }); broadcast("home");
+});
+api.delete("/upkeep/:id", (req, res) => { H.deleteUpkeep(p(req)); res.json({ ok: true }); broadcast("home"); });
+
+api.get("/waste", (_req, res) => { res.json({ rules: H.listWaste(), next: H.wasteNext(21), fractions: H.FRACTIONS.map(({ id, nl, tr, icon }) => ({ id, nl, tr, icon })) }); });
+api.post("/waste", (req, res) => { res.json({ id: H.createWaste(H.WasteInput.parse(req.body)) }); broadcast("home"); });
+api.delete("/waste/:id", (req, res) => { H.deleteWaste(p(req)); res.json({ ok: true }); broadcast("home"); });
+api.post("/waste/sync", async (req, res) => {
+  const url = getSettings().waste_ical;
+  if (!url) return void res.status(400).json({ error: "Vul eerst het iCal-adres van de afvalkalender in." });
+  try { const n = await H.syncWasteIcal(hid(), url); res.json({ ok: true, count: n }); broadcast("home"); } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Inlezen mislukte" }); }
+  void req;
+});
+
+api.get("/health", (req, res) => { const q = z.object({ member: z.string().optional() }).parse(req.query); res.json(H.listHealth(hid(), q.member)); });
+api.post("/health", (req, res) => { res.json({ id: H.createHealth(H.HealthInput.parse(req.body)) }); broadcast("home"); });
+api.put("/health/:id", (req, res) => { if (!H.updateHealth(p(req), H.HealthInput.parse(req.body))) return void res.status(404).json({ error: "Niet gevonden" }); res.json({ ok: true }); broadcast("home"); });
+api.post("/health/:id/done", (req, res) => { const r = H.healthDone(p(req)); if (!r) return void res.status(404).json({ error: "Niet gevonden" }); res.json(r); broadcast("home"); });
+api.delete("/health/:id", (req, res) => { H.deleteHealth(p(req)); res.json({ ok: true }); broadcast("home"); });
+
+api.get("/ha/states", async (req, res) => {
+  const q = z.object({ all: z.string().optional() }).parse(req.query);
+  try { res.json(await HA.haStates(q.all !== "1")); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Home Assistant niet bereikbaar" }); }
+});
+api.post("/ha/test", async (_req, res) => { try { const r = await HA.haTest(); res.json({ ok: true, message: r.message }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Niet bereikbaar" }); } });
+api.post("/ha/call", async (req, res) => {
+  const b = z.object({ domain: z.string().regex(/^[a-z_]+$/), service: z.string().regex(/^[a-z_]+$/), data: z.record(z.string(), z.unknown()).default({}) }).parse(req.body);
+  try { await HA.haCall(b.domain, b.service, b.data); res.json({ ok: true }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Mislukt" }); }
+});
+api.post("/ha/moment", async (req, res) => { const b = z.object({ moment: z.enum(["sleep", "morning", "ezan", "away", "home"]) }).parse(req.body); res.json({ ok: await HA.runMoment(b.moment) }); });
 
 // ---------- gezinsnetwerk ----------
 api.get("/family/links", (_req, res) => { res.json(F.listLinks()); });

@@ -11,14 +11,19 @@ import { getClient, aiReady } from "./ai.js";
 import { MODEL } from "./assistant.js";
 import { pushToUsers, usersFor } from "./push.js";
 import { broadcastTo } from "./realtime.js";
+import * as H from "./home.js";
+import * as HA from "./smarthome.js";
+import { createEvent } from "./events.js";
 
 export type BriefingKind = "morning" | "evening";
-export interface Item { icon: string; text: string; memberId?: string | null; kind: "event" | "task" | "meal" | "weather" | "prayer" | "countdown" | "pantry" | "list" | "stars" | "note" }
+export interface Item { icon: string; text: string; memberId?: string | null; kind: "event" | "task" | "meal" | "weather" | "prayer" | "countdown" | "pantry" | "list" | "stars" | "note" | "upkeep" | "waste" | "health" | "home" }
 export type Proposal =
   | { id: string; kind: "plan_meal"; title: string; why: string; date: string; slot: "diner" | "lunch" | "ontbijt"; recipeId: string; recipe: string }
   | { id: string; kind: "move_event"; title: string; why: string; eventId: string; on: string; newStart: string; newEnd: string }
   | { id: string; kind: "add_list"; title: string; why: string; items: string[] }
-  | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string };
+  | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string }
+  | { id: string; kind: "upkeep_event"; title: string; why: string; upkeepId: string; date: string; eventTitle: string; memberId: string | null }
+  | { id: string; kind: "ha_service"; title: string; why: string; domain: string; service: string; data: Record<string, unknown> };
 export interface Briefing { kind: BriefingKind; date: string; memberId: string | null; title: string; narration: string; items: Item[]; proposals: Proposal[]; conflicts: number }
 
 const DAYS_NL = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
@@ -165,6 +170,34 @@ export async function buildBriefing(kind: BriefingKind, date: string, memberId: 
     const shop = S.listLists().find((l) => l.kind === "shopping"); const n = shop?.items.filter((i) => !i.done).length ?? 0;
     if (n >= 5 && kind === "morning") items.push({ kind: "list", icon: "🛒", text: lang === "tr" ? `Alışveriş listesinde ${n} ürün var.` : `${n} dingen op de boodschappenlijst.` });
   }
+  // het huis: onderhoud dat eraan komt, afval morgen, gezondheid en medicatie, slim huis
+  if (!me || me.role === "ouder") {
+    for (const u of H.listUpkeep().filter((u) => u.status !== "ok" && u.status !== "none").slice(0, 3)) {
+      const txt = u.status === "late" ? (lang === "tr" ? `${u.title}: ${-u.daysLeft!} gün gecikti` : `${u.title} is ${-u.daysLeft!} ${u.daysLeft === -1 ? "dag" : "dagen"} over tijd`) : u.status === "due" ? (lang === "tr" ? `Bugün: ${u.title}` : `Vandaag: ${u.title}`) : (lang === "tr" ? `${u.title}: ${u.daysLeft} gün sonra` : `${u.title} over ${u.daysLeft} dagen`);
+      items.push({ kind: "upkeep", icon: u.icon, text: txt + (u.provider ? ` · ${u.provider}${u.providerPhone ? ` ${u.providerPhone}` : ""}` : "") });
+      if (u.nextDue && u.status === "soon" && !eventsBetween(u.nextDue, u.nextDue).some((e) => e.title.toLowerCase().includes(u.title.toLowerCase().slice(0, 12))))
+        proposals.push({ id: `upk:${u.id}`, kind: "upkeep_event", upkeepId: u.id, date: u.nextDue, eventTitle: u.title, memberId: u.memberId, title: lang === "tr" ? `${u.title} takvime koy` : `${u.title} in de agenda zetten`, why: lang === "tr" ? `Son tarih ${u.nextDue}; takvimde herkes görür.` : `Uiterste datum ${u.nextDue}; in de agenda ziet iedereen het.` });
+    }
+    const wasteDay = kind === "evening" ? addDays(date, 1) : date;
+    const fr = H.wasteOn(wasteDay);
+    if (fr.length) items.push({ kind: "waste", icon: "♻️", text: lang === "tr" ? `${kind === "evening" ? "Yarın" : "Bugün"} çöp: ${fr.map((f) => `${H.fractionIcon(f)} ${H.fractionLabel(f, "tr")}`).join(", ")}${kind === "evening" ? " — bu akşam dışarı koy" : ""}` : `${kind === "evening" ? "Morgen" : "Vandaag"} ophaling: ${fr.map((f) => `${H.fractionIcon(f)} ${H.fractionLabel(f, "nl")}`).join(", ")}${kind === "evening" ? " — vanavond buitenzetten" : ""}` });
+  }
+  {
+    const hs = H.listHealth(hid(), me?.id).filter((x) => !x.done && x.kind !== "medication" && x.date && x.date >= focus && x.date <= addDays(focus, kind === "evening" ? 0 : 2));
+    for (const x of hs.slice(0, 3)) { const who = me ? "" : `${members.find((m) => m.id === x.memberId)?.name ?? "?"}: `; items.push({ kind: "health", icon: x.kind === "vaccine" ? "💉" : "🩺", text: `${who}${x.title}${x.date !== focus ? ` (${x.date})` : ""}${x.time ? ` ${x.time}` : ""}${x.provider ? ` · ${x.provider}` : ""}`, memberId: x.memberId }); }
+    const meds = H.medicationOn(focus, hid(), me?.id);
+    for (const m of meds.slice(0, 3)) { const who = me ? "" : `${members.find((x) => x.id === m.memberId)?.name ?? "?"}: `; items.push({ kind: "health", icon: "💊", text: `${who}${m.title}${m.timesList.length ? ` ${lang === "tr" ? "saat" : "om"} ${m.timesList.join(", ")}` : ""}${m.stock !== null && m.stock <= 7 ? (lang === "tr" ? ` · stok ${m.stock}, yenile` : ` · nog ${m.stock}, bijbestellen`) : ""}`, memberId: m.memberId }); }
+  }
+  if ((!me || me.role === "ouder") && HA.haConfig()) {
+    try {
+      const st = await HA.haStates(false);
+      const home = st.filter((x) => x.entity_id.startsWith("person.")); const nobody = home.length > 0 && home.every((x) => x.state !== "home");
+      const heating = st.filter((x) => x.entity_id.startsWith("climate.") && x.state !== "off" && Number(x.attributes.temperature) >= 20);
+      if (nobody && heating.length && kind === "morning") for (const c of heating.slice(0, 1)) proposals.push({ id: `ha:${c.entity_id}`, kind: "ha_service", domain: "climate", service: "set_temperature", data: { entity_id: c.entity_id, temperature: 17 }, title: lang === "tr" ? `Kaloriferi 17°'ye al` : `Verwarming op 17° zetten`, why: lang === "tr" ? `Kimse evde değil ve ${c.attributes.friendly_name ?? c.entity_id} ${c.attributes.temperature}°'de.` : `Niemand thuis en ${c.attributes.friendly_name ?? c.entity_id} staat op ${c.attributes.temperature}°.` });
+      const open = st.filter((x) => x.entity_id.startsWith("lock.") && x.state === "unlocked");
+      if (open.length && kind === "evening") items.push({ kind: "home", icon: "🔓", text: lang === "tr" ? `Kilitli değil: ${open.map((x) => x.attributes.friendly_name ?? x.entity_id).join(", ")}` : `Niet op slot: ${open.map((x) => x.attributes.friendly_name ?? x.entity_id).join(", ")}` });
+    } catch { /* HA niet bereikbaar */ }
+  }
   // conflicten
   const conf = conflictProposals(evs.filter((e) => !me || e.members.includes(me.id)), me ? [me] : members, lang);
   proposals.push(...conf.proposals);
@@ -216,8 +249,15 @@ export const ProposalInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("move_event"), eventId: z.string(), on: z.string(), newStart: z.string(), newEnd: z.string() }),
   z.object({ kind: z.literal("add_list"), items: z.array(z.string().min(1)).min(1) }),
   z.object({ kind: z.literal("remind"), text: z.string(), memberId: z.string().nullable() }),
+  z.object({ kind: z.literal("upkeep_event"), upkeepId: z.string(), date: z.string(), eventTitle: z.string(), memberId: z.string().nullable() }),
+  z.object({ kind: z.literal("ha_service"), domain: z.string(), service: z.string(), data: z.record(z.string(), z.unknown()) }),
 ]);
-export function applyProposal(p: z.infer<typeof ProposalInput>): { ok: true; message: string; topics: ("meals" | "events" | "lists")[] } {
+export async function applyProposal(p: z.infer<typeof ProposalInput>): Promise<{ ok: true; message: string; topics: ("meals" | "events" | "lists" | "home")[] }> {
+  if (p.kind === "upkeep_event") {
+    createEvent({ title: p.eventTitle, date: p.date, endDate: null, startTime: null, endTime: null, allDay: true, repeat: "none", repeatUntil: null, exdates: [], members: p.memberId ? [p.memberId] : [], location: "", notes: "", countdown: false } as never);
+    return { ok: true, message: `${p.eventTitle} staat in de agenda`, topics: ["events"] };
+  }
+  if (p.kind === "ha_service") { await HA.haCall(p.domain, p.service, p.data); return { ok: true, message: "Doorgegeven aan het huis", topics: [] }; }
   if (p.kind === "plan_meal") { S.setMeal(p.date, p.slot, p.recipe, p.recipeId); return { ok: true, message: `Gepland: ${p.recipe}`, topics: ["meals"] }; }
   if (p.kind === "move_event") {
     const ev = getEvent(p.eventId); if (!ev) throw new Error("Die afspraak bestaat niet meer.");
@@ -237,11 +277,23 @@ export function startManagerScheduler() {
     for (const h of all<{ id: string }>("SELECT id FROM households")) {
       await withCtx({ userId: "", householdId: h.id } as never, async () => {
         const s = getSettings(h.id);
+        // slim huis: nachtrust dimt het huis; afval- en medicatiemeldingen
+        if (s.sleep_from && s.sleep_from === hhmm && !sent.has(`${h.id}|${d}|sleep`)) { sent.add(`${h.id}|${d}|sleep`); void HA.runMoment("sleep", h.id); }
+        if (s.waste_notify && s.waste_notify === hhmm && !sent.has(`${h.id}|${d}|waste`)) {
+          sent.add(`${h.id}|${d}|waste`);
+          const fr = H.wasteOn(addDays(d, 1), h.id);
+          if (fr.length) { const lang = s.language === "tr" ? "tr" : "nl"; await pushToUsers(usersFor(h.id, []), { title: lang === "tr" ? "Çöpü dışarı koy ♻️" : "Afval buitenzetten ♻️", body: fr.map((f) => `${H.fractionIcon(f)} ${H.fractionLabel(f, lang)}`).join(", "), tag: "waste", url: "/#today" }); }
+        }
+        for (const m of H.medicationOn(d, h.id)) for (const tm of m.timesList) {
+          const key = `${h.id}|${d}|med|${m.id}|${tm}`;
+          if (tm === hhmm && !sent.has(key)) { sent.add(key); await pushToUsers(usersFor(h.id, [m.memberId]), { title: `💊 ${m.title}`, body: s.language === "tr" ? `${tm} — ilaç zamanı` : `${tm} — tijd voor je medicatie`, tag: `med-${m.id}`, url: "/#today" }); }
+        }
         if (s.briefing_push !== "1") return;
         for (const kind of ["morning", "evening"] as const) {
           const at = kind === "morning" ? s.briefing_morning : s.briefing_evening;
           if (!at || at !== hhmm) continue;
           const key = `${h.id}|${d}|${kind}`; if (sent.has(key)) continue; sent.add(key);
+          if (kind === "morning") void HA.runMoment("morning", h.id);
           broadcastTo(h.id, ["settings"]); // hubs verversen de briefingkaart
           const rows = all<{ user_id: string; member_id: string | null }>("SELECT user_id, member_id FROM household_users WHERE household_id=?", h.id);
           for (const r of rows) {

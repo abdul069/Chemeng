@@ -32,8 +32,8 @@ test("manager: briefing met afspraken, overlappende afspraken als voorstel, maal
     assert.ok(evening.narration.includes("Zwemles"), "de sjabloontekst noemt de afspraak");
 
     // voorstellen uitvoeren
-    if (move && move.kind === "move_event") applyProposal({ kind: "move_event", eventId: move.eventId, on: move.on, newStart: move.newStart, newEnd: move.newEnd });
-    if (meal && meal.kind === "plan_meal") applyProposal({ kind: "plan_meal", date: meal.date, slot: meal.slot, recipeId: meal.recipeId, recipe: meal.recipe });
+    if (move && move.kind === "move_event") await applyProposal({ kind: "move_event", eventId: move.eventId, on: move.on, newStart: move.newStart, newEnd: move.newEnd });
+    if (meal && meal.kind === "plan_meal") await applyProposal({ kind: "plan_meal", date: meal.date, slot: meal.slot, recipeId: meal.recipeId, recipe: meal.recipe });
     const after = await buildBriefing("evening", today, kid.id);
     assert.equal(after.conflicts, 0, "na het verzetten geen overlap meer");
     assert.ok(!after.proposals.some((p) => p.kind === "plan_meal"), "avondeten staat gepland, geen voorstel meer");
