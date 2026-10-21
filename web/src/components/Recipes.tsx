@@ -12,7 +12,8 @@ import { PhotoPicker } from "./PhotoPicker";
 import { DSHORT, addDays, todayIso, weekday, shortDate } from "../dates";
 import { parseServings, scaleLine } from "../portions";
 import { CookMode } from "./CookMode";
-import { RecipeCalories } from "./RecipeCalories";
+import { NutritionBlock } from "./RecipeCalories";
+import { ingredientIcon, splitIngredient } from "../ingredients";
 
 import { CATS, catLabel } from "../categories";
 import { t } from "../i18n";
@@ -123,9 +124,9 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
         {recipe.category && <span className="badge">{catLabel(recipe.category)}</span>}
         {recipe.cooked > 0 && <span className="badge">🍳 {recipe.cooked}× gekookt</span>}
         <button className={`badge favbtn${recipe.favorite ? " on" : ""}`} aria-pressed={recipe.favorite} onClick={() => act(() => api.put(`/recipes/${recipe.id}/favorite`, { favorite: !recipe.favorite }), recipe.favorite ? t("Niet meer bij de lievelingen") : t("Bij de lievelingen ★"))}>{recipe.favorite ? t("★ Lieveling") : t("☆ Lieveling")}</button>
-        <RecipeCalories recipeId={recipe.id} servingsShown={servings} />
         {recipe.sourceUrl && <a className="linkbtn" href={recipe.sourceUrl} target="_blank" rel="noreferrer">Bron: {new URL(recipe.sourceUrl).hostname.replace(/^www\./, "")} ↗</a>}
       </div>
+      <NutritionBlock recipeId={recipe.id} ingredients={`${recipe.ingredients}\n${recipe.original?.ingredients ?? ""}`} />
       <div className="actions" style={{ justifyContent: "flex-start" }}>
         <button className="btn accent" onClick={() => setPlan(true)}>{t("📅 Inplannen")}</button>
         {steps.length > 0 && <button className="btn" onClick={() => setCook(true)}>{t("👩‍🍳 Kookmodus")}</button>}
@@ -142,7 +143,8 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
           {ingredients.map((x, i) => (
             <label key={i} className={`ingr-row${skip.has(i) ? t(" have") : ""}`}>
               <input type="checkbox" checked={!skip.has(i)} onChange={() => toggle(i)} />
-              <span>{x}</span>
+              <span className="ingr-ic" aria-hidden>{ingredientIcon(x)}</span>
+              <span className="ingr-txt"><b>{splitIngredient(x).name}</b>{splitIngredient(x).amount && <small>{splitIngredient(x).amount}</small>}</span>
             </label>
           ))}
           {!ingredients.length && <p className="hint">{t("Geen ingrediënten ingevuld.")}</p>}
@@ -167,7 +169,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
   );
 }
 
-function PlanRecipe({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
+export function PlanRecipe({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
   const act = useAction();
   const [date, setDate] = useState(todayIso());
   const [slot, setSlot] = useState<Slot>("diner");

@@ -5,6 +5,7 @@ import { Avatar, Modal, cvar } from "./ui";
 import { todayIso } from "../dates";
 import { t as tr } from "../i18n";
 import type { Slot } from "../types";
+import { allergensOf } from "../ingredients";
 
 interface Macros { kcal: number; protein: number; carbs: number; fat: number }
 const DEFAULT_SLOT = (): Slot => { const h = new Date().getHours(); return h < 10 ? "ontbijt" : h < 14 ? "lunch" : h < 17 ? "snack" : "diner"; };
@@ -17,7 +18,7 @@ export function useNutrition(recipeId: string) {
   useEffect(() => { void load(); }, [recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
   return [n, load] as const;
 }
-export function RecipeCalories({ recipeId, servingsShown }: { recipeId: string; servingsShown: number }) {
+export function RecipeCalories({ recipeId, servingsShown, compact = false }: { recipeId: string; servingsShown: number; compact?: boolean }) {
   const { data, toast } = useData();
   const act = useAction();
   const [n, reload] = useNutrition(recipeId);
@@ -28,7 +29,7 @@ export function RecipeCalories({ recipeId, servingsShown }: { recipeId: string; 
   if (!n) return null;
   return (
     <>
-      <button className={`badge kcal${n.source === "manual" ? " manual" : ""}`} onClick={() => { setManual(n.manualKcal ? String(n.manualKcal) : ""); setOpen(true); }} title={tr("Calorieën per portie: tik voor details")}>🔥 {n.kcal} kcal/{tr("portie")}{n.source === "estimate" ? " ≈" : ""}</button>
+      <button className={`badge kcal${n.source === "manual" ? " manual" : ""}`} onClick={() => { setManual(n.manualKcal ? String(n.manualKcal) : ""); setOpen(true); }} title={tr("Calorieën per portie: tik voor details")}>{compact ? `ⓘ ${n.source === "estimate" ? tr("schatting") : tr("handmatig")}` : `🔥 ${n.kcal} kcal/${tr("portie")}${n.source === "estimate" ? " ≈" : ""}`}</button>
       <button className="badge" onClick={() => setLog(true)} title={tr("Zet dit recept in het dieetdagboek")}>📒 {tr("In dagboek")}</button>
       {n.forbidden.map((f) => <span key={f.memberId} className="badge warn" title={tr("Verboden ingrediënt volgens het profiel")}>⚠️ {tr("Niet voor {name}", { name: f.name })}: {f.hits.join(", ")}</span>)}
       {open && (
@@ -49,12 +50,37 @@ export function RecipeCalories({ recipeId, servingsShown }: { recipeId: string; 
       )}
       {log && (
         <Modal title={tr("In dagboek van…")} onClose={() => setLog(false)}>
-          <p className="hint">{tr("1 portie van dit recept wordt genoteerd op vandaag.")} {servingsShown !== n.servings ? tr("(Je bekijkt het recept voor {s} porties; per portie blijft gelijk.)", { s: servingsShown }) : ""}</p>
+          <p className="hint">{tr("1 portie van dit recept wordt genoteerd op vandaag.")} {servingsShown > 0 && servingsShown !== n.servings ? tr("(Je bekijkt het recept voor {s} porties; per portie blijft gelijk.)", { s: servingsShown }) : ""}</p>
           <div className="picks">
             {members.map((m) => <button key={m.id} className="pick pick-person" style={cvar(m.color)} onClick={async () => { const r = await act(() => api.post<{ entry: unknown; warning: string[] }>("/diet/log", { memberId: m.id, date: todayIso(), slot: DEFAULT_SLOT(), recipeId, portions: 1 }), tr("Genoteerd voor {name}", { name: m.name })); if (r?.warning.length) toast(tr("⚠️ Let op, {name} vermijdt: {w}", { name: m.name, w: r.warning.join(", ") })); setLog(false); }}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}
           </div>
         </Modal>
       )}
     </>
+  );
+}
+
+/** Zoals op het keukenscherm van Cozyla: voedingswaarde per portie, allergenen, en de knoppen voor dagboek en details. */
+export function NutritionBlock({ recipeId, ingredients }: { recipeId: string; ingredients: string }) {
+  const al = allergensOf(ingredients);
+  return (
+    <section className="nutri">
+      <div className="nutri-head"><h3>{tr("Voedingswaarde per portie")}</h3><RecipeCalories recipeId={recipeId} servingsShown={0} compact /></div>
+      <NutriRow recipeId={recipeId} />
+      {al.length > 0 && <div className="allergens"><span className="hint">{tr("Allergenen")}</span>{al.map((a) => <span key={a.key} className="allergen">{a.icon} {a.label}</span>)}</div>}
+    </section>
+  );
+}
+function NutriRow({ recipeId }: { recipeId: string }) {
+  const [n] = useNutrition(recipeId);
+  const v = n?.perServing;
+  const cell = (label: string, val: string) => <div className="nutri-cell"><small>{label}</small><b className="num">{val}</b></div>;
+  return (
+    <div className="nutri-row">
+      {cell(tr("Calorieën"), n ? `${n.kcal} kcal` : "…")}
+      {cell(tr("Koolhydraten"), v ? `${v.carbs} g` : "…")}
+      {cell(tr("Vet"), v ? `${v.fat} g` : "…")}
+      {cell(tr("Eiwit"), v ? `${v.protein} g` : "…")}
+    </div>
   );
 }

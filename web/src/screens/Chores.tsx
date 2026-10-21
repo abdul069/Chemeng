@@ -9,6 +9,10 @@ import { Celebration, ProfileModal, StarsRanking } from "../components/Profile";
 import { t } from "../i18n";
 
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
+type Moment = "ochtend" | "middag" | "avond" | "alles";
+const MOMENTS: [Moment, string, string][] = [["ochtend", "🌅", "Ochtend"], ["middag", "☀️", "Middag"], ["avond", "🌙", "Avond"], ["alles", "📋", "Alles"]];
+/** Het moment van de dag waar we nu in zitten: zo staat de juiste tab meteen open. */
+const nowMoment = (): Moment => { const h = new Date().getHours(); return h < 12 ? "ochtend" : h < 17 ? "middag" : "avond"; };
 
 export function ChoresScreen({ header }: { header: React.ReactNode }) {
   const { data } = useData();
@@ -21,6 +25,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const phone = useIsPhone();
   const [who, setWho] = useState<string | null>(null);
+  const [mom, setMom] = useState<Moment>(nowMoment);
   if (!data) return null;
   const set = new Set(done);
   const wd = weekday(date);
@@ -54,9 +59,12 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
           {(phone ? data.members.filter((m) => m.id === (who ?? data.members[0]?.id)) : data.members).map((m) => {
             const all = data.chores.filter((c) => c.memberId === m.id);
             const today = all.filter((c) => c.days.includes(wd));
+            const shown = mom === "alles" ? today : today.filter((c) => c.moment === mom || c.moment === "altijd");
             const n = today.filter((c) => set.has(`${date}|${c.id}`)).length;
+            const earned = today.filter((c) => set.has(`${date}|${c.id}`)).reduce((a, c) => a + c.points, 0);
+            const count = (k: Moment) => today.filter((c) => (k === "alles" ? true : c.moment === k || c.moment === "altijd") && !set.has(`${date}|${c.id}`)).length;
             return (
-              <section className="member-card" key={m.id} style={cvar(m.color)}>
+              <section className="member-card routine-card" key={m.id} style={cvar(m.color)}>
                 <header>
                   <button className="who" onClick={() => setProfile(m)} title={`Profiel van ${m.name}`}>
                     <Avatar m={m} size={44} dot={false} />
@@ -67,21 +75,36 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                 <div className="progress" role="progressbar" aria-valuenow={n} aria-valuemax={today.length} aria-label={`${n} van ${today.length} taken gedaan`}>
                   <i style={{ width: `${today.length ? (n / today.length) * 100 : 0}%` }} />
                 </div>
-                {today.map((c) => {
-                  const d = set.has(`${date}|${c.id}`);
-                  return (
-                    <div className={`task${d ? t(" done") : ""}`} key={c.id}>
-                      <button className="tico" aria-pressed={d} aria-label={`${c.title} ${d ? t("terug open zetten") : "afvinken"}`} onClick={() => toggle(c)}>{c.icon}</button>
-                      <span className="title">{c.title}{c.moment !== "altijd" && <small className="muted"> · {t(c.moment)}</small>}</span>
-                      {c.streak >= 2 && <span className="pts" title={t("dagen op rij")}>🔥{c.streak}</span>}
-                      <span className="pts">{c.points}⭐</span>
-                      <button className="iconbtn" style={{ width: 34, height: 34 }} aria-label={`${c.title} bewerken`} onClick={() => setEdit({ chore: c, memberId: m.id })}>✎</button>
-                    </div>
-                  );
-                })}
-                {!today.length && <p className="empty">{t("Niets te doen vandaag — geniet ervan! 🎈")}</p>}
+                <nav className="moments" aria-label={t("Moment van de dag")}>
+                  {MOMENTS.map(([k, ic, label]) => (
+                    <button type="button" key={k} className={`moment${mom === k ? " on" : ""}`} aria-pressed={mom === k} onClick={() => setMom(k)}>
+                      <span className="moment-ic">{ic}</span><small>{t(label)}</small>{count(k) > 0 && <i className="moment-n">{count(k)}</i>}
+                    </button>
+                  ))}
+                </nav>
+                <div className="rtasks">
+                  {shown.map((c) => {
+                    const d = set.has(`${date}|${c.id}`);
+                    return (
+                      <div className={`rtask${d ? " done" : ""}`} key={c.id}>
+                        <span className="rtask-ic" aria-hidden>{c.icon}</span>
+                        <button className="rtask-main" aria-label={`${c.title} bewerken`} onClick={() => setEdit({ chore: c, memberId: m.id })}>
+                          <b>{c.title}</b>
+                          <small>{c.points}⭐{c.streak >= 2 && <span title={t("dagen op rij")}> · 🔥{c.streak}</span>}{mom === "alles" && c.moment !== "altijd" && <span> · {t(c.moment)}</span>}</small>
+                        </button>
+                        <button className={`rcheck${d ? " on" : ""}`} aria-pressed={d} aria-label={`${c.title} ${d ? t("terug open zetten") : "afvinken"}`} onClick={() => toggle(c)}>{d && "✓"}</button>
+                      </div>
+                    );
+                  })}
+                  {!shown.length && today.length > 0 && <p className="empty">{t("Niets voor dit moment — alles al gedaan? 🎈")}</p>}
+                  {!today.length && <p className="empty">{t("Niets te doen vandaag — geniet ervan! 🎈")}</p>}
+                </div>
+                <footer className="rfoot">
+                  <span>⭐ {t("{n} sterren vandaag verdiend", { n: earned })}</span>
+                  <span className="muted">{n}/{today.length}</span>
+                  <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus />{" "}{t("Taak")}</button>
+                </footer>
                 {all.length > today.length && <p className="hint">{t("{n} andere taak/taken op andere dagen.", { n: all.length - today.length })}</p>}
-                <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus />{" "}{t("Taak")}</button>
               </section>
             );
           })}

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
-import type { Meal, Slot } from "../types";
+import type { Meal, Recipe, Slot } from "../types";
 import { Modal, useIsPhone } from "../components/ui";
 import { Icon } from "../components/Icons";
-import { RecipeCard, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
+import { PlanRecipe, RecipeEditor, RecipeImport, RecipeSearch, RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { LibraryBrowser } from "../components/LibraryBrowser";
 import { useNavParam } from "../nav";
 import { CATS, catName } from "../categories";
@@ -74,26 +74,27 @@ function WeekMenu() {
         }}>↗</button>
       </div>
       {phone && <div className="picks day-picks">{weekDays.map((d) => <button type="button" key={d} className={`pick${d === t ? " today" : ""}`} aria-pressed={d === shownDay} onClick={() => setDayPick(d)}>{DSHORT[weekday(d)]} {Number(d.slice(8))}</button>)}</div>}
-      <div style={{ overflowX: "auto", paddingBottom: 6 }}>
-        <div className="mealweek">
-          {(phone ? [shownDay] : weekDays).map((d) => {
-            return (
-              <section className={`mealday${d === t ? tr(" today") : ""}`} key={d}>
-                <h3>{DSHORT[weekday(d)]} {Number(d.slice(8))}{d === t ? tr(" · vandaag") : ""}</h3>
-                {SLOTS.map((s) => {
-                  const m = meals.find((x) => x.date === d && x.slot === s);
-                  const r = recipe(m?.recipeId ?? null);
-                  return (
-                    <button key={s} className={`slot${m ? tr(" filled") : ""}${m?.image ? tr(" has-img") : ""}`} onClick={() => (r ? openRecipe(r.id) : setSlot({ date: d, slot: s }))}
-                      onContextMenu={(e) => { e.preventDefault(); setSlot({ date: d, slot: s }); }}>
-                      {m?.image && <img className="slot-img" src={m.image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
-                      <span className="slot-txt"><small>{tr(SLOT_NAME[s])}{r ? tr(" · recept") : ""}</small>{(r ? recipeTitle(r) : m?.title) ?? <span className="muted">{tr("+ toevoegen")}</span>}</span>
-                    </button>
-                  );
-                })}
-              </section>
-            );
-          })}
+      <div className="mealgrid-wrap">
+        <div className={`mealgrid${phone ? " one" : ""}`}>
+          {!phone && <div className="mg-head"><span /> {SLOTS.map((s) => <span key={s} className="mg-slot">{tr(SLOT_NAME[s])}</span>)}</div>}
+          {(phone ? [shownDay] : weekDays).map((d) => (
+            <div className={`mg-row${d === t ? " today" : ""}`} key={d}>
+              <div className="mg-day"><b className="num">{Number(d.slice(8))}</b><span>{DSHORT[weekday(d)]}</span>{d === t && <small>{tr("vandaag")}</small>}</div>
+              {SLOTS.map((s) => {
+                const m = meals.find((x) => x.date === d && x.slot === s);
+                const r = recipe(m?.recipeId ?? null);
+                const title = (r ? recipeTitle(r) : m?.title) ?? "";
+                return (
+                  <button key={s} className={`mtile${m ? " filled" : ""}${m?.image ? " has-img" : ""}`} title={title || tr(SLOT_NAME[s])} aria-label={`${tr(SLOT_NAME[s])}: ${title || tr("+ toevoegen")}`}
+                    onClick={() => (r ? openRecipe(r.id) : setSlot({ date: d, slot: s }))} onContextMenu={(e) => { e.preventDefault(); setSlot({ date: d, slot: s }); }}>
+                    {m?.image ? <img src={m.image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={(e) => { const tile = e.currentTarget.parentElement; e.currentTarget.remove(); if (tile) { tile.classList.remove("has-img"); const ph = document.createElement("span"); ph.className = "mtile-ph"; ph.textContent = "🍲"; tile.prepend(ph); } }} /> : m ? <span className="mtile-ph">🍲</span> : <span className="mtile-plus">+</span>}
+                    {phone && <small className="mtile-slot">{tr(SLOT_NAME[s])}</small>}
+                    {m && <span className="mtile-title">{title}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
       <p className="hint">{tr("Tik op een gerecht met recept om het te openen. Lang indrukken om het te wijzigen.")}</p>
@@ -152,13 +153,17 @@ function Library() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string | null>(null); // "fav" | "often" | categorie
   const [modal, setModal] = useState<"search" | "import" | "new" | null>(null);
+  const [planFor, setPlanFor] = useState<Recipe | null>(null);
+  const wk = startOfWeek(todayIso(), Number(data?.settings.week_start ?? 1));
+  const [weekMeals] = useRemote<Meal[]>(`/meals?from=${wk}&to=${addDays(wk, 6)}`, ["meals"], []);
+  const plannedIds = new Set(weekMeals.map((m) => m.recipeId).filter((x): x is string => !!x));
   const [view, setView] = useState<"mine" | "all">(() => { try { if (sessionStorage.getItem("gb.lib") !== null) return "all"; } catch { /* */ } return (data?.recipes.length ?? 0) ? "mine" : "all"; });
   useNavParam("lib", () => setView("all"));
   const recipes = data?.recipes ?? [];
   const cats = [...new Set(recipes.map((r) => r.category).filter(Boolean))];
   const hasFav = recipes.some((r) => r.favorite), hasOften = recipes.some((r) => r.cooked >= 2);
   const shown = recipes.filter((r) =>
-    (!filter || (filter === "fav" ? r.favorite : filter === "often" ? r.cooked >= 2 : r.category === filter)) &&
+    (!filter || (filter === "fav" ? r.favorite : filter === "often" ? r.cooked >= 2 : filter === "planned" ? plannedIds.has(r.id) : r.category === filter)) &&
     (!q || `${r.title}\n${r.ingredients}`.toLocaleLowerCase("tr").includes(q.toLocaleLowerCase("tr"))))
     .sort((a, b) => (filter === "often" ? b.cooked - a.cooked : Number(b.favorite) - Number(a.favorite) || a.title.localeCompare(b.title)));
   return (
@@ -168,25 +173,39 @@ function Library() {
         <button role="tab" aria-pressed={view === "all"} onClick={() => setView("all")}>{tr("🇹🇷 Alle Turkse recepten")}</button>
       </div>
       {view === "all" ? <LibraryBrowser /> : <>
-      <div className="lib-actions">
-        <button className="btn accent" onClick={() => setModal("search")}>{tr("🔎 Turkse recepten zoeken")}</button>
-        <button className="btn ghost" onClick={() => setModal("import")}>{tr("🔗 Via link toevoegen")}</button>
-        <button className="btn ghost" onClick={() => setModal("new")}>{tr("✍️ Eigen recept")}</button>
-        {recipes.some((r) => !r.image) && <button className="btn ghost" onClick={() => act(() => api.post("/dish-photos/fill"), tr("Foto's worden gezocht…"))}>{tr("📷 Ontbrekende foto's zoeken")}</button>}
-      </div>
-      <div className="addrow">
-        <input id="lib-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Zoek in je {n} recepten, ook op ingrediënt", { n: recipes.length })} aria-label={tr("Zoek in de bibliotheek")} />
-      </div>
-      {(hasFav || hasOften || cats.length > 0) && (
-        <div className="picks catrow">
-          <button className="pick" aria-pressed={!filter} onClick={() => setFilter(null)}>{tr("Alles")}{" "}<small className="muted">{recipes.length}</small></button>
-          {hasFav && <button className="pick" aria-pressed={filter === "fav"} onClick={() => setFilter("fav")}>{tr("★ Lievelingen")}</button>}
-          {hasOften && <button className="pick" aria-pressed={filter === "often"} onClick={() => setFilter("often")}>{tr("🍳 Onze klassiekers")}</button>}
-          {cats.map((c) => <button key={c} className="pick" aria-pressed={filter === c} onClick={() => setFilter(c)}>{CATS[c]?.icon} {catName(c)} <small className="muted">{recipes.filter((r) => r.category === c).length}</small></button>)}
+      <div className="libbox">
+        <nav className="libnav" aria-label={tr("Categorieën")}>
+          {hasOften && <button className={filter === "often" ? "on" : ""} onClick={() => setFilter("often")}><span className="libnav-ic">🕒</span><span>{tr("Vaak gekozen")}</span></button>}
+          <button className={!filter ? "on" : ""} onClick={() => setFilter(null)}><span className="libnav-ic">🍽️</span><span>{tr("Alles")}</span><small>{recipes.length}</small></button>
+          <button className={filter === "planned" ? "on" : ""} onClick={() => setFilter("planned")}><span className="libnav-ic">📅</span><span>{tr("Mijn maaltijden")}</span>{plannedIds.size > 0 && <small>{plannedIds.size}</small>}</button>
+          {hasFav && <button className={filter === "fav" ? "on" : ""} onClick={() => setFilter("fav")}><span className="libnav-ic">♡</span><span>{tr("Lievelingen")}</span></button>}
+          {cats.map((c) => <button key={c} className={filter === c ? "on" : ""} onClick={() => setFilter(c)}><span className="libnav-ic">{CATS[c]?.icon ?? "🍲"}</span><span>{catName(c)}</span><small>{recipes.filter((r) => r.category === c).length}</small></button>)}
+        </nav>
+        <div className="libmain">
+          <div className="addrow libsearch">
+            <Icon.search />
+            <input id="lib-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("Zoek recepten…")} aria-label={tr("Zoek in de bibliotheek")} />
+          </div>
+          <div className="lib-actions">
+            <button className="btn ghost" onClick={() => setModal("import")}>🔗 {tr("Recept importeren")}</button>
+            <button className="btn" onClick={() => setModal("new")}>+ {tr("Recept maken")}</button>
+            <button className="btn ghost" onClick={() => setModal("search")}>🇹🇷 {tr("Turkse recepten zoeken")}</button>
+            {recipes.some((r) => !r.image) && <button className="btn ghost small" onClick={() => act(() => api.post("/dish-photos/fill"), tr("Foto's worden gezocht…"))}>📷 {tr("Foto's zoeken")}</button>}
+          </div>
+          <div className="rlist">
+            {shown.map((r) => (
+              <div key={r.id} className="rrow">
+                <button className="rrow-main" onClick={() => openRecipe(r.id)}>
+                  <RecipeThumb r={r} size={64} />
+                  <span className="rrow-txt"><b>{r.favorite ? "★ " : ""}{recipeTitle(r)}</b><small>{[r.minutes ? `${r.minutes} min` : null, r.category ? catName(r.category) : null, r.cooked ? tr("{n}× gekookt", { n: r.cooked }) : null, plannedIds.has(r.id) ? tr("deze week gepland") : null].filter(Boolean).join(" · ")}</small></span>
+                </button>
+                <button className="iconbtn rrow-plus" aria-label={tr("Inplannen")} title={tr("Inplannen")} onClick={() => setPlanFor(r)}>+</button>
+              </div>
+            ))}
+          </div>
+          {planFor && <PlanRecipe recipe={planFor} onClose={() => setPlanFor(null)} />}
         </div>
-      )}
-      <div className="rgrid">{shown.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => openRecipe(r.id)} />)}</div>
-      {!recipes.length && <p className="empty">{tr("Je eigen bibliotheek is nog leeg. Blader door")}{" "}<button className="linkbtn" onClick={() => setView("all")}>{tr("alle Turkse recepten")}</button>{" "}{tr("of plak de link van een recept dat je lekker vindt.")}</p>}
+      </div>
       {recipes.length > 0 && !shown.length && <p className="empty">Geen recepten gevonden voor “{q}”.</p>}
       </>}
       {modal === "search" && <RecipeSearch onClose={() => setModal(null)} />}
