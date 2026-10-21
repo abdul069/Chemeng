@@ -483,3 +483,53 @@ export const avoidWords = (h = hid()) => [...new Set(listMembers(h).flatMap((m) 
 /** Welke te vermijden woorden in deze ingrediënten voorkomen. */
 const wordRe = (w: string) => new RegExp(`(^|[^\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=[^\\p{L}]|$)`, "iu");
 export const dietHits = (ingredients: string, words = avoidWords()) => { const t = ingredients.toLocaleLowerCase("tr"); return words.filter((w) => wordRe(w).test(t)); };
+
+// ---------- toestellen en prikbord ----------
+export const DeviceInput = z.object({
+  name: z.string().trim().min(1).max(60),
+  role: z.enum(["hub", "phone"]),
+  variant: z.string().max(20).default(""),
+  platform: z.string().max(40).default(""),
+  memberId: z.string().nullable().optional(),
+});
+export interface DeviceRow { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
+export function upsertDevice(id: string, userId: string, i: z.infer<typeof DeviceInput>, h = hid()) {
+  run(
+    `INSERT INTO devices(id, household_id, user_id, member_id, name, role, variant, platform, last_seen) VALUES (?,?,?,?,?,?,?,?, datetime('now'))
+     ON CONFLICT(id) DO UPDATE SET household_id=excluded.household_id, user_id=excluded.user_id, member_id=excluded.member_id, name=excluded.name, role=excluded.role, variant=excluded.variant, platform=excluded.platform, last_seen=datetime('now')`,
+    id, h, userId, i.memberId ?? null, i.name, i.role, i.variant, i.platform,
+  );
+}
+export function touchDevice(id: string, h = hid()) { run("UPDATE devices SET last_seen=datetime('now') WHERE id=? AND household_id=?", id, h); }
+export function listDevices(h = hid()): DeviceRow[] {
+  return all<{ id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; member_id: string | null; user_id: string | null; last_seen: string }>(
+    "SELECT id, name, role, variant, platform, member_id, user_id, last_seen FROM devices WHERE household_id=? ORDER BY (role='hub') DESC, last_seen DESC", h,
+  ).map((d) => ({ id: d.id, name: d.name, role: d.role, variant: d.variant, platform: d.platform, memberId: d.member_id, userId: d.user_id, lastSeen: d.last_seen, online: Date.now() - Date.parse(d.last_seen + "Z") < 3 * 60_000 }));
+}
+export function deleteDevice(id: string, h = hid()) { run("DELETE FROM devices WHERE id=? AND household_id=?", id, h); }
+
+export const NOTE_COLORS = ["geel", "roze", "blauw", "groen", "paars", "oranje"] as const;
+export const NoteInput = z.object({
+  text: z.string().trim().min(1).max(500),
+  color: z.enum(NOTE_COLORS).default("geel"),
+  memberId: z.string().nullable().optional(),
+  pinned: z.boolean().default(false),
+});
+export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
+export function listNotes(h = hid()): Note[] {
+  return all<{ id: string; text: string; color: string; member_id: string | null; pinned: number; created_at: string }>(
+    "SELECT id, text, color, member_id, pinned, created_at FROM notes WHERE household_id=? ORDER BY pinned DESC, created_at DESC", h,
+  ).map((n) => ({ id: n.id, text: n.text, color: n.color, memberId: n.member_id, pinned: !!n.pinned, createdAt: n.created_at }));
+}
+export function createNote(i: z.infer<typeof NoteInput>, h = hid()) {
+  const id = newId();
+  run("INSERT INTO notes(id, household_id, member_id, text, color, pinned) VALUES (?,?,?,?,?,?)", id, h, i.memberId ?? null, i.text, i.color, i.pinned ? 1 : 0);
+  return id;
+}
+export function updateNote(id: string, i: Partial<z.infer<typeof NoteInput>>, h = hid()) {
+  const cur = get<{ text: string; color: string; member_id: string | null; pinned: number }>("SELECT text, color, member_id, pinned FROM notes WHERE id=? AND household_id=?", id, h);
+  if (!cur) return false;
+  run("UPDATE notes SET text=?, color=?, member_id=?, pinned=? WHERE id=?", i.text ?? cur.text, i.color ?? cur.color, i.memberId === undefined ? cur.member_id : i.memberId, (i.pinned ?? !!cur.pinned) ? 1 : 0, id);
+  return true;
+}
+export function deleteNote(id: string, h = hid()) { run("DELETE FROM notes WHERE id=? AND household_id=?", id, h); }

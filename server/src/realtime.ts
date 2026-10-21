@@ -5,7 +5,7 @@ import { sessionFromCookie } from "./auth.js";
 import { viewersOfHousehold } from "./accounts.js";
 import { hid } from "./db.js";
 
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes";
 
 const sockets = new Map<WebSocket, { userId: string; householdId: string | null }>();
 
@@ -36,6 +36,12 @@ export function broadcastTo(householdId: string, topics: Topic[]) {
     const viewers = new Set(viewersOfHousehold(householdId));
     if (viewers.size) send((s) => viewers.has(s.userId) && s.householdId !== householdId, ["events", "sharing"]);
   }
+}
+
+/** Een gericht bericht aan het gezin, bv. "toon dit recept op het keukenscherm". Elk toestel kijkt zelf of het voor hem is. */
+export function castTo(householdId: string, cast: { to: string | null; kind: string; value: string; from: string | null }) {
+  const msg = JSON.stringify({ type: "cast", ...cast });
+  sockets.forEach((s, c) => { if (c.readyState === WebSocket.OPEN && s.householdId === householdId) c.send(msg); });
 }
 
 /** Meldt een wijziging aan het gezin van het huidige verzoek. */

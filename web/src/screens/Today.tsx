@@ -9,6 +9,7 @@ import { Icon } from "../components/Icons";
 import { addDays, cap, clock, greeting, longDate, todayIso } from "../dates";
 import type { PrayerDay } from "../types";
 import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
+import { PrikbordWidget } from "../components/Prikbord";
 import { t as tr } from "../i18n";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
@@ -100,6 +101,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           <div className="widget-h"><h2>{tr("Taken vandaag")}</h2><button className="linkbtn" onClick={() => goto("chores")}>{tr("Alles")}</button></div>
           <ChoreTracker date={t} grouped={false} compact />
         </section>
+        <PrikbordWidget max={3} />
         {!!data?.countdowns.length && (
           <section className="glass widget-sm">
             <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>

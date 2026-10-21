@@ -309,6 +309,29 @@ CREATE TABLE IF NOT EXISTS memos (
   seconds INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- toestellen van het gezin: het wandscherm of tafelmodel (hub) en de telefoons (companion)
+CREATE TABLE IF NOT EXISTS devices (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'phone',
+  variant TEXT NOT NULL DEFAULT '',
+  platform TEXT NOT NULL DEFAULT '',
+  last_seen TEXT NOT NULL DEFAULT (datetime('now')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- prikbord: briefjes voor het hele gezin
+CREATE TABLE IF NOT EXISTS notes (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+  text TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT 'geel',
+  pinned INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 
 type Row = Record<string, unknown>;

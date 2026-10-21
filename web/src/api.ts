@@ -1,4 +1,4 @@
-import type { Topic } from "./types";
+import type { Cast, Topic } from "./types";
 
 export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); }
@@ -36,10 +36,13 @@ export const photoUrl = (filename: string) => `/api/photos/file/${encodeURICompo
 type Listener = (topics: Topic[]) => void;
 const listeners = new Set<Listener>();
 export const onChanged = (fn: Listener) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
+const castListeners = new Set<(c: Cast) => void>();
+/** Luister naar "cast"-berichten: een ander toestel wil iets op dit scherm tonen. */
+export const onCast = (fn: (c: Cast) => void) => { castListeners.add(fn); return () => { castListeners.delete(fn); }; };
 let online = (_: boolean) => {};
 export const onConnection = (fn: (ok: boolean) => void) => { online = fn; };
 
-const ALL: Topic[] = ["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards", "access", "sharing", "memos"];
+const ALL: Topic[] = ["members", "events", "chores", "meals", "recipes", "lists", "photos", "calendars", "settings", "rewards", "access", "sharing", "memos", "devices", "notes"];
 
 /** Houdt een websocket open en herverbindt automatisch. */
 let current: WebSocket | null = null;
@@ -54,6 +57,7 @@ export function connectRealtime() {
       try {
         const msg = JSON.parse(m.data);
         if (msg.type === "changed") listeners.forEach((l) => l(msg.topics));
+        if (msg.type === "cast") castListeners.forEach((l) => l(msg as Cast));
         // na een herverbinding alles opnieuw ophalen
         if (msg.type === "hello") listeners.forEach((l) => l(ALL));
       } catch { /* negeren */ }

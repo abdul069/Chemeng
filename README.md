@@ -4,6 +4,20 @@ Een slim gezinsscherm voor in de keuken: één groot touchscreen (of een tablet 
 gezinskalender, taken, maaltijden, lijsten, een fotolijst en een AI-assistent waarmee je kunt praten.
 Telefoons van het gezin openen dezelfde app en zien alle wijzigingen meteen.
 
+## Eén platform, twee gezichten: hub en telefoon-app
+
+Gezinsbord 2.0 is één codebasis en één server met twee ervaringen. Bij de eerste start vraagt elk toestel wat het is:
+
+| Toestel | Rol | Wat je krijgt |
+|---|---|---|
+| **Wandscherm** of **tafelmodel** | hub | Het gedeelde keukenscherm van het gezin: het Bord met de dag per gezinslid, eten, taken, prikbord en aftellers; grotere tikdoelen, fotolijst na inactiviteit, nachtrust, ezan. Ontvangt wat telefoons ernaartoe sturen. |
+| **Telefoon** (Android-app of PWA) | companion | Persoonlijke app: **Mijn dag** met jouw afspraken, jouw taken (afvinken), eten van vandaag, snel iets op de boodschappenlijst, het prikbord en een afstandsbediening voor het keukenscherm. Onderaan vijf tabbladen; Instellingen zit bij Apps. |
+
+- **Toestellen** (Instellingen → Toestellen): alle hubs en telefoons van het gezin met online-status; wijzig de rol van dit toestel of van wie de telefoon is. **Telefoon koppelen** toont een QR-code met een eenmalige uitnodiging: camera erop richten, aanmelden, "Mijn telefoon" kiezen, klaar.
+- **Cast naar het keukenscherm**: vanaf de telefoon een recept openen op het wandscherm ("📺 Op keukenscherm"), het Bord tonen, of een berichtje sturen dat 20 seconden groot op het scherm verschijnt ("Ik ben om 18u thuis 🚗"). Gaat via de bestaande websocket (`POST /api/cast`); het scherm wordt wakker uit de fotolijst of nachtrust.
+- **Prikbord**: gekleurde briefjes voor het hele gezin (met afzender en 📌 vastprikken), als widget op het Bord en Mijn dag en als volledige app onder Apps. Live op elk toestel.
+- De keuze van de rol staat op het toestel (`localStorage`), de server houdt het register bij (`devices`) zodat toestellen elkaar vinden.
+
 ## Taal: Nederlands of Turks
 
 Bij Instellingen → Taal kies je Nederlands of Türkçe voor de hele app: menu's, knoppen, datums, feestdagen en de assistent (die dan in het Turks antwoordt). In het Turks blijven recepten in het Turks (het origineel), tonen de bibliotheek en de receptkaarten Turkse titels, en wordt de Koran-vertaling Turks (Diyanet).

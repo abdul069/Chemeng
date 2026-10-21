@@ -9,7 +9,7 @@ import {
   EventInput, countdowns, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
 } from "./events.js";
 import * as S from "./store.js";
-import { broadcast, broadcastTo, notifyUsers } from "./realtime.js";
+import { broadcast, broadcastTo, notifyUsers, castTo } from "./realtime.js";
 import { getWeather, geocode } from "./weather.js";
 import { syncAll, syncCalendar } from "./ics.js";
 import { chat, assistantAvailable, MODEL } from "./assistant.js";
@@ -286,6 +286,32 @@ api.get("/bootstrap", (req, res) => {
     build: process.env.GB_BUILD || null,
   });
 });
+
+// ---------- toestellen (wandscherm, tafelmodel, telefoons) en cast ----------
+api.get("/devices", (_req, res) => { res.json(S.listDevices()); });
+api.put("/devices/:id", (req, res) => {
+  const id = p(req);
+  if (!/^[a-zA-Z0-9_-]{8,64}$/.test(id)) return void res.status(400).json({ error: "Ongeldig toestel-id" });
+  S.upsertDevice(id, req.session!.user.id, S.DeviceInput.parse(req.body));
+  res.json({ ok: true });
+  broadcast("devices");
+});
+api.post("/devices/:id/ping", (req, res) => { S.touchDevice(p(req)); res.json({ ok: true }); });
+api.delete("/devices/:id", (req, res) => { S.deleteDevice(p(req)); res.json({ ok: true }); broadcast("devices"); });
+/** Iets op een ander toestel tonen: een recept, een scherm of een berichtje. to = toestel-id, of null voor alle hubs. */
+api.post("/cast", (req, res) => {
+  const b = z.object({ to: z.string().nullable().default(null), kind: z.enum(["recipe", "screen", "message", "note"]), value: z.string().max(500), from: z.string().nullable().default(null) }).parse(req.body);
+  const hubs = S.listDevices().filter((d) => d.role === "hub" && d.online);
+  if (b.to === null && !hubs.length) return void res.status(409).json({ error: "Er is nu geen keukenscherm online." });
+  castTo(hid(), b);
+  res.json({ ok: true, hubs: b.to ? 1 : hubs.length });
+});
+
+// ---------- prikbord ----------
+api.get("/notes", (_req, res) => { res.json(S.listNotes()); });
+api.post("/notes", (req, res) => { res.json({ id: S.createNote(S.NoteInput.parse(req.body)) }); broadcast("notes"); });
+api.put("/notes/:id", (req, res) => { if (!S.updateNote(p(req), S.NoteInput.partial().parse(req.body))) return void res.status(404).json({ error: "Briefje niet gevonden" }); res.json({ ok: true }); broadcast("notes"); });
+api.delete("/notes/:id", (req, res) => { S.deleteNote(p(req)); res.json({ ok: true }); broadcast("notes"); });
 
 // ---------- toegang tot het gezin ----------
 api.get("/household/users", (_req, res) => {

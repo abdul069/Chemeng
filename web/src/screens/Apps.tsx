@@ -12,13 +12,15 @@ const PrayerApp = lazyRetry(() => import("../components/Prayer").then((m) => ({ 
 const QuranApp = lazyRetry(() => import("../components/Quran").then((m) => ({ default: m.QuranApp })));
 const LearnApp = lazyRetry(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
 const DietApp = lazyRetry(() => import("../components/Diet").then((m) => ({ default: m.DietApp })));
+const PrikbordApp = lazyRetry(() => import("../components/Prikbord").then((m) => ({ default: m.PrikbordApp })));
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
-export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn" | "diet";
+export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn" | "diet" | "notes";
 
-interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals"; domain?: string }
+interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals" | "settings"; domain?: string }
 const TILES: Tile[] = [
+  { id: "notes", label: "Prikbord", icon: "📌", color: "#fff6c9", view: "notes" },
   { id: "photos", label: "Foto's", icon: "🖼️", color: "#e9f6f4", view: "photos" },
   { id: "weather", label: "Weer", icon: "⛅", color: "#eaf2fd", view: "weather" },
   { id: "clock", label: "Klok & timers", icon: "⏰", color: "#fdf1e6", view: "clock" },
@@ -38,12 +40,14 @@ const TILES: Tile[] = [
   { id: "disney", label: "Disney+", icon: "✨", color: "#fff", href: "https://www.disneyplus.com", domain: "disneyplus.com" },
   { id: "whatsapp", label: "WhatsApp", icon: "💬", color: "#fff", href: "https://web.whatsapp.com", domain: "whatsapp.com" },
   { id: "news", label: "Nieuws", icon: "📰", color: "#eef0f3", href: "https://www.vrt.be/vrtnws/nl/" },
+  { id: "settings", label: "Instellingen", icon: "⚙️", color: "#eef0f3", goto: "settings" },
 ];
 
-export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }: {
-  header: (title: string, back?: () => void) => React.ReactNode; view: AppView; setView: (v: AppView) => void; gotoMeals: () => void; startSlideshow: () => void;
+export function AppsScreen({ header, view, setView, gotoMeals, gotoSettings, startSlideshow }: {
+  header: (title: string, back?: () => void) => React.ReactNode; view: AppView; setView: (v: AppView) => void; gotoMeals: () => void; gotoSettings: () => void; startSlideshow: () => void;
 }) {
   const back = () => setView("grid");
+  if (view === "notes") return <><div className="topbar">{header(tr("Prikbord"), back)}</div><Suspense fallback={<p className="empty">…</p>}><PrikbordApp /></Suspense></>;
   if (view === "photos") return <Suspense fallback={<p className="empty">…</p>}><PhotosScreen header={header(tr("Foto's"), back)} startSlideshow={startSlideshow} /></Suspense>;
   if (view === "weather") return <><div className="topbar">{header(tr("Weer"), back)}</div><WeatherApp /></>;
   if (view === "clock") return <><div className="topbar">{header(tr("Klok & timers"), back)}</div><ClockApp /></>;
@@ -52,12 +56,12 @@ export function AppsScreen({ header, view, setView, gotoMeals, startSlideshow }:
   if (view === "learn") return <><div className="topbar">{header(tr("Leren & spelen (kids)"), back)}</div><Suspense fallback={<p className="empty">…</p>}><LearnApp /></Suspense></>;
   if (view === "diet") return <><div className="topbar">{header(tr("Dieet & calorieën"), back)}</div><Suspense fallback={<p className="empty">…</p>}><DietApp /></Suspense></>;
   if (view === "quran") return <><div className="topbar">{header(tr("Koran"), back)}</div><Suspense fallback={<p className="empty">…</p>}><QuranApp /></Suspense></>;
-  return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} />;
+  return <AppGrid header={header} setView={setView} gotoMeals={gotoMeals} gotoSettings={gotoSettings} />;
 }
 
 const fold = (s: string) => s.toLocaleLowerCase("nl").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-function AppGrid({ header, setView, gotoMeals }: { header: (title: string) => React.ReactNode; setView: (v: AppView) => void; gotoMeals: () => void }) {
+function AppGrid({ header, setView, gotoMeals, gotoSettings }: { header: (title: string) => React.ReactNode; setView: (v: AppView) => void; gotoMeals: () => void; gotoSettings: () => void }) {
   const [q, setQ] = useState("");
   const tiles = q.trim() ? TILES.filter((t) => fold(tr(t.label)).includes(fold(q.trim()))) : TILES;
   return (
@@ -76,7 +80,7 @@ function AppGrid({ header, setView, gotoMeals }: { header: (title: string) => Re
               <span className="app-ic">{t.domain ? <BrandIcon domain={t.domain} fallback={t.icon} /> : OWN_ICONS[t.id] ?? t.icon}</span><span>{tr(t.label)}</span>
             </a>
           ) : (
-            <button key={t.id} className="app" onClick={() => (t.goto ? gotoMeals() : setView(t.view!))}>
+            <button key={t.id} className="app" onClick={() => (t.goto === "settings" ? gotoSettings() : t.goto ? gotoMeals() : setView(t.view!))}>
               <span className="app-ic">{OWN_ICONS[t.id] ?? t.icon}</span><span>{tr(t.label)}</span>
             </button>
           ))}

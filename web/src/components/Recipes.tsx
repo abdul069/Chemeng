@@ -16,6 +16,7 @@ import { NutritionBlock } from "./RecipeCalories";
 import { ingredientIcon, splitIngredient } from "../ingredients";
 
 import { CATS, catLabel } from "../categories";
+import { cast, getDevice } from "../device";
 import { t } from "../i18n";
 
 const LANG: Record<string, string> = { tr: "Türkçe", nl: "Nederlands", en: "English", fr: "Français", ar: "العربية", de: t("Deutsch") };
@@ -130,6 +131,7 @@ export function RecipeDetail({ recipe, onClose }: { recipe: Recipe; onClose: () 
       <div className="actions" style={{ justifyContent: "flex-start" }}>
         <button className="btn accent" onClick={() => setPlan(true)}>{t("📅 Inplannen")}</button>
         {steps.length > 0 && <button className="btn" onClick={() => setCook(true)}>{t("👩‍🍳 Kookmodus")}</button>}
+        {getDevice().role === "phone" && <button className="btn ghost" title={t("Toon dit recept op het keukenscherm")} onClick={async () => { const r = await act(() => cast("recipe", recipe.id)); if (r) toast(t("Staat op het keukenscherm 📺")); }}>{t("📺 Op keukenscherm")}</button>}
         <button className="btn ghost" title={t("Recept delen (WhatsApp, sms…)")} onClick={async () => {
           const text = `${version.title}\n\n${t("Ingrediënten")}:\n${ingredients.map((x) => `• ${x}`).join("\n")}\n\n${t("Bereiding")}:\n${steps.map((x, i) => `${i + 1}. ${x.replace(/^\d+[.)]\s*/, "")}`).join("\n")}${recipe.sourceUrl ? `\n\n${recipe.sourceUrl}` : ""}`;
           try { if (navigator.share) await navigator.share({ title: version.title, text }); else { await navigator.clipboard.writeText(text); toast(t("Recept gekopieerd")); } } catch { /* geannuleerd */ }

@@ -1544,3 +1544,68 @@ img.illu.path-ic { width: 48px; height: 48px; }
   .mg-head, .mg-row { gap: 6px; }
   .rtask-ic { width: 40px; height: 40px; font-size: 21px; }
 }
+
+/* ---------- twee gezichten, één platform: hub (wandscherm/tafelmodel) en telefoon-app ---------- */
+.devchoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.devchoice { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px 14px 14px; border-radius: 18px; border: 2px solid var(--line); background: var(--surface); text-align: left; font: inherit; color: var(--fg); cursor: pointer; }
+.devchoice:hover { border-color: var(--accent); } .devchoice.suggested { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.devchoice-ic { font-size: 34px; line-height: 1; } .devchoice b { font-size: 16px; } .devchoice small { color: var(--muted); line-height: 1.35; }
+.devchoice-tag { font-style: normal; font-size: 11px; font-weight: 800; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+.who-grid .pick.big { padding: 10px 14px; font-size: 15px; }
+.thisdev { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); margin-bottom: 10px; }
+.devlist { display: flex; flex-direction: column; gap: 6px; }
+.devrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: var(--surface); box-shadow: var(--ring); }
+.devrow.me { outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+.dev-ic { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); display: grid; place-items: center; font-size: 20px; flex: none; }
+.dev-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; } .dev-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .dev-txt small { color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c4c9cf; vertical-align: middle; } .dot.on { background: #35c26a; box-shadow: 0 0 0 3px rgba(53,194,106,.2); }
+.qr-wrap { display: grid; place-items: center; padding: 12px; background: #fff; border-radius: 18px; margin: 10px 0; } .qr-wrap canvas { border-radius: 8px; }
+.steps-sm { margin: 0 0 6px; padding-left: 20px; color: var(--fg); line-height: 1.6; }
+
+/* prikbord */
+.notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; padding: 6px 4px; }
+.notes.mini { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; padding: 2px; }
+.notes-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; } .notes-top .btn { white-space: nowrap; flex: none; }
+.note { position: relative; border-radius: 4px 4px 14px 4px; padding: 14px 14px 10px; box-shadow: 2px 4px 12px rgba(30,38,50,.14); transform: rotate(var(--rot, 0deg)); display: flex; flex-direction: column; gap: 10px; min-height: 120px; cursor: pointer; color: #1e2632; transition: transform .15s ease; }
+.note:hover { transform: rotate(0deg) scale(1.02); z-index: 1; }
+.note p { margin: 0; flex: 1; font-size: 16px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--f-display); }
+.note.small { min-height: 84px; padding: 10px 10px 8px; gap: 6px; } .note.small p { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.note footer { display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(30,38,50,.7); } .note footer small { flex: 1; text-align: right; }
+.note-by { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; } .note.small .note-by .avatar { --size: 16px !important; }
+.note-pin { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 18px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+.note-del { width: 28px; height: 28px; background: rgba(255,255,255,.5); }
+.note-input { width: 100%; border: 0; border-radius: 4px 4px 14px 4px; padding: 14px; font: inherit; font-family: var(--f-display); font-size: 17px; line-height: 1.4; resize: vertical; box-shadow: 2px 4px 12px rgba(30,38,50,.14); margin-bottom: 10px; color: #1e2632; }
+.swatch { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; } .swatch[aria-pressed="true"] { border-color: var(--fg); }
+
+/* Mijn dag (telefoon-app) */
+.myday { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.myday-top { display: flex; align-items: center; gap: 10px; }
+.myday-who { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; flex: 1; min-width: 0; }
+.myday-who span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; } .myday-who small { color: var(--muted); font-size: 13px; } .myday-who b { font-size: 20px; font-family: var(--f-display); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.myday-meta { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; } .myday-meta b { font-size: 13px; } .myday-meta small { color: var(--muted); font-size: 12px; }
+.hubcard { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 18px; background: linear-gradient(135deg, #1e2632, #2f3b4a); color: #fff; box-shadow: var(--shadow); }
+.hubcard.on { background: linear-gradient(135deg, #10695f, #2bb3a8); }
+.hub-ic { font-size: 26px; } .hub-txt { display: flex; flex-direction: column; min-width: 0; } .hub-txt b { font-size: 15px; } .hub-txt small { opacity: .85; font-size: 12px; }
+.hub-btns { display: flex; gap: 6px; } .hubcard .btn { background: #fff; color: #1e2632; } .hubcard .btn.ghost { background: rgba(255,255,255,.18); color: #fff; } .hubcard .btn:disabled { opacity: .45; }
+.hub-msg { grid-column: 1 / -1; } .hub-msg input { background: #fff; }
+.myday-suggest { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 8px; } .myday-suggest::-webkit-scrollbar { display: none; }
+.myday-suggest button { flex: none; border-radius: 999px; padding: 8px 13px; font-size: 13.5px; font-weight: 600; position: relative; }
+.myday-suggest .count { position: absolute; top: -5px; right: -4px; min-width: 18px; height: 18px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; font-style: normal; display: grid; place-items: center; padding: 0 5px; }
+.myday .widget-sm { border-radius: 18px; } .myday .rtask { padding: 6px 8px 6px 6px; } .myday .rtask-ic { width: 38px; height: 38px; font-size: 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; } .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); }
+.center-text { text-align: center; }
+
+/* bericht van een telefoon op het keukenscherm */
+.castmsg { position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 18px); transform: translateX(-50%); z-index: 75; display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-radius: 22px; background: #1e2632; color: #fff; font-size: 20px; font-family: var(--f-display); box-shadow: var(--shadow-lg); max-width: min(90vw, 720px); animation: fade .25s ease; cursor: pointer; }
+.castmsg-ic { font-size: 26px; }
+
+/* hub: grotere tikdoelen op een groot aanraakscherm */
+body.gb-hub .navbtn { padding: 11px 4px; font-size: 13px; } body.gb-hub .navbtn svg { width: 26px; height: 26px; }
+body.gb-hub .btn, body.gb-hub .pill, body.gb-hub .pick { min-height: 44px; }
+body.gb-hub .rcheck { width: 36px; height: 36px; }
+@media (max-width: 820px) {
+  .notes { grid-template-columns: repeat(2, 1fr); gap: 10px; } .notes.mini { grid-template-columns: repeat(3, 1fr); gap: 6px; } .note.small p { font-size: 13px; -webkit-line-clamp: 2; } .note.small { min-height: 70px; }
+  .devchoices { grid-template-columns: 1fr; }
+  .hubcard { padding: 9px 10px; gap: 8px; } .hub-btns { flex-direction: column; } .hub-btns .btn { padding: 6px 10px; font-size: 13px; }
+  .castmsg { font-size: 16px; padding: 12px 16px; }
+}

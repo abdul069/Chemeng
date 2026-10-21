@@ -1,6 +1,10 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ScreenBoundary, lazyRetry } from "./lazy";
-import { connectRealtime, onConnection } from "./api";
+import { connectRealtime, onCast, onConnection } from "./api";
+import { useDevice, useDeviceRegistration, getDevice } from "./device";
+import { useIsPhone } from "./components/ui";
+import { MyDayScreen } from "./screens/MyDay";
+const DeviceSetup = lazyRetry(() => import("./components/DeviceSetup").then((m) => ({ default: m.DeviceSetup })));
 import { AcceptInvite, AuthScreen, NoHousehold, ResetPassword, inviteTokenFromUrl, resetTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
 import { Icon } from "./components/Icons";
@@ -23,6 +27,7 @@ const SettingsScreen = lazyRetry(() => import("./screens/Settings").then((m) => 
 import { cap, clock, longDate, todayIso } from "./dates";
 import { EzanOverlay, useEzan } from "./components/Ezan";
 const QuranMiniPlayer = lazyRetry(() => import("./components/Quran").then((m) => ({ default: m.QuranMiniPlayer })));
+import { openRecipe } from "./components/Recipes";
 import { t as tr } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
@@ -52,6 +57,22 @@ export function App() {
   const [online, setOnline] = useState(true);
   const [time, setTime] = useState(clock());
   const lastActivity = useRef(Date.now());
+  const device = useDevice();
+  const phoneLayout = useIsPhone();
+  const [setup, setSetup] = useState(false);
+  const [castMsg, setCastMsg] = useState<string | null>(null);
+  useDeviceRegistration(!!data);
+  // eerste start op dit toestel: vragen of het het wandscherm, het tafelmodel of een telefoon is
+  useEffect(() => { if (data && !device.role) setSetup(true); }, [data, device.role]);
+  // een telefoon stuurt iets naar dit scherm (alleen een hub reageert, of een toestel dat met naam genoemd wordt)
+  useEffect(() => onCast((c) => {
+    const me = getDevice();
+    if (c.to ? c.to !== me.id : me.role !== "hub") return;
+    lastActivity.current = Date.now(); setSaver(false); setSleeping(false);
+    if (c.kind === "recipe") openRecipe(c.value);
+    else if (c.kind === "screen") { setScreenState((c.value === "today" || c.value === "calendar" || c.value === "chores" || c.value === "meals" || c.value === "lists" || c.value === "apps" ? c.value : "today") as Screen); setAppView("grid"); }
+    else if (c.kind === "message") { setCastMsg(c.value); setTimeout(() => setCastMsg(null), 20_000); }
+  }), []);
 
   useEffect(() => { onConnection(setOnline); connectRealtime(); }, []);
   useEffect(() => { history.replaceState(null, "", `#${screen}`); }, [screen]);
@@ -124,20 +145,23 @@ export function App() {
         <button className="mascot-btn brand" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><div className="mascot" style={{ width: 48, height: 48 }} /></button>
         {NAV.map((n) => {
           const I = Icon[n.icon];
-          return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{tr(n.label)}</button>;
+          const label = n.id === "today" && device.role === "phone" ? "Mijn dag" : n.label;
+          return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{tr(label)}</button>;
         })}
         <span className="spacer" />
         <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label={tr("Zoeken in alles")}><Icon.search />{tr("Zoeken")}</button>
-        <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>
+        {!phoneLayout && <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>}
       </nav>
       <main className={`page${screen === "today" ? tr(" page-bord") : ""}`}>
         <ScreenBoundary><Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}>
-        {screen === "today" && <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />}
+        {screen === "today" && (device.role === "phone"
+          ? <MyDayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} onPickMember={() => setSetup(true)} />
+          : <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />)}
         {screen === "calendar" && <CalendarScreen header={header} openEditor={openEditor} />}
         {screen === "chores" && <ChoresScreen header={header} />}
         {screen === "meals" && <MealsScreen header={header} />}
         {screen === "lists" && <ListsScreen header={header} />}
-        {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} startSlideshow={() => setSaver(true)} />}
+        {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} gotoSettings={() => setScreen("settings")} startSlideshow={() => setSaver(true)} />}
         {screen === "settings" && <SettingsScreen header={header} />}
         </Suspense></ScreenBoundary>
       </main>
@@ -153,7 +177,9 @@ export function App() {
       {ezan.active && <EzanOverlay prayer={ezan.active.prayer} at={ezan.active.at} onClose={ezan.stop} />}
       {sleeping && <SleepScreen onWake={() => { wokeAt.current = Date.now(); lastActivity.current = Date.now(); setSleeping(false); }} />}
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
+      {setup && <DeviceSetup onDone={() => setSetup(false)} />}
       </Suspense>
+      {castMsg && <div className="castmsg" role="status" onClick={() => setCastMsg(null)}><span className="castmsg-ic">📱</span><span>{castMsg}</span></div>}
     </div>
   );
 }

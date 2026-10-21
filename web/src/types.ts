@@ -66,7 +66,10 @@ export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
   | { valid: true; kind: "agenda"; from: string; level: string };
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet";
+export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
+export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
+export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }
