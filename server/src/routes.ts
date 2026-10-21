@@ -31,6 +31,7 @@ import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
 import * as B from "./billing.js";
+import * as C from "./connectors.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
@@ -293,6 +294,30 @@ api.get("/bootstrap", (req, res) => {
   });
 });
 
+// ---------- koppelingen ----------
+api.get("/connectors", (_req, res) => { res.json(C.catalog()); });
+api.get("/connections", (_req, res) => { res.json(C.listConnections().map(C.publicConn)); });
+api.post("/connections", async (req, res) => {
+  const b = C.ConnectionInput.parse(req.body);
+  const def = C.connectorById(b.connector);
+  if (def?.plan === "plus" && !["plus", "operator"].includes(B.subscription().plan)) return void res.status(402).json({ error: "Deze koppeling zit in Gezin+." });
+  try {
+    const id = C.createConnection(b);
+    const c = await C.syncConnection(C.getConnection(id)!);
+    res.json(C.publicConn(c)); broadcast("connections", "settings");
+  } catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Mislukt" }); }
+});
+api.put("/connections/:id", async (req, res) => {
+  const b = C.ConnectionInput.partial().parse(req.body);
+  if (!C.updateConnection(p(req), b)) return void res.status(404).json({ error: "Niet gevonden" });
+  const c = b.config ? await C.syncConnection(C.getConnection(p(req))!) : C.getConnection(p(req))!;
+  res.json(C.publicConn(c)); broadcast("connections", "settings");
+});
+api.post("/connections/:id/sync", async (req, res) => { const c = C.getConnection(p(req)); if (!c) return void res.status(404).json({ error: "Niet gevonden" }); res.json(C.publicConn(await C.syncConnection(c))); broadcast("connections"); });
+api.delete("/connections/:id", (req, res) => { C.deleteConnection(p(req)); res.json({ ok: true }); broadcast("connections", "settings"); });
+api.get("/connections/widgets", (req, res) => { const q = z.object({ member: z.string().optional(), board: z.string().optional() }).parse(req.query); res.json(C.connectorWidgets(q.member || null, q.board === "1", getSettings().language === "tr" ? "tr" : "nl")); });
+api.get("/connections/links", (req, res) => { const q = z.object({ kind: z.enum(["list", "meal", "event", "store"]), q: z.string().optional(), address: z.string().optional(), title: z.string().optional(), member: z.string().optional() }).parse(req.query); res.json(C.connectorLinks(q, q.member || null)); });
+
 // ---------- abonnement, AI-budget en ledencodes ----------
 api.get("/billing", (_req, res) => { res.json({ ...B.budgetState(), models: B.MODELS, plans: B.PLANS.filter((p) => p !== "operator").map((p) => ({ id: p, label: B.PLAN_LABEL[p], budgetMicro: B.BUDGET[p] })) }); });
 api.post("/billing/redeem", requireAdmin, (req, res) => {
@@ -486,7 +511,8 @@ api.get("/events", (req, res) => {
   const members = typeof req.query.members === "string" && req.query.members ? req.query.members.split(",") : undefined;
   const { userId, householdId } = ctx();
   const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
-  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...(kinds.length ? holidayOccurrences(from, to, kinds).map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
+  const connItems = C.connectorCalendar(from, to).map((e) => ({ id: `conn:${e.id}`, title: e.title, notes: e.url ?? "", location: e.location ?? "", date: e.date, endDate: e.endDate ?? null, startTime: e.startTime ?? null, endTime: e.endTime ?? null, allDay: e.allDay, repeat: "none" as const, repeatUntil: null, exdates: [], members: [], source: "koppeling", readOnly: true, countdown: false, on: e.date, until: e.endDate ?? e.date, key: `conn:${e.id}@${e.date}` }));
+  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...connItems, ...(kinds.length ? holidayOccurrences(from, to, kinds).map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
   res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });

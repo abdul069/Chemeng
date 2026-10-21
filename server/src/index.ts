@@ -10,6 +10,7 @@ import { attachRealtime, broadcastTo } from "./realtime.js";
 import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
 import { startManagerScheduler } from "./manager.js";
+import { startConnectorScheduler } from "./connectors.js";
 import { startPushScheduler } from "./push.js";
 import { startLibraryScheduler } from "./library.js";
 import { createList } from "./store.js";
@@ -50,6 +51,7 @@ setTimeout(doSync, 5_000).unref();
 setInterval(doSync, SYNC_MIN * 60_000).unref();
 startPushScheduler();
 startManagerScheduler();
+startConnectorScheduler();
 startLibraryScheduler();
 // bestaande gezinnen van vóór de voorraadlijst krijgen er alsnog een
 for (const h of all<{ id: string }>("SELECT id FROM households WHERE id NOT IN (SELECT household_id FROM lists WHERE kind='pantry')")) createList("Voorraad", "🥫", h.id, "pantry");

@@ -23,7 +23,8 @@ export type Proposal =
   | { id: string; kind: "add_list"; title: string; why: string; items: string[] }
   | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string }
   | { id: string; kind: "upkeep_event"; title: string; why: string; upkeepId: string; date: string; eventTitle: string; memberId: string | null }
-  | { id: string; kind: "ha_service"; title: string; why: string; domain: string; service: string; data: Record<string, unknown> };
+  | { id: string; kind: "ha_service"; title: string; why: string; domain: string; service: string; data: Record<string, unknown> }
+  | { id: string; kind: "link"; title: string; why: string; url: string };
 export interface Briefing { kind: BriefingKind; date: string; memberId: string | null; title: string; narration: string; items: Item[]; proposals: Proposal[]; conflicts: number }
 
 const DAYS_NL = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
@@ -198,6 +199,8 @@ export async function buildBriefing(kind: BriefingKind, date: string, memberId: 
       if (open.length && kind === "evening") items.push({ kind: "home", icon: "🔓", text: lang === "tr" ? `Kilitli değil: ${open.map((x) => x.attributes.friendly_name ?? x.entity_id).join(", ")}` : `Niet op slot: ${open.map((x) => x.attributes.friendly_name ?? x.entity_id).join(", ")}` });
     } catch { /* HA niet bereikbaar */ }
   }
+  // koppelingen: elk hoogstens twee regels en één voorstel
+  try { const { connectorBriefing } = await import("./connectors.js"); const cb = connectorBriefing({ kind, date, memberId: me?.id ?? null, lang }); items.push(...cb.items); proposals.push(...cb.proposals); } catch { /* */ }
   // conflicten
   const conf = conflictProposals(evs.filter((e) => !me || e.members.includes(me.id)), me ? [me] : members, lang);
   proposals.push(...conf.proposals);
@@ -252,6 +255,7 @@ export const ProposalInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("remind"), text: z.string(), memberId: z.string().nullable() }),
   z.object({ kind: z.literal("upkeep_event"), upkeepId: z.string(), date: z.string(), eventTitle: z.string(), memberId: z.string().nullable() }),
   z.object({ kind: z.literal("ha_service"), domain: z.string(), service: z.string(), data: z.record(z.string(), z.unknown()) }),
+  z.object({ kind: z.literal("link"), url: z.string() }),
 ]);
 export async function applyProposal(p: z.infer<typeof ProposalInput>): Promise<{ ok: true; message: string; topics: ("meals" | "events" | "lists" | "home")[] }> {
   if (p.kind === "upkeep_event") {
@@ -259,6 +263,7 @@ export async function applyProposal(p: z.infer<typeof ProposalInput>): Promise<{
     return { ok: true, message: `${p.eventTitle} staat in de agenda`, topics: ["events"] };
   }
   if (p.kind === "ha_service") { await HA.haCall(p.domain, p.service, p.data); return { ok: true, message: "Doorgegeven aan het huis", topics: [] }; }
+  if (p.kind === "link") return { ok: true, message: "Geopend", topics: [] };
   if (p.kind === "plan_meal") { S.setMeal(p.date, p.slot, p.recipe, p.recipeId); return { ok: true, message: `Gepland: ${p.recipe}`, topics: ["meals"] }; }
   if (p.kind === "move_event") {
     const ev = getEvent(p.eventId); if (!ev) throw new Error("Die afspraak bestaat niet meer.");

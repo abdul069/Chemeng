@@ -10,6 +10,7 @@ import { diffDays, shortDate, todayIso } from "../dates";
 import { AISLES, AISLE_INFO, aisleOf } from "../aisles";
 import { PantryCook } from "../components/LibraryBrowser";
 import { t } from "../i18n";
+import { LinkButtons } from "../components/Connectors";
 
 /** Houdbaarheid van een voorraad-item: "verlopen", "vandaag", "nog 3 dagen" … */
 function expiry(i: ListItem): { label: string; cls: string } | null {
@@ -91,6 +92,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
                 <button className="iconbtn" aria-label={t("Lijst verwijderen")} onClick={() => setConfirm(true)}><Icon.trash /></button>
               </div>
             </div>
+            {isShop && list.items.some((i) => !i.done) && <LinkButtons kind="list" q={list.items.filter((i) => !i.done).map((i) => i.text).slice(0, 1).join(" ")} label={t("Zoek bij")} />}
             {pantry && list.items.some((i) => !i.done) && <button className="btn accent" style={{ alignSelf: "flex-start" }} onClick={() => setCook(true)}>{t("🍳 Koken met wat in huis is")}</button>}
             {pantry && <p className="hint">Wat er in huis is, met houdbaarheidsdatum. {soon ? `${soon} item(s) zijn bijna of al over datum. ` : ""}Vink af wat op is: het komt vanzelf op de boodschappenlijst. Wat je koopt en afvinkt op Boodschappen, komt hier terug.</p>}
             {isShop ? <StaplesInline list={list} /> : (

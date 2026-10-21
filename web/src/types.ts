@@ -36,6 +36,7 @@ export interface Settings {
   ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
   quran_reciter: string; quran_translation: string; language: string;
   briefing_morning: string; briefing_evening: string; briefing_push: string;
+  country: string; waste_ical: string; waste_notify: string; ha_url: string; ha_entities: string; ha_scenes: string; ha_configured?: boolean;
 }
 export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
 export interface PrayerDay { date: string; times: Record<Prayer, string>; tomorrow: Record<Prayer, string>; methods: { id: string; label: string }[]; city: string }
@@ -83,7 +84,10 @@ export type Proposal =
   | { id: string; kind: "plan_meal"; title: string; why: string; date: string; slot: "diner" | "lunch" | "ontbijt"; recipeId: string; recipe: string }
   | { id: string; kind: "move_event"; title: string; why: string; eventId: string; on: string; newStart: string; newEnd: string }
   | { id: string; kind: "add_list"; title: string; why: string; items: string[] }
-  | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string };
+  | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string }
+  | { id: string; kind: "upkeep_event"; title: string; why: string; upkeepId: string; date: string; eventTitle: string; memberId: string | null }
+  | { id: string; kind: "ha_service"; title: string; why: string; domain: string; service: string; data: Record<string, unknown> }
+  | { id: string; kind: "link"; title: string; why: string; url: string };
 export interface BriefingItem { icon: string; text: string; memberId?: string | null; kind: string }
 export interface Briefing { kind: "morning" | "evening"; date: string; memberId: string | null; title: string; narration: string; items: BriefingItem[]; proposals: Proposal[]; conflicts: number }
 export interface Memory { id: string; text: string; memberId: string | null; source: string; createdAt: string }
@@ -94,7 +98,7 @@ export interface Partner { id: string; name: string; slug: string; plan: Plan; f
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }
@@ -103,3 +107,10 @@ export type Change =
   | { kind: "list"; list: string; items: string[] }
   | { kind: "options"; options: string[] }
   | { kind: "recipe"; id: string; title: string; image: string | null };
+
+/** Koppelingen: de catalogus (wat bestaat) en de verbindingen (wat dit gezin aanzette). */
+export type ConnField = { key: string; label: string; type: "text" | "url" | "secret" | "select" | "multiselect" | "number" | "time" | "textarea"; options?: { value: string; label: string }[]; placeholder?: string; required?: boolean; hint?: string };
+export interface Connector { id: string; name: string; description: string; category: string; categoryLabel: string; icon: string; scope: "household" | "member"; plan: "gezin" | "plus"; country: string[]; status: "ready" | "unofficial" | "soon"; fields: ConnField[]; provides: string[]; refreshMinutes: number; recommended: boolean; connected: boolean }
+export interface Connection { id: string; memberId: string | null; connector: string; config: Record<string, unknown>; enabled: boolean; onBoard: boolean; lastSync: string | null; status: string; error: string }
+export interface ConnWidget { id: string; connector: string; memberId: string | null; widget: { title: string; icon: string; lines: { icon?: string; text: string; sub?: string; url?: string }[] } }
+export interface ConnLink { label: string; url: string; icon: string; connector: string }

@@ -5,6 +5,8 @@ import type { CalEvent, Occurrence, Repeat } from "../types";
 import { Confirm, MemberDots, MemberPicks, Modal } from "./ui";
 import { addDays, cap, diffDays, fmtRange, longDate } from "../dates";
 import { t } from "../i18n";
+import { LinkButtons } from "./Connectors";
+import { getDevice } from "../device";
 
 const REPEATS: [Repeat, string][] = [
   ["none", "Niet"], ["daily", "Elke dag"], ["weekly", "Elke week"], ["biweekly", "Om de twee weken"], ["monthly", "Elke maand"], ["yearly", "Elk jaar"],
@@ -42,6 +44,7 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
     return (
       <Modal title={occ.title} onClose={onClose}>
         <p className="hint">{cap(longDate(occ.on))} · {fmtRange(occ)}{occ.location ? ` · ${occ.location}` : ""}</p>
+        {occ.location && <LinkButtons kind="event" address={occ.location} title={occ.title} memberId={getDevice().memberId ?? data?.me.memberId ?? null} />}
         {occ.notes && <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{occ.notes}</p>}
         <MemberDots ids={occ.members} />
         <p className="hint">{occ.source === "holiday"
@@ -102,6 +105,7 @@ export function EventEditor({ state, onClose }: { state: EditorState; onClose: (
         <div className="field"><span>{t("Voor wie")}</span><MemberPicks value={f.members} onChange={(v) => set("members", v)} /></div>
         <label className="check-row"><input id="ev-cd" type="checkbox" checked={f.countdown} onChange={(e) => set("countdown", e.target.checked)} />{" "}{t("Aftellen tonen op het startscherm (vakantie, feest, grote dag)")}</label>
         <label className="field"><span>{t("Locatie")}</span><input id="ev-loc" value={f.location} onChange={(e) => set("location", e.target.value)} placeholder={t("Optioneel")} /></label>
+        {!isNew && occ?.location && occ.location === f.location && <LinkButtons kind="event" address={occ.location} title={occ.title} memberId={getDevice().memberId ?? data?.me.memberId ?? null} />}
         <label className="field"><span>{t("Notities")}</span><textarea id="ev-notes" value={f.notes} onChange={(e) => set("notes", e.target.value)} placeholder={t("Optioneel")} /></label>
         {err && <p className="error">{err}</p>}
         <div className="actions">

@@ -7,6 +7,7 @@ import { Avatar, Modal, cvar } from "./ui";
 import { speak, stopSpeaking } from "../assistant/speech";
 import { todayIso } from "../dates";
 import { t } from "../i18n";
+import { openUrl } from "./Connectors";
 
 const kindNow = (): "morning" | "evening" => (new Date().getHours() >= 17 ? "evening" : "morning");
 
@@ -20,16 +21,17 @@ function ProposalRow({ p, onDone }: { p: Proposal; onDone: (p: Proposal) => void
   const [gone, setGone] = useState(false);
   if (gone) return null;
   const apply = async () => {
+    if (p.kind === "link") { openUrl(p.url); setGone(true); onDone(p); return; }
     const { id: _id, title: _t, why: _w, ...body } = p; void _id; void _t; void _w;
     const r = await act(() => api.post<{ ok: boolean; message: string }>("/manager/apply", body), undefined);
     if (r) { setGone(true); onDone(p); }
   };
   return (
     <div className="prop">
-      <span className="prop-ic" aria-hidden>{p.kind === "plan_meal" ? "🍲" : p.kind === "move_event" ? "🔁" : p.kind === "add_list" ? "🛒" : "💡"}</span>
+      <span className="prop-ic" aria-hidden>{p.kind === "plan_meal" ? "🍲" : p.kind === "move_event" ? "🔁" : p.kind === "add_list" ? "🛒" : p.kind === "upkeep_event" ? "🔧" : p.kind === "ha_service" ? "🏠" : p.kind === "link" ? "↗" : "💡"}</span>
       <span className="prop-txt"><b>{p.title}</b><small>{p.why}</small></span>
       <span className="prop-btns">
-        <button className="btn small" onClick={apply}>{t("Doe het")}</button>
+        <button className="btn small" onClick={apply}>{p.kind === "link" ? t("Openen") : t("Doe het")}</button>
         <button className="iconbtn" aria-label={t("Nee, laat zo")} onClick={() => setGone(true)}>✕</button>
       </span>
     </div>

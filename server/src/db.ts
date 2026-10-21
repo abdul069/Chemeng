@@ -446,6 +446,8 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   briefing_morning: "07:00",
   briefing_evening: "20:30",
   briefing_push: "1",
+  // land van het gezin: bepaalt feestdagen, afvalfracties en welke koppelingen getoond worden
+  country: "BE",
   // afvalkalender: iCal-adres van de intercommunale en het uur van de melding de avond ervoor (leeg = geen)
   waste_ical: "",
   waste_notify: "20:00",

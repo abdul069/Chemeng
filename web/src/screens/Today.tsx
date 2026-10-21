@@ -12,6 +12,7 @@ import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
 import { PrikbordWidget } from "../components/Prikbord";
 import { BriefingCard, BriefingModal } from "../components/Briefing";
 import { FamilyWidget } from "../components/Family";
+import { ConnectorWidgets } from "../components/Connectors";
 import { t as tr } from "../i18n";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
@@ -107,6 +108,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
         </section>
         <PrikbordWidget max={3} />
         <FamilyWidget />
+        <ConnectorWidgets board />
         {!!data?.countdowns.length && (
           <section className="glass widget-sm">
             <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>

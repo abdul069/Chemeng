@@ -9,6 +9,7 @@ import { DevicesSection } from "../components/Devices";
 import { ManagerSection } from "../components/ManagerSettings";
 import { BillingSection } from "../components/Billing";
 import { FamilySection } from "../components/Family";
+import { ConnectorsSection } from "../components/Connectors";
 import { t, getLang, setLang } from "../i18n";
 
 const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#5b6b7f", "#3d9bd1"];
@@ -30,6 +31,7 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
         <Family />
         <DevicesSection />
         <ManagerSection />
+        <ConnectorsSection />
         <FamilySection />
         <HouseholdAccess />
         <AgendaSharing />
