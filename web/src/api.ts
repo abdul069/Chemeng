@@ -1,3 +1,4 @@
+import { brand } from "./i18n";
 import type { Cast, Topic } from "./types";
 
 export class ApiError extends Error {
@@ -13,7 +14,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   try {
     res = await fetch(`/api${url}`, { method, headers, body: payload, credentials: "same-origin" });
   } catch {
-    throw new ApiError("Geen verbinding met de Gezinsbord-server. Controleer je internet.", 0);
+    throw new ApiError(`Geen verbinding met de ${brand()}-server. Controleer je internet.`, 0);
   }
   const data = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
   if (!res.ok) {

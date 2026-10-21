@@ -58,7 +58,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const visible = events.filter((e) => !e.members.length || e.members.some((m) => !hidden.has(m)));
   const hour = new Date().getHours();
   const mealOrder: ("ontbijt" | "lunch" | "diner")[] = hour < 10 ? ["ontbijt", "lunch", "diner"] : hour < 14 ? ["lunch", "diner", "ontbijt"] : ["diner", "lunch", "ontbijt"];
-  const mealTitle = hour < 10 ? tr("Vandaag eten") : hour < 14 ? tr("Straks eten") : "Vanavond eten";
+  const mealTitle = hour < 10 ? tr("Vandaag eten") : hour < 14 ? tr("Straks eten") : tr("Vanavond eten");
   const [briefOpen, setBriefOpen] = useState(false);
 
   return (

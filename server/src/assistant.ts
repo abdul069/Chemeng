@@ -19,6 +19,7 @@ import { memoryContext, remember, listMemory } from "./manager.js";
 import { MODELS, aiAllowed, recordUsage, BUDGET_MESSAGE } from "./billing.js";
 export const MODEL = MODELS.chat;
 import { getClient, aiReady } from "./ai.js";
+import { asLang } from "./i18n.js";
 export const assistantAvailable = () => aiReady();
 
 export type Change =
@@ -328,9 +329,9 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
     return { reply: "De assistent is nog niet ingesteld. Een beheerder vult de Claude API-sleutel in bij Instellingen → Assistent.", changes: [] };
   }
   const changes: Change[] = [];
-  const lang = getSettings().language === "tr" ? "tr" : "nl";
+  const lang = asLang(getSettings().language);
   if (!aiAllowed("chat")) return { reply: BUDGET_MESSAGE[lang], changes };
-  const langNote = lang === "tr" ? "\n\nBELANGRIJK: dit gezin heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : "";
+  const langNote = lang === "tr" ? "\n\nBELANGRIJK: dit gezin heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : lang === "en" ? "\n\nIMPORTANT: this family chose English. Always answer in natural, warm English. Keep recipe and dish names as they are." : "";
   const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length) return { reply: "Waarmee kan ik helpen?", changes };

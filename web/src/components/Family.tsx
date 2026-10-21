@@ -86,11 +86,11 @@ export function FamilySection() {
       {!links.length && <p className="empty">{t("Nog geen verbonden gezinnen.")}</p>}
       {url && (
         <Modal title={t("Gezin verbinden")} onClose={() => setUrl(null)}>
-          <p className="hint">{t("Stuur deze link naar een beheerder van het andere gezin. Die meldt zich aan in zijn eigen Gezinsbord en aanvaardt. De link werkt één keer en is 7 dagen geldig.")}</p>
+          <p className="hint">{t("Stuur deze link naar een beheerder van het andere gezin. Die meldt zich aan in zijn eigen {brand} en aanvaardt. De link werkt één keer en is 7 dagen geldig.")}</p>
           <div className="linkbox"><code>{url}</code></div>
           <div className="actions" style={{ justifyContent: "flex-start" }}>
             <button className="btn" onClick={async () => { try { await navigator.clipboard.writeText(url); toast(t("Link gekopieerd")); } catch { /* */ } }}>{t("Link kopiëren")}</button>
-            <a className="btn ghost" href={`https://wa.me/?text=${encodeURIComponent(`${t("Verbind jullie Gezinsbord met het onze")}: ${url}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+            <a className="btn ghost" href={`https://wa.me/?text=${encodeURIComponent(`${t("Verbind jullie {brand} met het onze")}: ${url}`)}`} target="_blank" rel="noreferrer">WhatsApp</a>
           </div>
         </Modal>
       )}

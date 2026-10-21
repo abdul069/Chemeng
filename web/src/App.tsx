@@ -28,7 +28,7 @@ import { cap, clock, longDate, todayIso } from "./dates";
 import { EzanOverlay, useEzan } from "./components/Ezan";
 const QuranMiniPlayer = lazyRetry(() => import("./components/Quran").then((m) => ({ default: m.QuranMiniPlayer })));
 import { openRecipe } from "./components/Recipes";
-import { t as tr } from "./i18n";
+import { t as tr, brand } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
 const NAV: { id: Screen; label: string; icon: keyof typeof Icon; title: string }[] = [
@@ -196,7 +196,7 @@ function ErrorScreen({ error }: { error: string }) {
     <div className="center">
       <div className="card auth">
         <div className="mascot" />
-        <h1>{tr("Gezinsbord")}</h1>
+        <h1>{brand()}</h1>
         <p className="error">{error}</p>
         <button className="btn" onClick={() => location.reload()}>{tr("Opnieuw proberen")}</button>
       </div>

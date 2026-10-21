@@ -1,3 +1,4 @@
+import { UA as USER_AGENT } from "./i18n.js";
 // Recepten ophalen van receptwebsites (via schema.org/Recipe in de pagina), zoeken op Turkse receptsites
 // en optioneel vertalen naar het Nederlands.
 import Anthropic from "@anthropic-ai/sdk";
@@ -158,7 +159,7 @@ export async function fetchRecipe(url: string): Promise<RecipeInputT> {
   try { u = new URL(url); } catch { throw new RecipeError("Dat is geen geldige link."); }
   if (!/^https?:$/.test(u.protocol)) throw new RecipeError("Gebruik een link die met https:// begint.");
   const res = await fetch(u, {
-    headers: { "user-agent": "Mozilla/5.0 (Gezinsbord receptenbibliotheek)", "accept-language": "tr,nl;q=0.8,en;q=0.5", accept: "text/html" },
+    headers: { "user-agent": `Mozilla/5.0 (${USER_AGENT})`, "accept-language": "tr,nl;q=0.8,en;q=0.5", accept: "text/html" },
     redirect: "follow",
     signal: AbortSignal.timeout(15_000),
   }).catch(() => { throw new RecipeError("De receptsite reageert niet. Probeer het later opnieuw."); });

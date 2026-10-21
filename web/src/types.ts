@@ -52,6 +52,8 @@ export interface Weather {
 export interface Bootstrap {
   /** bouwnummer van de server; verschilt het van dit scherm, dan is er een nieuwe versie */
   build?: string | null;
+  /** merknaam van deze server (BRAND_NAME) */
+  brand?: { name: string };
   members: Member[]; chores: Chore[]; rewards: Reward[]; points: Record<string, Points>;
   lists: List[]; recipes: Recipe[]; calendars: CalendarSub[]; photos: Photo[]; settings: Settings;
   assistant: { available: boolean; model: string; keySource?: "env" | "app" | null; canEditKey?: boolean };

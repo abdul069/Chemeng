@@ -27,8 +27,8 @@ Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoo
 |---|---|
 | Platform | Eén codebasis, één server, twee rollen per toestel (hub of telefoon). Rol staat op het toestel; server houdt het toestelregister bij. |
 | Doelgroep | Alle gezinnen, per levenssituatie. Nooit per gemeenschap, cultuur of godsdienst. Culturele en religieuze inhoud als opt-in pakket. |
-| Naam | "Gezinsbord" was de werknaam van de oorspronkelijke maker en werkt alleen in Nederlandstalig gebied. Het product wordt een wereldmerk; **de nieuwe naam is nog niet beslist.** "Kinvo" is afgevallen (Braziliaanse beleggingsapp met geregistreerd merk, en "Kinvo" van Kinvolved/PowerSchool in het schoolsegment). Kandidaten die bij een eerste webcheck vrij lijken: **Kinday** (voorkeur) en **Kinloop**. Een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) plus .com/.app. De merknaam wordt één instelling in de code, zodat de naam met één regel wijzigt. |
-| Basistaal | **Engels wordt de basistaal**; Nederlands en Turks (nu aanwezig) worden vertalingen, later Frans, Duits, Spaans. Nu is Nederlands nog de basis in de code (zie §9). |
+| Naam | De merknaam is één instelling (`BRAND_NAME` op de server, overal `{brand}` in de teksten); standaard nog "Gezinsbord". "Gezinsbord" was de werknaam van de oorspronkelijke maker en werkt alleen in Nederlandstalig gebied. Het product wordt een wereldmerk; **de nieuwe naam is nog niet beslist.** "Kinvo" is afgevallen (Braziliaanse beleggingsapp met geregistreerd merk, en "Kinvo" van Kinvolved/PowerSchool in het schoolsegment). Kandidaten die bij een eerste webcheck vrij lijken: **Kinday** (voorkeur) en **Kinloop**. Een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) plus .com/.app. De merknaam wordt één instelling in de code, zodat de naam met één regel wijzigt. |
+| Basistaal | **Engels is de basistaal van het product**: de app, de briefings, de voorstellen, de koppelingen, feestdagen en meldingen bestaan in Engels, Nederlands en Turks (Instellingen → Taal). Later Frans, Duits, Spaans. In de code zijn de vertaalsleutels nog Nederlands; het omdraaien naar Engelse sleutels is een mechanische stap (zie §9). |
 | Lanceervolgorde | België en Nederland eerst, daarna VK en Duitsland. |
 | Koppelingen | Eén systeem: catalogus, alles standaard uit, eigenaar gezin of persoon, ouders zien de koppelingen van kinderen, koppelingen met kosten bij de aanbieder alleen in Gezin+, geen nieuw scherm per koppeling, maximaal zes widgets op het bord, onzichtbaar als er niets te melden is, landenpakketten. |
 | School | Via de gezinsinbox (e-mail doorsturen, AI haalt afspraken en taken eruit). Geen Smartschool-API (bestaat niet voor derden). |
@@ -79,6 +79,7 @@ Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoo
 | `CLAUDE_MODEL_CHAT`, `CLAUDE_MODEL_LIGHT`, `CLAUDE_MODEL_PREMIUM` | modelkeuze per taak (standaard Sonnet-klasse, Haiku-klasse, Opus-klasse) |
 | `DEFAULT_PLAN` | formule voor gezinnen zonder abonnement (standaard `gezin`) |
 | `DATA_DIR`, `DB_FILE`, `WEB_DIR`, `PORT`, `TZ` | opslag en server |
+| `BRAND_NAME` | merknaam die overal in de app en meldingen verschijnt (standaard "Gezinsbord") |
 | `GB_SECRET` | versleutelingssleutel voor koppelingen en HA-token |
 | `GB_BUILD` | bouwnummer; verschilt het van het scherm, dan herlaadt de app |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | pushmeldingen |
@@ -125,7 +126,7 @@ Instellingen per gezin (tabel `settings`): gezinsnaam, woonplaats en coördinate
 | **Leren en spelen (kids)** | Islam-spelletjes (quiz, woordparen, op volgorde, soera's leren) en rekenen (sommen, tafels, snelheidsronde), sterren in de spaarpot |
 | **Assistent** | Claude met tools: afspraken, maaltijden, recepten, lijsten, taken, geheugen; handsfree spraak, voorlezen; antwoordt in de gekozen taal |
 | **Zoeken** | één zoekvak over afspraken, recepten, lijsten, taken, bibliotheek |
-| **Taal** | Nederlands en Turks, ~1.340 teksten, Turkse datums en feestdagen |
+| **Taal** | Engels, Nederlands en Turks, ~1.340 teksten per taal, datums, feestdagen, briefings en meldingen in de gekozen taal |
 | **Accounts** | registreren, aanmelden, gezinnen, uitnodigingen (gezin, agenda, gezinskoppeling), rollen beheerder/lid, wachtwoordherstel-link, back-up downloaden |
 | **Android-app** | Capacitor, ezan-alarmen met gesloten app, batterijbeperking, APK via GitHub Actions |
 
@@ -234,7 +235,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 1. Geld | ✅ klaar | modelkeuze, budget, abonnementen, partnercodes, partnerdashboard |
 | 2. Koppelingen-kader | ✅ klaar | kader, catalogus, versleuteling, acht werkende koppelingen |
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
-| **Merk en taal** | 🔜 volgende | merknaam als instelling, Engels als basistaal, NL en TR als vertalingen, landenpakket als begrip in de code |
+| **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | 4. Rondes van koppelingen | gepland | gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), folders en deals (aggregator-feed, deals bewaren), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
@@ -246,7 +247,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 
 1. **Naam.** Nog te beslissen: Kinday (voorkeur), Kinloop of iets anders. Daarna merkonderzoek door een merkenbureau en domeinregistratie. Tot dan blijft "Gezinsbord" de werknaam in de code.
 2. **Deploy geblokkeerd.** Railway kan de GitHub-repo niet meer lezen sinds 21 oktober ("User does not have access to the repo"). De laatste live versie is commit `185c0de`; alles vanaf 2.0 staat op de tak maar niet live. Oplossing: in Railway bij Settings → Source de GitHub-koppeling opnieuw leggen, of eenmalig op Deploy drukken.
-3. **Engels als basis.** De code gebruikt Nederlandse teksten als sleutel en Turks als vertaling. De omzetting (Engelse sleutels, NL en TR als woordenboeken, Engelse briefings en koppelingsteksten op de server) is de volgende stap. Datum- en uurnotatie, valuta en maten volgen de taal- en landinstelling.
+3. **Engelse sleutels in de code.** Engels, Nederlands en Turks werken volledig; de vertaalsleutels in de code zijn nog Nederlands. Het omdraaien (Engelse sleutels, NL en TR als woordenboeken) is een scriptmatige stap zodra de naam vastligt. Valuta en maten per land volgen met de landenpakketten.
 4. **UiTinVlaanderen** vraagt een gratis API-sleutel van publiq (`UIT_API_KEY`), anders moet elk gezin er zelf een invullen.
 5. **Gezinsinbox** vraagt een mailbox met IMAP en een eigen domein voor plus-adressen (bv. `gezin-xyz@inbox.<merk>.be`).
 6. **Betalen in de app** ontbreekt nog (Stripe). Tot dan zet de operator de formule of gebruikt het gezin een ledencode.

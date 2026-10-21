@@ -3,6 +3,7 @@ import { z } from "zod";
 import ical, { type VEvent } from "node-ical";
 import { all, get, run, newId, hid, getSettings } from "./db.js";
 import { today, addDays } from "./dates.js";
+import { asLang, type Lang } from "./i18n.js";
 
 // ---------- onderhoud en verplichtingen ----------
 export const UPKEEP_CATS = ["auto", "verwarming", "veiligheid", "water", "verzekering", "administratie", "tuin", "huisdier", "overig"] as const;
@@ -62,50 +63,50 @@ export function upkeepDone(id: string, doneOn: string, note = "", h = hid()) {
 export const setUpkeepAttest = (id: string, filename: string | null, h = hid()) => run("UPDATE upkeep SET attest=? WHERE id=? AND household_id=?", filename, id, h);
 
 /** Belgische sjablonen met de gebruikelijke of wettelijke intervallen. */
-export const UPKEEP_TEMPLATES: { key: string; title: string; titleTr: string; category: typeof UPKEEP_CATS[number]; icon: string; intervalMonths: number; leadDays: number; notes: string }[] = [
-  { key: "keuring", title: "Autokeuring", titleTr: "Araç muayenesi", category: "auto", icon: "🚗", intervalMonths: 12, leadDays: 30, notes: "Jaarlijks vanaf het 4e jaar. Neem inschrijvingsbewijs, gelijkvormigheidsattest en vorig keuringsbewijs mee." },
-  { key: "autoverzekering", title: "Autoverzekering vervaldag", titleTr: "Araç sigortası vadesi", category: "verzekering", icon: "📄", intervalMonths: 12, leadDays: 45, notes: "Opzeggen kan tot 3 maanden voor de vervaldag." },
-  { key: "banden", title: "Winter-/zomerbanden wisselen", titleTr: "Kış/yaz lastiği değişimi", category: "auto", icon: "🛞", intervalMonths: 6, leadDays: 14, notes: "" },
-  { key: "cv-gas", title: "Onderhoud CV-ketel (gas)", titleTr: "Kombi bakımı (gaz)", category: "verwarming", icon: "🔥", intervalMonths: 24, leadDays: 45, notes: "Vlaanderen: verplicht om de 2 jaar door een erkend technicus; attest bewaren." },
-  { key: "cv-stookolie", title: "Onderhoud CV-ketel (stookolie)", titleTr: "Kombi bakımı (fuel oil)", category: "verwarming", icon: "🔥", intervalMonths: 12, leadDays: 45, notes: "Verplicht jaarlijks; reinigings- en verbrandingsattest bewaren." },
-  { key: "schoorsteen", title: "Schoorsteen vegen", titleTr: "Baca temizliği", category: "verwarming", icon: "🧹", intervalMonths: 12, leadDays: 30, notes: "Jaarlijks bij hout of stookolie; attest voor de verzekering." },
-  { key: "rookmelders", title: "Rookmelders testen en batterij", titleTr: "Duman dedektörü testi ve pili", category: "veiligheid", icon: "🚨", intervalMonths: 12, leadDays: 14, notes: "Verplicht op elke verdieping. Vervang de melder zelf na 10 jaar." },
-  { key: "co-melder", title: "CO-melder controleren", titleTr: "CO dedektörü kontrolü", category: "veiligheid", icon: "⚠️", intervalMonths: 12, leadDays: 14, notes: "" },
-  { key: "brandblusser", title: "Brandblusser nazicht", titleTr: "Yangın söndürücü kontrolü", category: "veiligheid", icon: "🧯", intervalMonths: 12, leadDays: 30, notes: "" },
-  { key: "ventilatie", title: "Ventilatiefilters vervangen", titleTr: "Havalandırma filtresi değişimi", category: "water", icon: "🌬️", intervalMonths: 6, leadDays: 14, notes: "Systeem C/D: filters om de 6 maanden; kanalen om de 3 jaar reinigen." },
-  { key: "ontharder", title: "Zout waterverzachter bijvullen", titleTr: "Su yumuşatıcı tuzu", category: "water", icon: "🧂", intervalMonths: 2, leadDays: 7, notes: "" },
-  { key: "boiler", title: "Boiler ontkalken", titleTr: "Termosifon kireç temizliği", category: "water", icon: "🚿", intervalMonths: 24, leadDays: 30, notes: "" },
-  { key: "dakgoot", title: "Dakgoten reinigen", titleTr: "Oluk temizliği", category: "tuin", icon: "🍂", intervalMonths: 12, leadDays: 14, notes: "Na de herfst." },
-  { key: "septisch", title: "Septische put ruimen", titleTr: "Fosseptik boşaltma", category: "water", icon: "🕳️", intervalMonths: 36, leadDays: 30, notes: "" },
-  { key: "zonnepanelen", title: "Zonnepanelen en omvormer nazicht", titleTr: "Güneş paneli ve inverter kontrolü", category: "overig", icon: "☀️", intervalMonths: 12, leadDays: 30, notes: "" },
-  { key: "brandverzekering", title: "Brandverzekering vervaldag", titleTr: "Konut sigortası vadesi", category: "verzekering", icon: "🏠", intervalMonths: 12, leadDays: 45, notes: "" },
-  { key: "hospitalisatie", title: "Hospitalisatieverzekering vervaldag", titleTr: "Hastane sigortası vadesi", category: "verzekering", icon: "🏥", intervalMonths: 12, leadDays: 45, notes: "" },
-  { key: "meterstand", title: "Meterstanden doorgeven", titleTr: "Sayaç okuma bildirimi", category: "administratie", icon: "🔢", intervalMonths: 12, leadDays: 7, notes: "Water, en gas/elektriciteit bij een klassieke meter." },
-  { key: "kids-id", title: "Kids-ID / identiteitskaart vernieuwen", titleTr: "Kids-ID / kimlik yenileme", category: "administratie", icon: "🪪", intervalMonths: 36, leadDays: 60, notes: "Kids-ID is 3 jaar geldig; aanvragen bij de gemeente, 2 à 3 weken wachttijd." },
-  { key: "paspoort", title: "Paspoort vernieuwen", titleTr: "Pasaport yenileme", category: "administratie", icon: "🛂", intervalMonths: 84, leadDays: 90, notes: "Volwassenen 7 jaar, kinderen 5 jaar." },
-  { key: "huisdier-vaccin", title: "Huisdier: vaccins en ontworming", titleTr: "Evcil hayvan: aşı ve kurt ilacı", category: "huisdier", icon: "🐾", intervalMonths: 12, leadDays: 21, notes: "" },
+export const UPKEEP_TEMPLATES: { key: string; title: string; titleTr: string; titleEn?: string; category: typeof UPKEEP_CATS[number]; icon: string; intervalMonths: number; leadDays: number; notes: string }[] = [
+  { key: "keuring", title: "Autokeuring", titleTr: "Araç muayenesi", titleEn: "Car inspection", category: "auto", icon: "🚗", intervalMonths: 12, leadDays: 30, notes: "Jaarlijks vanaf het 4e jaar. Neem inschrijvingsbewijs, gelijkvormigheidsattest en vorig keuringsbewijs mee." },
+  { key: "autoverzekering", title: "Autoverzekering vervaldag", titleTr: "Araç sigortası vadesi", titleEn: "Car insurance renewal", category: "verzekering", icon: "📄", intervalMonths: 12, leadDays: 45, notes: "Opzeggen kan tot 3 maanden voor de vervaldag." },
+  { key: "banden", title: "Winter-/zomerbanden wisselen", titleTr: "Kış/yaz lastiği değişimi", titleEn: "Swap winter/summer tyres", category: "auto", icon: "🛞", intervalMonths: 6, leadDays: 14, notes: "" },
+  { key: "cv-gas", title: "Onderhoud CV-ketel (gas)", titleTr: "Kombi bakımı (gaz)", titleEn: "Boiler service (gas)", category: "verwarming", icon: "🔥", intervalMonths: 24, leadDays: 45, notes: "Vlaanderen: verplicht om de 2 jaar door een erkend technicus; attest bewaren." },
+  { key: "cv-stookolie", title: "Onderhoud CV-ketel (stookolie)", titleTr: "Kombi bakımı (fuel oil)", titleEn: "Boiler service (oil)", category: "verwarming", icon: "🔥", intervalMonths: 12, leadDays: 45, notes: "Verplicht jaarlijks; reinigings- en verbrandingsattest bewaren." },
+  { key: "schoorsteen", title: "Schoorsteen vegen", titleTr: "Baca temizliği", titleEn: "Chimney sweep", category: "verwarming", icon: "🧹", intervalMonths: 12, leadDays: 30, notes: "Jaarlijks bij hout of stookolie; attest voor de verzekering." },
+  { key: "rookmelders", title: "Rookmelders testen en batterij", titleTr: "Duman dedektörü testi ve pili", titleEn: "Test smoke detectors and battery", category: "veiligheid", icon: "🚨", intervalMonths: 12, leadDays: 14, notes: "Verplicht op elke verdieping. Vervang de melder zelf na 10 jaar." },
+  { key: "co-melder", title: "CO-melder controleren", titleTr: "CO dedektörü kontrolü", titleEn: "Check CO detector", category: "veiligheid", icon: "⚠️", intervalMonths: 12, leadDays: 14, notes: "" },
+  { key: "brandblusser", title: "Brandblusser nazicht", titleTr: "Yangın söndürücü kontrolü", titleEn: "Fire extinguisher check", category: "veiligheid", icon: "🧯", intervalMonths: 12, leadDays: 30, notes: "" },
+  { key: "ventilatie", title: "Ventilatiefilters vervangen", titleTr: "Havalandırma filtresi değişimi", titleEn: "Replace ventilation filters", category: "water", icon: "🌬️", intervalMonths: 6, leadDays: 14, notes: "Systeem C/D: filters om de 6 maanden; kanalen om de 3 jaar reinigen." },
+  { key: "ontharder", title: "Zout waterverzachter bijvullen", titleTr: "Su yumuşatıcı tuzu", titleEn: "Refill water softener salt", category: "water", icon: "🧂", intervalMonths: 2, leadDays: 7, notes: "" },
+  { key: "boiler", title: "Boiler ontkalken", titleTr: "Termosifon kireç temizliği", titleEn: "Descale water heater", category: "water", icon: "🚿", intervalMonths: 24, leadDays: 30, notes: "" },
+  { key: "dakgoot", title: "Dakgoten reinigen", titleTr: "Oluk temizliği", titleEn: "Clean gutters", category: "tuin", icon: "🍂", intervalMonths: 12, leadDays: 14, notes: "Na de herfst." },
+  { key: "septisch", title: "Septische put ruimen", titleTr: "Fosseptik boşaltma", titleEn: "Empty septic tank", category: "water", icon: "🕳️", intervalMonths: 36, leadDays: 30, notes: "" },
+  { key: "zonnepanelen", title: "Zonnepanelen en omvormer nazicht", titleTr: "Güneş paneli ve inverter kontrolü", titleEn: "Solar panels and inverter check", category: "overig", icon: "☀️", intervalMonths: 12, leadDays: 30, notes: "" },
+  { key: "brandverzekering", title: "Brandverzekering vervaldag", titleTr: "Konut sigortası vadesi", titleEn: "Home insurance renewal", category: "verzekering", icon: "🏠", intervalMonths: 12, leadDays: 45, notes: "" },
+  { key: "hospitalisatie", title: "Hospitalisatieverzekering vervaldag", titleTr: "Hastane sigortası vadesi", titleEn: "Hospital insurance renewal", category: "verzekering", icon: "🏥", intervalMonths: 12, leadDays: 45, notes: "" },
+  { key: "meterstand", title: "Meterstanden doorgeven", titleTr: "Sayaç okuma bildirimi", titleEn: "Submit meter readings", category: "administratie", icon: "🔢", intervalMonths: 12, leadDays: 7, notes: "Water, en gas/elektriciteit bij een klassieke meter." },
+  { key: "kids-id", title: "Kids-ID / identiteitskaart vernieuwen", titleTr: "Kids-ID / kimlik yenileme", titleEn: "Renew children's ID / ID card", category: "administratie", icon: "🪪", intervalMonths: 36, leadDays: 60, notes: "Kids-ID is 3 jaar geldig; aanvragen bij de gemeente, 2 à 3 weken wachttijd." },
+  { key: "paspoort", title: "Paspoort vernieuwen", titleTr: "Pasaport yenileme", titleEn: "Renew passport", category: "administratie", icon: "🛂", intervalMonths: 84, leadDays: 90, notes: "Volwassenen 7 jaar, kinderen 5 jaar." },
+  { key: "huisdier-vaccin", title: "Huisdier: vaccins en ontworming", titleTr: "Evcil hayvan: aşı ve kurt ilacı", titleEn: "Pet: vaccines and deworming", category: "huisdier", icon: "🐾", intervalMonths: 12, leadDays: 21, notes: "" },
 ];
 export function applyTemplates(keys: string[], h = hid()) {
   const have = new Set(listUpkeep(h).map((u) => u.title.toLowerCase()));
-  const tr = getSettings(h).language === "tr";
+  const lang = asLang(getSettings(h).language);
   let n = 0;
   for (const k of keys) {
     const tpl = UPKEEP_TEMPLATES.find((x) => x.key === k); if (!tpl || have.has(tpl.title.toLowerCase())) continue;
-    createUpkeep(UpkeepInput.parse({ title: tr ? tpl.titleTr : tpl.title, category: tpl.category, icon: tpl.icon, intervalMonths: tpl.intervalMonths, leadDays: tpl.leadDays, notes: tpl.notes }), h); n++;
+    createUpkeep(UpkeepInput.parse({ title: lang === "tr" ? tpl.titleTr : lang === "en" ? (tpl.titleEn ?? tpl.title) : tpl.title, category: tpl.category, icon: tpl.icon, intervalMonths: tpl.intervalMonths, leadDays: tpl.leadDays, notes: tpl.notes }), h); n++;
   }
   return n;
 }
 
 // ---------- afvalkalender ----------
-export const FRACTIONS: { id: string; nl: string; tr: string; icon: string; words: string[] }[] = [
-  { id: "rest", nl: "Restafval", tr: "Evsel atık", icon: "🗑️", words: ["rest", "huisvuil", "restafval", "grijze"] },
-  { id: "pmd", nl: "PMD", tr: "PMD (plastik, metal, içecek kartonu)", icon: "🧴", words: ["pmd", "plastic", "blauwe zak"] },
-  { id: "papier", nl: "Papier & karton", tr: "Kâğıt ve karton", icon: "📦", words: ["papier", "karton"] },
-  { id: "gft", nl: "GFT", tr: "Organik atık (GFT)", icon: "🥬", words: ["gft", "groente", "tuinafval", "groen"] },
-  { id: "glas", nl: "Glas", tr: "Cam", icon: "🍾", words: ["glas"] },
-  { id: "grof", nl: "Grofvuil", tr: "İri atık", icon: "🛋️", words: ["grof", "grofvuil", "grof huisvuil"] },
-  { id: "textiel", nl: "Textiel", tr: "Tekstil", icon: "👕", words: ["textiel", "kledij"] },
-  { id: "snoei", nl: "Snoeihout", tr: "Budama dalı", icon: "🌳", words: ["snoei", "takken"] },
+export const FRACTIONS: { id: string; nl: string; tr: string; en: string; icon: string; words: string[] }[] = [
+  { id: "rest", nl: "Restafval", tr: "Evsel atık", en: "General waste", icon: "🗑️", words: ["rest", "huisvuil", "restafval", "grijze"] },
+  { id: "pmd", nl: "PMD", tr: "PMD (plastik, metal, içecek kartonu)", en: "Plastics, metal and cartons (PMD)", icon: "🧴", words: ["pmd", "plastic", "blauwe zak"] },
+  { id: "papier", nl: "Papier & karton", tr: "Kâğıt ve karton", en: "Paper & cardboard", icon: "📦", words: ["papier", "karton"] },
+  { id: "gft", nl: "GFT", tr: "Organik atık (GFT)", en: "Organic waste", icon: "🥬", words: ["gft", "groente", "tuinafval", "groen"] },
+  { id: "glas", nl: "Glas", tr: "Cam", en: "Glass", icon: "🍾", words: ["glas"] },
+  { id: "grof", nl: "Grofvuil", tr: "İri atık", en: "Bulky waste", icon: "🛋️", words: ["grof", "grofvuil", "grof huisvuil"] },
+  { id: "textiel", nl: "Textiel", tr: "Tekstil", en: "Textiles", icon: "👕", words: ["textiel", "kledij"] },
+  { id: "snoei", nl: "Snoeihout", tr: "Budama dalı", en: "Garden prunings", icon: "🌳", words: ["snoei", "takken"] },
 ];
 export const WasteInput = z.object({ fraction: z.string().min(1).max(20), weekday: z.number().int().min(0).max(6), everyWeeks: z.number().int().min(1).max(8).default(1), startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), notes: z.string().max(200).default("") });
 export interface WasteRule { id: string; fraction: string; weekday: number; everyWeeks: number; startDate: string; notes: string }
@@ -132,7 +133,7 @@ export function wasteNext(days = 14, h = hid()) {
   for (let i = 0; i < days; i++) { const d = addDays(t, i); const f = wasteOn(d, h); if (f.length) out.push({ date: d, fractions: f }); }
   return out;
 }
-export const fractionLabel = (id: string, lang: "nl" | "tr") => { const f = FRACTIONS.find((x) => x.id === id); return f ? (lang === "tr" ? f.tr : f.nl) : id; };
+export const fractionLabel = (id: string, lang: Lang) => { const f = FRACTIONS.find((x) => x.id === id); return f ? f[lang] : id; };
 export const fractionIcon = (id: string) => FRACTIONS.find((x) => x.id === id)?.icon ?? "♻️";
 const guessFraction = (title: string) => { const l = title.toLowerCase(); return FRACTIONS.find((f) => f.words.some((w) => l.includes(w)))?.id ?? null; };
 /** De afvalkalender van de intercommunale via haar iCal-adres inlezen (een jaar vooruit). */

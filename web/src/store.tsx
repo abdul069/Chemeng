@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, onChanged, ApiError } from "./api";
 import type { Bootstrap, Member, Topic } from "./types";
-import { t, setLang } from "./i18n";
+import { t, setLang, asLang, setBrand } from "./i18n";
 
 interface Ctx {
   data: Bootstrap | null;
@@ -35,7 +35,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.match(/index-([A-Za-z0-9_-]+)\.js/)?.[1];
         if (d.build && mine && d.build !== mine && sessionStorage.getItem("gb.reloaded") !== d.build) { sessionStorage.setItem("gb.reloaded", d.build); location.reload(); return; }
         // eerst het woordenboek, dan tekenen: anders flitst Nederlands voor Turks
-        void setLang(d.settings.language === "tr" ? "tr" : "nl").then(() => { setData(d); setError(null); setErrorCode(null); });
+        setBrand(d.brand?.name); void setLang(asLang(d.settings.language)).then(() => { setData(d); setError(null); setErrorCode(null); });
       })
       .catch((e) => {
         setError(e.message);

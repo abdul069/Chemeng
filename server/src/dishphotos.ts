@@ -1,3 +1,4 @@
+import { UA as USER_AGENT } from "./i18n.js";
 // Foto's van gerechten zoeken: eerst gratis via Wikipedia (Turks, Nederlands, Engels),
 // en als de assistent ingesteld is ook op Turkse receptsites.
 import { all, get, run } from "./db.js";
@@ -20,7 +21,7 @@ export async function wikipedia(lang: string, query: string): Promise<DishPhoto[
     action: "query", generator: "search", gsrsearch: query, gsrlimit: "4", gsrnamespace: "0",
     prop: "pageimages", piprop: "thumbnail", pithumbsize: "800", format: "json", origin: "*",
   }).toString();
-  const res = await fetcher(url, { headers: { "user-agent": "Gezinsbord/1.0 (gezinsapp)" }, signal: AbortSignal.timeout(8000) });
+  const res = await fetcher(url, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) return [];
   const j = (await res.json()) as { query?: { pages?: Record<string, { title: string; index?: number; thumbnail?: { source: string } }> } };
   return Object.values(j.query?.pages ?? {})

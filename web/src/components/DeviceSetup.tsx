@@ -24,10 +24,10 @@ export function DeviceSetup({ onDone }: { onDone: () => void }) {
     onDone();
   };
   return (
-    <Modal title={step === "role" ? t("Waar draait Gezinsbord hier?") : t("Van wie is deze telefoon?")} onClose={() => { setDevice({ role: suggested, variant: suggested === "hub" ? "wall" : "" }); onDone(); }} wide>
+    <Modal title={step === "role" ? t("Waar draait {brand} hier?") : t("Van wie is deze telefoon?")} onClose={() => { setDevice({ role: suggested, variant: suggested === "hub" ? "wall" : "" }); onDone(); }} wide>
       {step === "role" ? (
         <>
-          <p className="hint">{t("Zo weet Gezinsbord hoe het zich moet gedragen: als het gedeelde scherm voor het hele gezin, of als jouw persoonlijke app.")}</p>
+          <p className="hint">{t("Zo weet {brand} hoe het zich moet gedragen: als het gedeelde scherm voor het hele gezin, of als jouw persoonlijke app.")}</p>
           <div className="devchoices">
             {CHOICES.map((c) => (
               <button key={c.title} className={`devchoice${c.role === suggested && (c.role === "phone" || c.variant === "wall") ? " suggested" : ""}`} onClick={() => { setPicked(c); if (c.role === "phone" && (data?.members.length ?? 0) > 0) setStep("who"); else { setPicked(c); setDevice({ role: c.role, variant: c.variant, memberId: null, name: c.role === "hub" ? (c.variant === "wall" ? t("Wandscherm keuken") : t("Tafelmodel")) : undefined }); onDone(); } }}>

@@ -1,3 +1,4 @@
+import { UA as USER_AGENT } from "./i18n.js";
 /**
  * Online ezan-opnames zoeken in het openbare Internet Archive (archive.org), zodat het gezin
  * geluiden kan beluisteren en bewaren zonder zelf bestanden te moeten zoeken.
@@ -5,7 +6,7 @@
 export interface EzanHit { id: string; title: string; url: string; size: number; source: string }
 
 const cache = new Map<string, { at: number; hits: EzanHit[] }>();
-const UA = { "user-agent": "Gezinsbord/1.0 (gezinsscherm)" };
+const UA = { "user-agent": USER_AGENT };
 
 async function getJson<T>(url: string): Promise<T> {
   const r = await fetch(url, { headers: UA, signal: AbortSignal.timeout(15_000) });

@@ -4,6 +4,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { api } from "./api";
+import { brand } from "./i18n";
 import { EZAN_PRAYERS, PRAYER_NAME, PRAYER_TR } from "./islam";
 import type { Prayer, PrayerDay, Settings } from "./types";
 import { getLang } from "./i18n";
@@ -57,7 +58,7 @@ export async function scheduleEzan(settings: Settings, today: PrayerDay | null, 
       if (!chosen.has(p)) continue;
       const at = new Date(new Date(day.times[p]).getTime() + (adjust[p] ?? 0) * 60_000);
       if (at.getTime() <= Date.now()) continue;
-      list.push({ id: idFor(i, p), title: `${tr ? PRAYER_TR[p] : PRAYER_NAME[p]} · ${at.getHours()}:${String(at.getMinutes()).padStart(2, "0")}`, body: tr ? "Ezan vakti. Gezinsbord'u açmak için dokun." : "Het is tijd voor het gebed. Tik om Gezinsbord te openen.", schedule: { at, allowWhileIdle: true }, channelId: "ezan", sound: "ezan.wav", smallIcon: "ic_stat_ezan" });
+      list.push({ id: idFor(i, p), title: `${tr ? PRAYER_TR[p] : PRAYER_NAME[p]} · ${at.getHours()}:${String(at.getMinutes()).padStart(2, "0")}`, body: tr ? `Ezan vakti. ${brand()}'u açmak için dokun.` : `Het is tijd voor het gebed. Tik om ${brand()} te openen.`, schedule: { at, allowWhileIdle: true }, channelId: "ezan", sound: "ezan.wav", smallIcon: "ic_stat_ezan" });
     }
   }
   if (list.length) { try { await LocalNotifications.schedule({ notifications: list }); } catch { /* */ } }

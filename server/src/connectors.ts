@@ -6,6 +6,7 @@ import { db, all, get, run, newId, hid, getSettings } from "./db.js";
 import { today, addDays } from "./dates.js";
 import * as H from "./home.js";
 import type { Item, Proposal } from "./manager.js";
+import { L, asLang, UA as USER_AGENT, type Lang } from "./i18n.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS connections (
@@ -45,12 +46,34 @@ export function decrypt<T = Record<string, unknown>>(s: string): T {
 // ---------- de vorm van een koppeling ----------
 export type Category = "school" | "werk" | "uit" | "mobiliteit" | "huis" | "eten" | "winkelen" | "gezondheid" | "nieuws" | "tradities" | "automatisering";
 export const CATEGORY_LABEL: Record<Category, string> = { school: "School en kinderen", werk: "Werk en agenda", uit: "Uit en vrije tijd", mobiliteit: "Mobiliteit", huis: "Huis en energie", eten: "Eten", winkelen: "Winkelen", gezondheid: "Gezondheid", nieuws: "Nieuws en weer", tradities: "Kalenders en tradities", automatisering: "Berichten en automatisering" };
+const CATEGORY_LABEL_EN: Record<Category, string> = { school: "School and children", werk: "Work and calendar", uit: "Going out and leisure", mobiliteit: "Mobility", huis: "Home and energy", eten: "Food", winkelen: "Shopping", gezondheid: "Health", nieuws: "News and weather", tradities: "Calendars and traditions", automatisering: "Messages and automation" };
+const CATEGORY_LABEL_TR: Record<Category, string> = { school: "Okul ve çocuklar", werk: "İş ve takvim", uit: "Gezi ve boş zaman", mobiliteit: "Ulaşım", huis: "Ev ve enerji", eten: "Yemek", winkelen: "Alışveriş", gezondheid: "Sağlık", nieuws: "Haber ve hava", tradities: "Takvimler ve gelenekler", automatisering: "Mesajlar ve otomasyon" };
+/** Engelse naam en uitleg per koppeling (Nederlands staat in de definitie zelf). */
+const EN_TEXT: Record<string, { name: string; description: string }> = {
+  waste_ical: { name: "Waste calendar (iCal)", description: "The iCal or webcal address of your waste collector; {brand} reads a year ahead and tells you in the evening what goes out." },
+  nmbs: { name: "Train (NMBS)", description: "Your usual route: delays and the next trains in your morning briefing and on your phone." },
+  kmi: { name: "KMI weather warnings", description: "Yellow, orange or red code for storm, heat, ice or thunder: on the board and in the briefing as soon as the Belgian weather service warns." },
+  rss: { name: "News (RSS)", description: "Headlines from any news source of your choice; on the board or only on your phone." },
+  stores: { name: "Your shops", description: "Pick your supermarkets: put the list in their search box with one tap, see this week's flyer. One-tap ordering follows once the chains join." },
+  food_delivery: { name: "Order food", description: "Takeaway, Uber Eats or Deliveroo as a way out when dinner is not planned: one tap to your favourite restaurant." },
+  rides: { name: "Order a ride", description: "For an event with an address: one tap opens Uber or the route in Maps with the destination filled in." },
+  uit: { name: "UiTinVlaanderen", description: "Family activities near you this weekend, from publiq's open database; the manager suggests them on Friday." },
+  delijn: { name: "De Lijn", description: "Real-time departures from your stop. Needs a free API key from De Lijn Open Data; coming in a next round." },
+  mivb: { name: "MIVB/STIB", description: "Real-time metro, tram and bus in Brussels. Coming in a next round." },
+  inbox: { name: "Family inbox", description: "An email address for your family: forward school mail, the doctor or the inspection letter and {brand} turns it into events and chores." },
+  recycle: { name: "Recycle! (waste app)", description: "Straight from the Recycle! app. Unofficial connection that may break; prefer your waste collector's iCal address." },
+  school_holidays: { name: "School holidays", description: "Flemish or French-community school holidays as a calendar layer." },
+  teams_status: { name: "Teams status", description: "“Dad is in a meeting until 3pm” on the board. Coming in a next round." },
+  withings: { name: "Withings", description: "Scale and blood pressure monitor in the diet and health section. Coming in a next round." },
+  telegram: { name: "Telegram bot", description: "Send a photo of the school letter or a message to the bot. Coming in a next round." },
+  webhooks: { name: "Webhooks (Siri, IFTTT, n8n)", description: "An address to put something on a list or in the calendar from outside. Coming in a next round." },
+};
 export interface Field { key: string; label: string; type: "text" | "url" | "secret" | "select" | "multiselect" | "number" | "time" | "textarea"; options?: { value: string; label: string }[]; placeholder?: string; required?: boolean; hint?: string }
 export interface Link { label: string; url: string; icon: string }
 export interface Widget { title: string; icon: string; lines: { icon?: string; text: string; sub?: string; url?: string }[] }
 export interface CalItem { id: string; title: string; date: string; endDate?: string | null; startTime?: string | null; endTime?: string | null; allDay: boolean; location?: string; url?: string }
 export interface Conn { id: string; householdId: string; memberId: string | null; connector: string; config: Record<string, unknown>; state: Record<string, unknown>; enabled: boolean; onBoard: boolean; lastSync: string | null; status: string; error: string }
-export interface Ctx { kind: "morning" | "evening"; date: string; memberId: string | null; lang: "nl" | "tr" }
+export interface Ctx { kind: "morning" | "evening"; date: string; memberId: string | null; lang: Lang }
 export interface ConnectorDef {
   id: string; name: string; description: string; category: Category; icon: string;
   scope: "household" | "member"; plan: "gezin" | "plus"; country: string[]; status: "ready" | "unofficial" | "soon";
@@ -58,7 +81,7 @@ export interface ConnectorDef {
   sync?: (c: Conn) => Promise<Record<string, unknown>>;
   briefing?: (c: Conn, ctx: Ctx) => Item[];
   proposals?: (c: Conn, ctx: Ctx) => Proposal[];
-  widget?: (c: Conn, lang: "nl" | "tr") => Widget | null;
+  widget?: (c: Conn, lang: Lang) => Widget | null;
   calendar?: (c: Conn, from: string, to: string) => CalItem[];
   links?: (c: Conn, context: { kind: "list" | "meal" | "event" | "store"; q?: string; address?: string; title?: string }) => Link[];
 }
@@ -69,7 +92,7 @@ const enc = encodeURIComponent;
 const ago = (iso: string | undefined) => (iso ? Date.now() - Date.parse(iso) : Number.POSITIVE_INFINITY);
 
 async function fetchText(url: string, headers: Record<string, string> = {}) {
-  const res = await fetch(url, { headers: { "user-agent": "Gezinsbord/2.0 (+https://gezinsbord.be)", ...headers }, signal: AbortSignal.timeout(15_000) });
+  const res = await fetch(url, { headers: { "user-agent": USER_AGENT, ...headers }, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`Foutcode ${res.status} van ${new URL(url).hostname}`);
   return res.text();
 }
@@ -130,15 +153,15 @@ export const CONNECTORS: ConnectorDef[] = [
       const list = (c.state.list as { dep: string; delay: number; canceled: boolean; platform: string }[] | undefined) ?? [];
       const first = list[0]; if (!first) return [];
       const hm = (iso: string) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-      if (first.canceled) return [{ kind: "note", icon: "🚆", text: ctx.lang === "tr" ? `${hm(first.dep)} treni ${str(c.config.to)} yönüne iptal; sonraki ${list[1] ? hm(list[1].dep) : "?"}.` : `Trein van ${hm(first.dep)} naar ${str(c.config.to)} is afgeschaft; volgende om ${list[1] ? hm(list[1].dep) : "?"}.` }];
-      if (first.delay > 0) return [{ kind: "note", icon: "🚆", text: ctx.lang === "tr" ? `${hm(first.dep)} treni ${str(c.config.to)}: +${first.delay} dk gecikme, peron ${first.platform}.` : `Trein van ${hm(first.dep)} naar ${str(c.config.to)}: ${first.delay} min vertraging, spoor ${first.platform}.` }];
-      return [{ kind: "note", icon: "🚆", text: ctx.lang === "tr" ? `${hm(first.dep)} treni ${str(c.config.to)} zamanında, peron ${first.platform}.` : `Trein van ${hm(first.dep)} naar ${str(c.config.to)} rijdt op tijd, spoor ${first.platform}.` }];
+      if (first.canceled) return [{ kind: "note", icon: "🚆", text: L(ctx.lang, { nl: `Trein van ${hm(first.dep)} naar ${str(c.config.to)} is afgeschaft; volgende om ${list[1] ? hm(list[1].dep) : "?"}.`, tr: `${hm(first.dep)} treni ${str(c.config.to)} yönüne iptal; sonraki ${list[1] ? hm(list[1].dep) : "?"}.`, en: `The ${hm(first.dep)} train to ${str(c.config.to)} is cancelled; next one at ${list[1] ? hm(list[1].dep) : "?"}.` }) }];
+      if (first.delay > 0) return [{ kind: "note", icon: "🚆", text: L(ctx.lang, { nl: `Trein van ${hm(first.dep)} naar ${str(c.config.to)}: ${first.delay} min vertraging, spoor ${first.platform}.`, tr: `${hm(first.dep)} treni ${str(c.config.to)}: +${first.delay} dk gecikme, peron ${first.platform}.`, en: `The ${hm(first.dep)} train to ${str(c.config.to)}: ${first.delay} min delay, platform ${first.platform}.` }) }];
+      return [{ kind: "note", icon: "🚆", text: L(ctx.lang, { nl: `Trein van ${hm(first.dep)} naar ${str(c.config.to)} rijdt op tijd, spoor ${first.platform}.`, tr: `${hm(first.dep)} treni ${str(c.config.to)} zamanında, peron ${first.platform}.`, en: `The ${hm(first.dep)} train to ${str(c.config.to)} is on time, platform ${first.platform}.` }) }];
     },
     widget: (c, lang) => {
       const list = (c.state.list as { dep: string; delay: number; canceled: boolean; platform: string; arr: string }[] | undefined) ?? [];
       if (!list.length) return null;
       const hm = (iso: string) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-      return { title: `${str(c.config.from)} → ${str(c.config.to)}`, icon: "🚆", lines: list.slice(0, 3).map((x) => ({ icon: x.canceled ? "❌" : x.delay > 0 ? "⚠️" : "✅", text: `${hm(x.dep)} → ${hm(x.arr)}`, sub: x.canceled ? (lang === "tr" ? "iptal" : "afgeschaft") : x.delay > 0 ? `+${x.delay} min · ${lang === "tr" ? "peron" : "spoor"} ${x.platform}` : `${lang === "tr" ? "zamanında · peron" : "op tijd · spoor"} ${x.platform}` })) };
+      return { title: `${str(c.config.from)} → ${str(c.config.to)}`, icon: "🚆", lines: list.slice(0, 3).map((x) => ({ icon: x.canceled ? "❌" : x.delay > 0 ? "⚠️" : "✅", text: `${hm(x.dep)} → ${hm(x.arr)}`, sub: x.canceled ? L(lang, { nl: "afgeschaft", tr: "iptal", en: "cancelled" }) : x.delay > 0 ? `+${x.delay} min · ${L(lang, { nl: "spoor", tr: "peron", en: "platform" })} ${x.platform}` : `${L(lang, { nl: "op tijd · spoor", tr: "zamanında · peron", en: "on time · platform" })} ${x.platform}` })) };
     },
   },
   {
@@ -149,9 +172,9 @@ export const CONNECTORS: ConnectorDef[] = [
     briefing: (c, ctx) => {
       const items = (c.state.items as { title: string; date: string | null }[] | undefined) ?? [];
       const fresh = items.filter((i) => !i.date || ago(i.date) < 36 * 3600_000).filter((i) => /geel|oranje|rood|waarschuwing|sarı|turuncu|kırmızı|uyarı/i.test(i.title));
-      return fresh.slice(0, 1).map((i) => ({ kind: "weather" as const, icon: "⛈️", text: ctx.lang === "tr" ? `KMI uyarısı: ${i.title}` : `KMI waarschuwt: ${i.title}` }));
+      return fresh.slice(0, 1).map((i) => ({ kind: "weather" as const, icon: "⛈️", text: `${L(ctx.lang, { nl: "KMI waarschuwt", tr: "KMI uyarısı", en: "KMI warning" })}: ${i.title}` }));
     },
-    widget: (c, lang) => { const items = (c.state.items as { title: string; link: string; date: string | null }[] | undefined) ?? []; const fresh = items.filter((i) => !i.date || ago(i.date) < 36 * 3600_000); return fresh.length ? { title: lang === "tr" ? "KMI uyarıları" : "KMI-waarschuwingen", icon: "⛈️", lines: fresh.slice(0, 3).map((i) => ({ text: i.title, url: i.link })) } : null; },
+    widget: (c, lang) => { const items = (c.state.items as { title: string; link: string; date: string | null }[] | undefined) ?? []; const fresh = items.filter((i) => !i.date || ago(i.date) < 36 * 3600_000); return fresh.length ? { title: L(lang, { nl: "KMI-waarschuwingen", tr: "KMI uyarıları", en: "KMI warnings" }), icon: "⛈️", lines: fresh.slice(0, 3).map((i) => ({ text: i.title, url: i.link })) } : null; },
   },
   {
     id: "rss", name: "Nieuws (RSS)", description: "Koppen van VRT NWS, HLN, De Standaard of een andere bron naar keuze; op het bord of alleen op jouw telefoon.", category: "nieuws", icon: "📰",
@@ -170,7 +193,7 @@ export const CONNECTORS: ConnectorDef[] = [
       if (context.kind === "list") return chosen.map((s) => ({ label: STORES[s].name, url: STORES[s].search.replace("%s", enc(context.q ?? "")), icon: "🛒" }));
       return [];
     },
-    widget: (c, lang) => { const chosen = arr(c.config.stores).filter((s) => STORES[s]); return chosen.length ? { title: lang === "tr" ? "Haftanın broşürleri" : "Folders van de week", icon: "📰", lines: chosen.map((s) => ({ icon: "🛒", text: STORES[s].name, url: STORES[s].folder })) } : null; },
+    widget: (c, lang) => { const chosen = arr(c.config.stores).filter((s) => STORES[s]); return chosen.length ? { title: L(lang, { nl: "Folders van de week", tr: "Haftanın broşürleri", en: "This week's flyers" }), icon: "📰", lines: chosen.map((s) => ({ icon: "🛒", text: STORES[s].name, url: STORES[s].folder })) } : null; },
   },
   {
     id: "food_delivery", name: "Eten bestellen", description: "Takeaway, Uber Eats of Deliveroo als uitweg wanneer het avondeten niet gepland is: één tik naar je favoriete restaurant.", category: "eten", icon: "🍕",
@@ -184,7 +207,7 @@ export const CONNECTORS: ConnectorDef[] = [
       const planned = all<{ title: string }>("SELECT title FROM meals WHERE household_id=? AND date=? AND slot='diner' AND title<>''", c.householdId, ctx.date).length > 0;
       if (planned) return [];
       const fav = arr(c.config.favorites)[0] ?? ""; const svc = arr(c.config.services).filter((s) => DELIVERY[s])[0]; if (!svc) return [];
-      return [{ id: `food:${ctx.date}`, kind: "link", title: ctx.lang === "tr" ? `${DELIVERY[svc].name}'ten sipariş ver${fav ? ` (${fav})` : ""}` : `Bestellen bij ${DELIVERY[svc].name}${fav ? ` (${fav})` : ""}`, why: ctx.lang === "tr" ? "Bu akşam için yemek planlanmadı." : "Er is vanavond niets gepland.", url: DELIVERY[svc].search.replace("%s", enc(fav)) }];
+      return [{ id: `food:${ctx.date}`, kind: "link", title: L(ctx.lang, { nl: `Bestellen bij ${DELIVERY[svc].name}${fav ? ` (${fav})` : ""}`, tr: `${DELIVERY[svc].name}'ten sipariş ver${fav ? ` (${fav})` : ""}`, en: `Order from ${DELIVERY[svc].name}${fav ? ` (${fav})` : ""}` }), why: L(ctx.lang, { nl: "Er is vanavond niets gepland.", tr: "Bu akşam için yemek planlanmadı.", en: "Nothing is planned for tonight." }), url: DELIVERY[svc].search.replace("%s", enc(fav)) }];
     },
   },
   {
@@ -205,8 +228,8 @@ export const CONNECTORS: ConnectorDef[] = [
       const items = (data.member ?? []).map((e) => ({ title: e.name?.nl ?? Object.values(e.name ?? {})[0] ?? "Activiteit", date: e.startDate ? e.startDate.slice(0, 10) : null, place: e.location?.name?.nl ?? "", city: Object.values(e.location?.address ?? {})[0]?.addressLocality ?? "", url: e.sameAs?.[0] ?? `https://www.uitinvlaanderen.be/agenda/e/-/${(e["@id"] ?? "").split("/").pop()}` }));
       return { items, at: new Date().toISOString() };
     },
-    widget: (c, lang) => { const items = (c.state.items as { title: string; date: string | null; place: string; url: string }[] | undefined) ?? []; return items.length ? { title: lang === "tr" ? "Yakınında etkinlikler" : "Uit in de buurt", icon: "🎪", lines: items.slice(0, 4).map((i) => ({ icon: "🎪", text: i.title, sub: [i.date, i.place].filter(Boolean).join(" · "), url: i.url })) } : null; },
-    briefing: (c, ctx) => { const wd = new Date(ctx.date + "T12:00:00").getDay(); if (wd !== 5 || ctx.kind !== "evening") return []; const items = (c.state.items as { title: string }[] | undefined) ?? []; return items.length ? [{ kind: "note", icon: "🎪", text: ctx.lang === "tr" ? `Bu hafta sonu yakınında: ${items.slice(0, 2).map((i) => i.title).join(", ")}.` : `Dit weekend in de buurt: ${items.slice(0, 2).map((i) => i.title).join(", ")}.` }] : []; },
+    widget: (c, lang) => { const items = (c.state.items as { title: string; date: string | null; place: string; url: string }[] | undefined) ?? []; return items.length ? { title: L(lang, { nl: "Uit in de buurt", tr: "Yakınında etkinlikler", en: "Things to do nearby" }), icon: "🎪", lines: items.slice(0, 4).map((i) => ({ icon: "🎪", text: i.title, sub: [i.date, i.place].filter(Boolean).join(" · "), url: i.url })) } : null; },
+    briefing: (c, ctx) => { const wd = new Date(ctx.date + "T12:00:00").getDay(); if (wd !== 5 || ctx.kind !== "evening") return []; const items = (c.state.items as { title: string }[] | undefined) ?? []; return items.length ? [{ kind: "note", icon: "🎪", text: `${L(ctx.lang, { nl: "Dit weekend in de buurt", tr: "Bu hafta sonu yakınında", en: "This weekend nearby" })}: ${items.slice(0, 2).map((i) => i.title).join(", ")}.` }] : []; },
   },
   { id: "delijn", name: "De Lijn", description: "Realtime vertrektijden van je halte. Vraagt een gratis API-sleutel bij De Lijn Open Data; komt in een volgende ronde.", category: "mobiliteit", icon: "🚌", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "mivb", name: "MIVB", description: "Realtime metro, tram en bus in Brussel. Komt in een volgende ronde.", category: "mobiliteit", icon: "🚇", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
@@ -290,7 +313,7 @@ export function connectorBriefing(ctx: Ctx, h = hid()): { items: Item[]; proposa
   return { items, proposals };
 }
 /** Widgets voor het bord (gezin + "ook op het bord") of voor één persoon. */
-export function connectorWidgets(memberId: string | null, board: boolean, lang: "nl" | "tr", h = hid()): { id: string; connector: string; memberId: string | null; widget: Widget }[] {
+export function connectorWidgets(memberId: string | null, board: boolean, lang: Lang, h = hid()): { id: string; connector: string; memberId: string | null; widget: Widget }[] {
   const out: { id: string; connector: string; memberId: string | null; widget: Widget }[] = [];
   for (const c of listConnections(h).filter((c) => c.enabled)) {
     const def = connectorById(c.connector); if (!def?.widget) continue;
@@ -315,8 +338,8 @@ export function connectorCalendar(from: string, to: string, h = hid()): CalItem[
 }
 /** Catalogus: wat er bestaat, met aanbevelingen voor dit gezin. */
 export function catalog(h = hid()) {
-  const s = getSettings(h); const country = s.country || "BE";
+  const s = getSettings(h); const country = s.country || "BE"; const lang = asLang(s.language);
   const have = new Set(listConnections(h).map((c) => c.connector));
   const recommended = ["waste_ical", "nmbs", "kmi", "stores", "uit"];
-  return CONNECTORS.filter((c) => !c.country.length || c.country.includes(country)).map(({ sync, briefing, proposals, widget, calendar, links, ...pub }) => { void sync; void briefing; void proposals; void widget; void calendar; void links; return { ...pub, categoryLabel: CATEGORY_LABEL[pub.category], recommended: recommended.includes(pub.id) && !have.has(pub.id), connected: have.has(pub.id) }; });
+  return CONNECTORS.filter((c) => !c.country.length || c.country.includes(country)).map(({ sync, briefing, proposals, widget, calendar, links, ...pub }) => { void sync; void briefing; void proposals; void widget; void calendar; void links; const en = EN_TEXT[pub.id]; const name = lang === "en" && en ? en.name : pub.name; const description = lang === "en" && en ? en.description : pub.description; return { ...pub, name, description, categoryLabel: (lang === "en" ? CATEGORY_LABEL_EN : lang === "tr" ? CATEGORY_LABEL_TR : CATEGORY_LABEL)[pub.category], recommended: recommended.includes(pub.id) && !have.has(pub.id), connected: have.has(pub.id) }; });
 }

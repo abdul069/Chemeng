@@ -15,13 +15,13 @@ export function ManagerSection() {
   const [nw, setNw] = useState({ text: "", memberId: null as string | null });
   return (
     <Fold title={t("De manager")} hint={t("briefings en geheugen")}>
-      <p className="hint">{t("Elke ochtend en avond maakt Gezinsbord een korte briefing per gezinslid: afspraken, taken, eten, weer en voorstellen voor wat nog niet geregeld is. Op het keukenscherm staat ze op het Bord; telefoons krijgen een melding.")}</p>
+      <p className="hint">{t("Elke ochtend en avond maakt {brand} een korte briefing per gezinslid: afspraken, taken, eten, weer en voorstellen voor wat nog niet geregeld is. Op het keukenscherm staat ze op het Bord; telefoons krijgen een melding.")}</p>
       <div className="row3">
         <label className="field"><span>{t("Ochtendbriefing om")}</span><input type="time" value={s.briefing_morning} onChange={(e) => save({ briefing_morning: e.target.value })} /></label>
         <label className="field"><span>{t("Avondafsluiting om")}</span><input type="time" value={s.briefing_evening} onChange={(e) => save({ briefing_evening: e.target.value })} /></label>
         <label className="check-row" style={{ alignSelf: "end" }}><input type="checkbox" checked={s.briefing_push === "1"} onChange={(e) => save({ briefing_push: e.target.checked ? "1" : "0" })} />{" "}{t("Melding op de telefoons")}</label>
       </div>
-      <div className="field"><span>{t("Wat Gezinsbord over ons weet")}</span>
+      <div className="field"><span>{t("Wat {brand} over ons weet")}</span>
         <p className="hint">{t("Feiten die de assistent onthoudt en gebruikt in gesprekken en briefings. Vertel het de assistent, of voeg het hier toe.")}</p>
         <div className="memlist">
           {mem.map((m) => { const who = m.memberId ? data!.members.find((x) => x.id === m.memberId) : null; return (

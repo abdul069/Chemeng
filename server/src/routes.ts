@@ -32,6 +32,7 @@ import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
 import * as B from "./billing.js";
 import * as C from "./connectors.js";
+import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
@@ -171,7 +172,7 @@ api.post("/push/unsubscribe", (req, res) => {
   res.json({ ok: true });
 });
 api.post("/push/test", async (req, res) => {
-  await pushToUsers([req.session!.user.id], { title: "Gezinsbord", body: "Meldingen werken op dit toestel. 🎉", url: "/#today", tag: "test" });
+  await pushToUsers([req.session!.user.id], { title: BRAND, body: LT(asLang(getSettings().language), { nl: "Meldingen werken op dit toestel. 🎉", tr: "Bildirimler bu cihazda çalışıyor. 🎉", en: "Notifications work on this device. 🎉" }), url: "/#today", tag: "test" });
   res.json({ ok: true });
 });
 
@@ -291,6 +292,7 @@ api.get("/bootstrap", (req, res) => {
     settings: publicSettings(), assistant: { available: assistantAvailable(), model: MODEL, keySource: keySource(), canEditKey: me.role === "beheerder" && householdId === operatorHousehold() },
     me: { id: userId, name: req.session!.user.name, email: req.session!.user.email, role: me.role, memberId: me.memberId },
     build: process.env.GB_BUILD || null,
+    brand: { name: BRAND },
   });
 });
 
@@ -315,7 +317,7 @@ api.put("/connections/:id", async (req, res) => {
 });
 api.post("/connections/:id/sync", async (req, res) => { const c = C.getConnection(p(req)); if (!c) return void res.status(404).json({ error: "Niet gevonden" }); res.json(C.publicConn(await C.syncConnection(c))); broadcast("connections"); });
 api.delete("/connections/:id", (req, res) => { C.deleteConnection(p(req)); res.json({ ok: true }); broadcast("connections", "settings"); });
-api.get("/connections/widgets", (req, res) => { const q = z.object({ member: z.string().optional(), board: z.string().optional() }).parse(req.query); res.json(C.connectorWidgets(q.member || null, q.board === "1", getSettings().language === "tr" ? "tr" : "nl")); });
+api.get("/connections/widgets", (req, res) => { const q = z.object({ member: z.string().optional(), board: z.string().optional() }).parse(req.query); res.json(C.connectorWidgets(q.member || null, q.board === "1", asLang(getSettings().language))); });
 api.get("/connections/links", (req, res) => { const q = z.object({ kind: z.enum(["list", "meal", "event", "store"]), q: z.string().optional(), address: z.string().optional(), title: z.string().optional(), member: z.string().optional() }).parse(req.query); res.json(C.connectorLinks(q, q.member || null)); });
 
 // ---------- abonnement, AI-budget en ledencodes ----------
@@ -1014,7 +1016,7 @@ api.post("/ezan/sounds", requireAdmin, ezanAudio.single("audio"), (req, res) => 
 /** Een ezan van een link halen (de server downloadt, zodat het ook werkt als de bron later verdwijnt). */
 api.post("/ezan/sounds/url", requireAdmin, async (req, res) => {
   const b = z.object({ url: z.string().trim().url("Dat is geen geldige link."), name: z.string().trim().max(80).default("") }).parse(req.body);
-  const r = await fetch(b.url, { signal: AbortSignal.timeout(60_000), headers: { "user-agent": "Gezinsbord/1.0" } });
+  const r = await fetch(b.url, { signal: AbortSignal.timeout(60_000), headers: { "user-agent": USER_AGENT } });
   if (!r.ok) return void res.status(502).json({ error: `De link antwoordde met ${r.status}.` });
   const type = r.headers.get("content-type") ?? "";
   const buf = Buffer.from(await r.arrayBuffer());

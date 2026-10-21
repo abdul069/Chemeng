@@ -50,7 +50,13 @@ const TR_TITLES: Record<string, string> = {
   "Kurban Bayramı (Offerfeest)": "Kurban Bayramı", "Kurban Bayramı (Offerfeest, ±1 dag)": "Kurban Bayramı (±1 gün)",
 };
 /** Feestdagnamen in de taal van het gezin. */
-export const localizeHoliday = (h: Holiday, lang: string): Holiday => (lang === "tr" ? { ...h, title: TR_TITLES[h.title] ?? h.title } : h);
+const EN_TITLES: Record<string, string> = {
+  "Nieuwjaar": "New Year's Day", "Paasmaandag": "Easter Monday", "Dag van de Arbeid": "Labour Day", "O.L.H. Hemelvaart": "Ascension Day", "Pinkstermaandag": "Whit Monday",
+  "Feest van de Vlaamse Gemeenschap": "Flemish Community Day", "Nationale feestdag": "Belgian National Day", "O.L.V. Hemelvaart": "Assumption Day", "Allerheiligen": "All Saints' Day", "Wapenstilstand": "Armistice Day", "Kerstmis": "Christmas",
+  "Begin van de Ramadan": "Start of Ramadan", "Begin van de Ramadan (±1 dag)": "Start of Ramadan (±1 day)",
+  "Ramazan Bayramı (Suikerfeest)": "Eid al-Fitr", "Kurban Bayramı (Offerfeest)": "Eid al-Adha", "Ramazan Bayramı (Suikerfeest, ±1 dag)": "Eid al-Fitr (±1 day)", "Kurban Bayramı (Offerfeest, ±1 dag)": "Eid al-Adha (±1 day)",
+};
+export const localizeHoliday = (h: Holiday, lang: string): Holiday => (lang === "tr" ? { ...h, title: TR_TITLES[h.title] ?? h.title } : lang === "en" ? { ...h, title: EN_TITLES[h.title] ?? h.title } : h);
 export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"]): Holiday[] {
   const years: number[] = [];
   for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) years.push(y);

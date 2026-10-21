@@ -10,7 +10,7 @@ import { ManagerSection } from "../components/ManagerSettings";
 import { BillingSection } from "../components/Billing";
 import { FamilySection } from "../components/Family";
 import { ConnectorsSection } from "../components/Connectors";
-import { t, getLang, setLang } from "../i18n";
+import { t, getLang, setLang, asLang, type Lang } from "../i18n";
 
 const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#5b6b7f", "#3d9bd1"];
 
@@ -80,17 +80,18 @@ function useSetting() {
 function Language() {
   const { data } = useData();
   const save = useSetting();
-  const cur = data!.settings.language === "tr" ? "tr" : "nl";
-  const pick = async (l: "nl" | "tr") => {
+  const cur = asLang(data!.settings.language);
+  const pick = async (l: Lang) => {
     setLang(l);
     const extra: Record<string, string> = {};
-    if (l === "tr" && data!.settings.quran_translation.startsWith("nl.")) extra.quran_translation = "tr.diyanet";
-    if (l === "nl" && data!.settings.quran_translation.startsWith("tr.")) extra.quran_translation = "nl.siregar";
+    const q = data!.settings.quran_translation;
+    if (!q.startsWith(`${l}.`)) extra.quran_translation = l === "tr" ? "tr.diyanet" : l === "en" ? "en.sahih" : "nl.siregar";
     await save({ language: l, ...extra }, t("Taal gewijzigd"));
   };
   return (
-    <Section title={`${t("Taal")} · Dil`}>
+    <Section title={`${t("Taal")} · Language · Dil`}>
       <div className="picks">
+        <button type="button" className="pick" aria-pressed={cur === "en"} onClick={() => pick("en")}>🇬🇧 English</button>
         <button type="button" className="pick" aria-pressed={cur === "nl"} onClick={() => pick("nl")}>🇳🇱 Nederlands</button>
         <button type="button" className="pick" aria-pressed={cur === "tr"} onClick={() => pick("tr")}>🇹🇷 Türkçe</button>
       </div>

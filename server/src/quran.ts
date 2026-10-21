@@ -1,3 +1,4 @@
+import { UA as USER_AGENT } from "./i18n.js";
 /**
  * Koran-tekst en -vertalingen via de open API van alquran.cloud, met een blijvende cache in de databank
  * zodat een soera na de eerste keer meteen en ook zonder internet opent. Audio per vers komt rechtstreeks
@@ -38,7 +39,7 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const r = await fetch(url, { signal: AbortSignal.timeout(20_000), headers: { "user-agent": "Gezinsbord/1.0" } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(20_000), headers: { "user-agent": USER_AGENT } });
   if (!r.ok) throw new Error(`De Koran-dienst antwoordde met ${r.status}.`);
   const j = (await r.json()) as { code: number; data: T };
   if (j.code !== 200) throw new Error("De Koran-dienst gaf een fout terug.");

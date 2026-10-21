@@ -4,7 +4,7 @@ import { useAction, useData, useRemote } from "../store";
 import type { HouseholdUser, Invite, Me, ShareRow } from "../types";
 import { Avatar, Confirm, Fold, Modal } from "../components/ui";
 import { Icon } from "../components/Icons";
-import { t, getLang } from "../i18n";
+import { t, getLang, brand } from "../i18n";
 
 function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
@@ -23,7 +23,7 @@ function ShareLink({ url, text, onClose }: { url: string; text: string; onClose:
     catch { toast(t("Kopiëren lukte niet. Selecteer de link en kopieer ze zelf.")); }
   };
   const share = async () => {
-    try { await navigator.share({ title: "Gezinsbord", text, url }); } catch { /* geannuleerd */ }
+    try { await navigator.share({ title: brand(), text, url }); } catch { /* geannuleerd */ }
   };
   return (
     <Modal title={t("Uitnodiging klaar")} onClose={onClose}>
@@ -33,7 +33,7 @@ function ShareLink({ url, text, onClose }: { url: string; text: string; onClose:
         <button className="btn" onClick={copy}>{t("Link kopiëren")}</button>
         {"share" in navigator && <button className="btn ghost" onClick={share}>{t("Delen…")}</button>}
         <a className="btn ghost" href={`https://wa.me/?text=${encodeURIComponent(message)}`} target="_blank" rel="noreferrer">{t("WhatsApp")}</a>
-        <a className="btn ghost" href={`mailto:?subject=${encodeURIComponent("Uitnodiging voor Gezinsbord")}&body=${encodeURIComponent(message)}`}>{t("E-mail")}</a>
+        <a className="btn ghost" href={`mailto:?subject=${encodeURIComponent(t("Uitnodiging voor {brand}"))}&body=${encodeURIComponent(message)}`}>{t("E-mail")}</a>
       </div>
     </Modal>
   );
@@ -133,7 +133,7 @@ export function HouseholdAccess() {
               {admin && u.id !== data!.me.id && (
                 <button className="btn ghost small" title={t("Herstel-link voor een nieuw wachtwoord")} onClick={async () => {
                   const r = await act(() => api.post<{ url: string }>(`/household/users/${u.id}/reset-link`));
-                  if (r) setLink({ url: r.url, text: t("Hallo {n}, met deze link kies je een nieuw wachtwoord voor Gezinsbord (1 dag geldig).", { n: u.name }) });
+                  if (r) setLink({ url: r.url, text: t("Hallo {n}, met deze link kies je een nieuw wachtwoord voor {brand} (1 dag geldig).", { n: u.name }) });
                 }}>{t("🔑 Wachtwoord")}</button>
               )}
               {(admin || u.id === data!.me.id) && <button className="iconbtn" aria-label={u.id === data!.me.id ? t("Gezin verlaten") : `${u.name} verwijderen`} onClick={() => setRemove(u)}><Icon.trash /></button>}
@@ -180,7 +180,7 @@ export function AgendaSharing() {
 
   const invite = async () => {
     const r = await act(() => api.post<{ url: string }>("/invites", { kind: "agenda", level }));
-    if (r) setLink({ url: r.url, text: `${data!.me.name} deelt zijn of haar agenda met je via Gezinsbord.` });
+    if (r) setLink({ url: r.url, text: t("{n} deelt zijn of haar agenda met je via {brand}.", { n: data!.me.name }) });
   };
 
   return (

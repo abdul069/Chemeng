@@ -217,7 +217,7 @@ function AndroidFold() {
   useEffect(() => { refresh(); const h = () => refresh(); document.addEventListener("visibilitychange", h); return () => document.removeEventListener("visibilitychange", h); }, []);
   return (
     <Fold title={tr("Android-app")} gap={10} open hint={batt === false ? tr("batterijbeperking staat aan") : undefined}>
-      <p className="hint">{tr("De ezan gaat in de app ook af als hij gesloten is: Gezinsbord plant een week vooruit exacte alarmen. Daarvoor moeten meldingen aan staan en moet Android de app niet in slaap zetten.")}</p>
+      <p className="hint">{tr("De ezan gaat in de app ook af als hij gesloten is: {brand} plant een week vooruit exacte alarmen. Daarvoor moeten meldingen aan staan en moet Android de app niet in slaap zetten.")}</p>
       <div className="picks">
         <button className="pill" onClick={() => void notificationsAllowed().then(setNotif)}>🔔 {tr("Meldingen toestaan")}{notif === true ? " ✓" : notif === false ? " ✕" : ""}</button>
         <button className="pill" onClick={() => void requestBattery().then(() => setTimeout(refresh, 1500))}>🔋 {tr("Batterijbeperking uitzetten")}{batt === true ? " ✓" : ""}</button>

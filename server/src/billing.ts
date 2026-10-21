@@ -100,7 +100,7 @@ export function aiAllowed(task: Task, h = hid()): boolean {
   const limit = task === "chat" || task === "search" ? b.budgetMicro : b.budgetMicro * 1.2;
   return b.usedMicro < limit;
 }
-export const BUDGET_MESSAGE = { nl: "Het AI-budget van dit gezin is voor deze maand op. De briefings en alles wat geen AI nodig heeft, blijven gewoon werken. Een upgrade naar Gezin+ geeft meer ruimte.", tr: "Bu ailenin bu ayki yapay zekâ bütçesi doldu. Brifingler ve yapay zekâ gerektirmeyen her şey çalışmaya devam eder. Gezin+ yükseltmesi daha fazla alan verir." };
+export const BUDGET_MESSAGE: Record<"nl" | "tr" | "en", string> = { en: "This family's AI budget for this month is used up. Briefings and everything that does not need AI keep working. An upgrade to Family+ gives more room.", nl: "Het AI-budget van dit gezin is voor deze maand op. De briefings en alles wat geen AI nodig heeft, blijven gewoon werken. Een upgrade naar Gezin+ geeft meer ruimte.", tr: "Bu ailenin bu ayki yapay zekâ bütçesi doldu. Brifingler ve yapay zekâ gerektirmeyen her şey çalışmaya devam eder. Gezin+ yükseltmesi daha fazla alan verir." };
 
 // ---------- partners en ledenvoordeel ----------
 export const PartnerInput = z.object({

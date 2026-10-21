@@ -18,9 +18,9 @@ Gezinsbord 2.0 is één codebasis en één server met twee ervaringen. Bij de ee
 - **Prikbord**: gekleurde briefjes voor het hele gezin (met afzender en 📌 vastprikken), als widget op het Bord en Mijn dag en als volledige app onder Apps. Live op elk toestel.
 - De keuze van de rol staat op het toestel (`localStorage`), de server houdt het register bij (`devices`) zodat toestellen elkaar vinden.
 
-## Taal: Nederlands of Turks
+## Taal: Engels, Nederlands of Turks
 
-Bij Instellingen → Taal kies je Nederlands of Türkçe voor de hele app: menu's, knoppen, datums, feestdagen en de assistent (die dan in het Turks antwoordt). In het Turks blijven recepten in het Turks (het origineel), tonen de bibliotheek en de receptkaarten Turkse titels, en wordt de Koran-vertaling Turks (Diyanet).
+Bij Instellingen → Taal kies je English, Nederlands of Türkçe voor de hele app (ook briefings, voorstellen, koppelingen en meldingen van de server). De merknaam is één instelling op de server (`BRAND_NAME`): menu's, knoppen, datums, feestdagen en de assistent (die dan in het Turks antwoordt). In het Turks blijven recepten in het Turks (het origineel), tonen de bibliotheek en de receptkaarten Turkse titels, en wordt de Koran-vertaling Turks (Diyanet).
 
 ## Boodschappen
 

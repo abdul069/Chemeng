@@ -104,7 +104,7 @@ function Templates({ onClose }: { onClose: () => void }) {
   const groups = new Map<string, UpkeepTemplate[]>(); for (const x of tpl) groups.set(x.category, [...(groups.get(x.category) ?? []), x]);
   return (
     <Modal title={t("Kies wat voor jullie huis geldt")} onClose={onClose} wide>
-      <p className="hint">{t("Wettelijke keuringen en gewone onderhoudsbeurten voor een Belgisch gezin, met de juiste termijn. Zet daarna per item de laatste datum, en Gezinsbord verwittigt op tijd.")}</p>
+      <p className="hint">{t("Wettelijke keuringen en gewone onderhoudsbeurten voor een Belgisch gezin, met de juiste termijn. Zet daarna per item de laatste datum, en {brand} verwittigt op tijd.")}</p>
       {[...groups.entries()].map(([cat, list]) => (
         <div className="field" key={cat}><span>{t(CATS[cat] ?? cat)}</span>
           <div className="picks">{list.map((x) => <button type="button" key={x.key} className="pick" aria-pressed={sel.has(x.key)} onClick={() => setSel((s) => { const n = new Set(s); if (n.has(x.key)) n.delete(x.key); else n.add(x.key); return n; })}>{x.icon} {tr ? x.titleTr : x.title} <small className="muted">· {x.intervalMonths} {t("mnd")}</small></button>)}</div>
@@ -124,7 +124,7 @@ function UpkeepTab() {
   return (
     <div className="home-tab">
       <div className="section-title"><h2>{t("Onderhoud en keuringen")}</h2><div style={{ display: "flex", gap: 6 }}><button className="btn small ghost" onClick={() => setTpl(true)}>📋 {t("Uit de lijst")}</button><button className="btn small" onClick={() => setAdd(true)}>+ {t("Nieuw")}</button></div></div>
-      {!list.length && <div className="empty-card"><p className="empty">{t("Autokeuring, CV-ketel, rookmelders, verzekeringen, Kids-ID… Kies uit de lijst wat voor jullie huis geldt; Gezinsbord verwittigt op tijd en zet het op voorstel in de agenda.")}</p><button className="btn" onClick={() => setTpl(true)}>📋 {t("Kies uit de lijst")}</button></div>}
+      {!list.length && <div className="empty-card"><p className="empty">{t("Autokeuring, CV-ketel, rookmelders, verzekeringen, Kids-ID… Kies uit de lijst wat voor jullie huis geldt; {brand} verwittigt op tijd en zet het op voorstel in de agenda.")}</p><button className="btn" onClick={() => setTpl(true)}>📋 {t("Kies uit de lijst")}</button></div>}
       <div className="upks">{sorted.map((u) => <UpkeepCard key={u.id} u={u} members={data?.members ?? []} />)}</div>
       {add && <UpkeepForm onClose={() => setAdd(false)} />}
       {tpl && <Templates onClose={() => setTpl(false)} />}
@@ -295,7 +295,7 @@ function SmartTab() {
   return (
     <div className="home-tab">
       <div className="section-title"><h2>{t("Slim huis")}</h2>{admin && <button className="btn small ghost" onClick={() => setSetup(true)}>⚙️ {configured ? t("Instellen") : t("Koppelen met Home Assistant")}</button>}</div>
-      {!configured && <div className="empty-card"><p className="empty">{t("Gezinsbord stuurt je huis via Home Assistant: dat praat met Philips Hue, IKEA, Shelly, Tado, Nest, Sonos, Somfy en honderden andere merken. Draai Home Assistant op een Raspberry Pi of mini-pc, maak een token aan, en kies hier wat je op het bord wilt.")}</p>{admin && <button className="btn" onClick={() => setSetup(true)}>{t("Koppelen met Home Assistant")}</button>}</div>}
+      {!configured && <div className="empty-card"><p className="empty">{t("{brand} stuurt je huis via Home Assistant: dat praat met Philips Hue, IKEA, Shelly, Tado, Nest, Sonos, Somfy en honderden andere merken. Draai Home Assistant op een Raspberry Pi of mini-pc, maak een token aan, en kies hier wat je op het bord wilt.")}</p>{admin && <button className="btn" onClick={() => setSetup(true)}>{t("Koppelen met Home Assistant")}</button>}</div>}
       {configured && (
         <>
           <div className="picks">{MOMENTS.filter((m) => scenes[m.id]).map((m) => <button type="button" key={m.id} className="pick" onClick={() => act(() => api.post("/ha/moment", { moment: m.id }), t("{m} gestart", { m: t(m.label) }))}>{m.icon} {t(m.label)}</button>)}</div>
