@@ -1,0 +1,296 @@
+# Projectdossier — het gezinsplatform (werknaam Gezinsbord)
+
+Stand: 21 oktober 2026 · tak `ccr-7a0c27b6-t5r72q` · laatste commit `5b0cc81` · 83 commits · 38 servertests slagen.
+
+Dit document beschrijft het volledige project: wat het is, welke beslissingen vastliggen, hoe het technisch in elkaar zit, wat er gebouwd is, wat er nog komt en wat open staat. Het is bedoeld als één leesbaar overzicht voor eigenaar, ontwikkelaars en partners.
+
+---
+
+## 1. Wat het is
+
+Een **huishoudplatform voor gezinnen** met twee gezichten op één codebasis:
+
+- **De hub**: een groot aanraakscherm aan de muur (wandscherm) of op een standaard (tafelmodel) in de keuken of hal. Altijd aan, voor het hele gezin. Toont het Bord: de dag per gezinslid, eten, taken, prikbord, aftellers, de briefing van de manager, widgets van koppelingen, en wordt een fotolijst als niemand het aanraakt.
+- **De telefoon-app**: elk gezinslid heeft zijn eigen app (Android via Capacitor, iPhone via PWA) met "Mijn dag": eigen afspraken, taken, lijsten, briefing, en een afstandsbediening voor het keukenscherm (cast).
+
+Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoon een briefing maakt, conflicten ziet, voorstellen doet die je met één tik aanvaardt (eten plannen, afspraak verzetten, boodschappen toevoegen, keuring in de agenda, verwarming lager) en onthoudt wat het gezin belangrijk vindt.
+
+**Voor wie**: alle gezinnen, gesegmenteerd op levenssituatie (jonge kinderen, tieners, co-ouderschap, drie generaties, mantelzorg), **niet** op cultuur, religie of herkomst. Cultuur en religie zijn opt-in pakketten in de categorie "Kalenders en tradities" (gebedstijden, ezan, Koran, Ramadan en Bayram, Sinterklaas, Kerst, …), gelijkwaardig naast elkaar.
+
+**Markt**: eerst België en Nederland, dan VK en Duitsland, dan verder. Elk land krijgt een landenpakket met eigen koppelingen (afval, vervoer, winkels, nieuws, weer, feestdagen, schoolvakanties).
+
+---
+
+## 2. Beslissingen die vastliggen
+
+| Onderwerp | Beslissing |
+|---|---|
+| Platform | Eén codebasis, één server, twee rollen per toestel (hub of telefoon). Rol staat op het toestel; server houdt het toestelregister bij. |
+| Doelgroep | Alle gezinnen, per levenssituatie. Nooit per gemeenschap, cultuur of godsdienst. Culturele en religieuze inhoud als opt-in pakket. |
+| Naam | "Gezinsbord" was de werknaam van de oorspronkelijke maker en werkt alleen in Nederlandstalig gebied. Het product wordt een wereldmerk; **de nieuwe naam is nog niet beslist.** "Kinvo" is afgevallen (Braziliaanse beleggingsapp met geregistreerd merk, en "Kinvo" van Kinvolved/PowerSchool in het schoolsegment). Kandidaten die bij een eerste webcheck vrij lijken: **Kinday** (voorkeur) en **Kinloop**. Een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) plus .com/.app. De merknaam wordt één instelling in de code, zodat de naam met één regel wijzigt. |
+| Basistaal | **Engels wordt de basistaal**; Nederlands en Turks (nu aanwezig) worden vertalingen, later Frans, Duits, Spaans. Nu is Nederlands nog de basis in de code (zie §9). |
+| Lanceervolgorde | België en Nederland eerst, daarna VK en Duitsland. |
+| Koppelingen | Eén systeem: catalogus, alles standaard uit, eigenaar gezin of persoon, ouders zien de koppelingen van kinderen, koppelingen met kosten bij de aanbieder alleen in Gezin+, geen nieuw scherm per koppeling, maximaal zes widgets op het bord, onzichtbaar als er niets te melden is, landenpakketten. |
+| School | Via de gezinsinbox (e-mail doorsturen, AI haalt afspraken en taken eruit). Geen Smartschool-API (bestaat niet voor derden). |
+| Winkelen | Boodschappenlijst → zoekvak van de winkel (deeplink); kassatickets → voorraad via de inbox; folders en deals via een aggregator-feed (Promojagers, Tiendeo/ShopFully), nooit zelf folders scrapen of hosten; bestellen via partnerschappen met commissie. |
+| Eten en vervoer | Deeplinks naar Takeaway, Uber Eats, Deliveroo, Uber, Bolt, Google Maps. Geen eigen bestelflow. |
+| AI-kosten | Klein model (Haiku-klasse) voor sjabloonwerk (briefings, importeren, vertalen), middelgroot model (Sonnet-klasse) voor de chat-assistent, het grootste model nooit standaard. Maandbudget per gezin met terugval op sjablonen. |
+| Prijzen | Zelf hosten gratis · Gezin €4,99/maand of €49/jaar · Gezin+ €8,99/maand. Hardware €449 incl. 1 jaar Gezin+, ledenprijs €349 (partner betaalt €50), huur €12,99/maand over 24 maanden, leden-huur €9,99, eigen tablet gratis + houder €39. |
+| Partners | Ledenvoordeel (gratis upgrade of korting) voor leden van Gezinsbond, mutualiteiten, Test-Aankoop, werkgevers; feeds van Promojagers, Tiendeo/ShopFully, Colruyt Group. Ledencodes met verificatie (geen, e-maildomein, ledenlijst). |
+| Hosting | Railway (EU). Later een VS-regio voor Amerika. Alles is per gezin gescheiden in de database, dus multi-regio is haalbaar. |
+
+---
+
+## 3. Architectuur
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Toestellen                                                          │
+│  Hub (wandscherm / tafelmodel)      Telefoon (Android-app / PWA)     │
+│  React 19 · Vite 7 · TypeScript · Capacitor 8 (Android)              │
+└───────────────┬───────────────────────────────┬──────────────────────┘
+                │ HTTPS /api/*                  │ WebSocket (realtime, cast)
+┌───────────────▼───────────────────────────────▼──────────────────────┐
+│  Server · Node 22 · Express 5 · TypeScript · node:sqlite · zod 4      │
+│  Per gezin gescheiden via AsyncLocalStorage (hid())                   │
+│  Modules: accounts, auth, store, events, recipes, library, nutrition, │
+│  manager, billing, connectors, home, smarthome, family, prayer, ezan, │
+│  quran, weather, holidays, push, realtime, importer, assistant        │
+│  Schedulers: agenda-sync, bibliotheek-crawl, manager (briefings,      │
+│  afval, medicatie, HA-scènes), koppelingen (elke 5 min)              │
+└───────────────┬──────────────────────────────────────────────────────┘
+                │
+   SQLite (één bestand, 48 tabellen) · foto's op schijf · Claude API ·
+   externe bronnen (Open-Meteo, iRail, KMI, RSS, UiTdatabank, alquran.cloud,
+   Home Assistant van het gezin, iCal-agenda's, receptsites)
+```
+
+**Realtime**: elke wijziging stuurt een topic over de websocket (`members, events, chores, meals, recipes, lists, photos, calendars, settings, rewards, access, sharing, memos, devices, notes, family, home, connections`); schermen herladen alleen wat bij dat topic hoort. Cast-berichten (recept, scherm, bericht, briefje) gaan over dezelfde verbinding.
+
+**Beveiliging**: sessies met cookie, wachtwoorden gehasht, ouder-pincode voor instellingen, koppelingsinstellingen en Home Assistant-token versleuteld met AES-256-GCM (sleutel uit `GB_SECRET` of een gegenereerde serversleutel), geheimen nooit naar de browser (gemaskeerd), alle queries per gezin gefilterd.
+
+**Deploy**: Dockerfile + `docker-compose.yml`; Railway bouwt vanuit GitHub. Android-APK via GitHub Actions. Live-URL: `https://gezinsbord-production-69b1.up.railway.app`.
+
+### Omgevingsvariabelen
+
+| Variabele | Waarvoor |
+|---|---|
+| `ANTHROPIC_API_KEY` (of `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_WORKSPACE_ID`) | AI; zonder sleutel werken alle niet-AI-functies gewoon, assistent staat uit |
+| `CLAUDE_MODEL_CHAT`, `CLAUDE_MODEL_LIGHT`, `CLAUDE_MODEL_PREMIUM` | modelkeuze per taak (standaard Sonnet-klasse, Haiku-klasse, Opus-klasse) |
+| `DEFAULT_PLAN` | formule voor gezinnen zonder abonnement (standaard `gezin`) |
+| `DATA_DIR`, `DB_FILE`, `WEB_DIR`, `PORT`, `TZ` | opslag en server |
+| `GB_SECRET` | versleutelingssleutel voor koppelingen en HA-token |
+| `GB_BUILD` | bouwnummer; verschilt het van het scherm, dan herlaadt de app |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | pushmeldingen |
+| `CALENDAR_SYNC_MINUTES`, `LIBRARY_AUTOCRAWL`, `LIBRARY_MAX_PER_SITE`, `LIBRARY_MODEL` | agenda-sync en receptenbibliotheek |
+| `UIT_API_KEY` | UiTdatabank (publiq) voor de koppeling UiTinVlaanderen |
+| `GEZINSBORD_URL`, `API_URL` | publieke URL (links in e-mails en app) |
+
+---
+
+## 4. Datamodel (48 tabellen)
+
+| Groep | Tabellen |
+|---|---|
+| Accounts en toegang | `users, sessions, households, household_users, invites, shares, settings, global_settings, devices` |
+| Agenda | `events, calendars` |
+| Taken en beloningen | `chores, chore_done, rewards, reward_claims, learn_stars` |
+| Eten | `meals, recipes, library, library_seen, dish_photos, staples, lists, list_items, diet_profiles, diet_log, weights` |
+| Communicatie | `notes` (prikbord), `memos` (spraakmemo's), `push_subscriptions, push_sent` |
+| Manager en netwerk | `memory, household_links` |
+| Het huis | `upkeep, upkeep_log, waste, waste_dates, health` |
+| Koppelingen | `connections` |
+| Geld | `ai_usage, subscriptions, partners, partner_codes, partner_members` |
+| Religie (opt-in) | `ezan_sounds, quran_cache` |
+| Overig | `photos, assistant_feedback` |
+
+Instellingen per gezin (tabel `settings`): gezinsnaam, woonplaats en coördinaten, fotolijst, weekstart, taal, feestdagen, nachtrust (`sleep_from`, `sleep_until`), terug-naar-Bord, ezan (`ezan_*`), Koran, briefings (`briefing_morning`, `briefing_evening`, `briefing_push`), land (`country`), afval (`waste_ical`, `waste_notify`), Home Assistant (`ha_url`, `ha_token`, `ha_entities`, `ha_scenes`), ouder-pincode.
+
+---
+
+## 5. Wat er gebouwd is (per onderdeel)
+
+### 5.1 Kern (het oorspronkelijke Gezinsbord, ongeveer 80 % van de functies)
+
+| Onderdeel | Inhoud |
+|---|---|
+| **Bord / Vandaag** | begroeting en weer, assistentvoorstellen, dagraster per gezinslid, straks eten (weekmenu-fotoraster), taken vandaag, prikbord, familie, Het huis, koppelingswidgets, aftellen |
+| **Kalender** | dag (kolom per persoon), week, maand, lijst; herhalingen; meerdaags; "alleen deze dag" of "hele reeks"; snel toevoegen in natuurlijke taal; gekoppelde iCal-agenda's (Google, Outlook, iCloud) elk kwartier; feestdagen; gedeelde agenda's tussen personen |
+| **Taken** | klusjes per persoon, per weekdag en dagdeel, sterren, beloningen en spaarpot, weekklassement, profielen, huisdieren |
+| **Maaltijden en recepten** | weekmenu, receptenbibliotheek met foto's, zoeken op receptsites, importeren via link, vertalen met origineel bewaard, portiecalculator, kookmodus, "Week vullen", "Boodschappen voor de week", voedingswaarde en allergenen, dieetdagboek en caloriedoel per persoon |
+| **Receptenbibliotheek** | automatisch gecrawld vanuit sitemaps van receptsites, categorieën, zoeken NL/TR, met één tik in eigen bibliotheek |
+| **Lijsten** | boodschappen per winkelafdeling, vaste producten, voorraad met houdbaarheid, boodschappen ↔ voorraad synchroon, "Koken met wat in huis is", delen via WhatsApp/sms/e-mail |
+| **Foto's en fotolijst** | uploads, screensaver met klok, weer en volgende afspraak |
+| **Apps** | prikbord, Het huis, foto's, weer, klok en timers, spraakmemo's, recepten, gebedstijden en ezan, Koran, leren en spelen, dieet, snelkoppelingen (YouTube, Spotify, Google, Netflix, WhatsApp, nieuws), instellingen |
+| **Leren en spelen (kids)** | Islam-spelletjes (quiz, woordparen, op volgorde, soera's leren) en rekenen (sommen, tafels, snelheidsronde), sterren in de spaarpot |
+| **Assistent** | Claude met tools: afspraken, maaltijden, recepten, lijsten, taken, geheugen; handsfree spraak, voorlezen; antwoordt in de gekozen taal |
+| **Zoeken** | één zoekvak over afspraken, recepten, lijsten, taken, bibliotheek |
+| **Taal** | Nederlands en Turks, ~1.340 teksten, Turkse datums en feestdagen |
+| **Accounts** | registreren, aanmelden, gezinnen, uitnodigingen (gezin, agenda, gezinskoppeling), rollen beheerder/lid, wachtwoordherstel-link, back-up downloaden |
+| **Android-app** | Capacitor, ezan-alarmen met gesloten app, batterijbeperking, APK via GitHub Actions |
+
+### 5.2 Gezinsbord 2.0: hub en telefoon-app (commit `67fc43a`, `18e613a`)
+
+Toestelrol bij eerste start (wandscherm, tafelmodel, telefoon, van wie), Mijn dag op de telefoon met vijf tabbladen, cast naar het keukenscherm (recept, Bord, bericht), prikbord met gekleurde briefjes, toestellenregister met online-status en QR-koppeling, grote letters voor grootouders, zelfherstel na een update (stale chunks), dekkend assistentvenster op de telefoon.
+
+### 5.3 De manager (commit `4b020ba`)
+
+Ochtendbriefing en avondafsluiting per gezinslid en voor het gezin: afspraken, vroeg op, taken, eten, weer, gebed, aftellen, voorraad, boodschappen, onderhoud, afval, gezondheid en medicatie, slim huis, koppelingen. Voorstellen met één tik: `plan_meal, move_event, add_list, remind, upkeep_event, ha_service, link`. Conflictdetectie met eerste vrije plek. Sjabloontekst, verrijkt door het kleine AI-model als het budget het toelaat; zes uur cache. Gezinsgeheugen (`memory`) via assistent en instellingen. Pushmeldingen op vaste uren; hubs verversen de briefingkaart.
+
+### 5.4 Gezinsnetwerk (commit `9cac762`)
+
+Gezinnen verbinden over huizen heen (grootouders, co-ouder, familie in het buitenland) via een eenmalige link. Elk gezin kiest wat het deelt: agenda (titels en uren), foto's, prikbord, verjaardagen. Familie-widget op Bord en Mijn dag; briefjes naar het andere huis met afzender en gezinsnaam.
+
+### 5.5 Geld (commit `95d1561`)
+
+- Modelkeuze per taak: `chat` (Sonnet-klasse), `light` (Haiku-klasse, voor briefings, importeren, vertalen), `premium` (nooit standaard).
+- Verbruik per gezin in microdollar (`ai_usage`), maandbudget per formule: free 0, gezin $2,50, plus $8, operator onbeperkt. Chat en zoeken stoppen op het budget; sjabloonwerk mag tot 120 %. Nette budgetboodschap in NL/TR.
+- Abonnementen (`subscriptions`), operator = eerste gezin op de server, `DEFAULT_PLAN`.
+- Partners, ledencodes en ledenlijsten: `redeem(code, identifier)` met verificatie `none | domain | list`, gratis maanden en korting daarna, partnerstatistieken, operator-only partnerbeheer in Instellingen → Abonnement.
+
+### 5.6 Koppelingen-kader (commit `8e88e4a`)
+
+- `server/src/connectors.ts`: elke koppeling is een module met vaste vorm: id, naam, categorie, eigenaar (gezin of persoon), formule (gezin of plus), landen, status (`ready | unofficial | soon`), velden (met type `secret` voor sleutels), wat ze levert (`calendar, briefing, widget, links, proposal`), verversinterval, en functies `sync, briefing, proposals, widget, calendar, links`.
+- Opslag in `connections` met AES-256-GCM-versleutelde instellingen; geheimen gemaskeerd naar de browser; masker terugsturen laat het geheim staan.
+- Scheduler elke vijf minuten; status en foutmelding per koppeling; handmatig verversen.
+- Catalogus gefilterd op land, met aanbevelingen; plan-poort (402) voor Gezin+-koppelingen.
+- Zichtbaar op bestaande plekken: widgets op Bord (gezinsbreed + "ook op het bord") en Mijn dag (eigen), "Zoek bij …" op de boodschappenlijst, Uber- en routeknoppen bij een afspraak met adres, agenda-laag (alleen-lezen), briefingregels (max. twee per koppeling) en voorstellen (max. één).
+- UI: Instellingen → Koppelingen (wat aan staat met status, aanbevolen, zoeken, hele catalogus per categorie, één formulier per koppeling met persoonkeuze en "ook op het Bord").
+
+**Koppelingen die werken**
+
+| Koppeling | Eigenaar | Levert | Bron |
+|---|---|---|---|
+| Afvalkalender (iCal) | gezin | briefing, afvalmelding | iCal van de intercommunale (Limburg.net, Ilva, IVAREM, IOK, Interza, …) |
+| Trein (NMBS) | persoon | briefing, widget | iRail API |
+| KMI-waarschuwingen | gezin | briefing, widget | RSS van meteo.be |
+| Nieuws (RSS) | persoon | widget | elke RSS/Atom-feed |
+| Jouw winkels | gezin | lijstknoppen, folderwidget | deeplinks Collect&Go, Delhaize, Carrefour Drive, Albert Heijn, Lidl, Aldi, Jumbo, Kruidvat |
+| Eten bestellen | gezin | voorstel 's avonds als er niets gepland is, links | deeplinks Takeaway, Uber Eats, Deliveroo |
+| Rit bestellen | persoon | knoppen bij afspraak met adres | Uber-deeplink, Google Maps-route |
+| UiTinVlaanderen | gezin | widget, briefing op vrijdag | UiTdatabank (publiq), API-sleutel nodig |
+
+**Zichtbaar als "Binnenkort"**: De Lijn, MIVB, gezinsinbox, Recycle!, schoolvakanties, Teams-status, Withings, Telegram-bot, webhooks (Siri, IFTTT, n8n).
+
+### 5.7 Het huis (commits `1fc087f`, `5b0cc81`)
+
+App "Het huis" met vier tabbladen en een widget op het Bord die alleen verschijnt als er iets te doen is.
+
+| Tab | Inhoud |
+|---|---|
+| **Onderhoud en keuringen** | 21 Belgische sjablonen (autokeuring, autoverzekering, banden, CV gas/stookolie, schoorsteen, rookmelders, CO-melder, brandblusser, ventilatiefilters, waterverzachter, boiler, dakgoten, septische put, zonnepanelen, brandverzekering, hospitalisatie, meterstanden, Kids-ID, paspoort, huisdier), eigen items, interval in maanden, uiterste datum, verwittigen vooraf, wie regelt het, firma met telefoon en afspreeklink, kosten, notities, afvinken met datum en notitie (volgende datum schuift vanzelf), attest of foto bewaren, logboek, status in orde / binnenkort / nu plannen / te laat. De manager zet een keuring op voorstel in de agenda. |
+| **Afvalkalender** | komende ophalingen, iCal van de intercommunale inlezen, vaste ophaaldagen per fractie (rest, PMD, papier, GFT, glas, grof, textiel, snoeihout), melding de avond ervoor. |
+| **Gezondheid** | per persoon: doktersbezoeken, controles met automatische opvolging (na X maanden staat de volgende klaar), vaccins, medicatie met innametijden, dagen en voorraad; medicatie in de briefing van die persoon en als pushmelding op het uur. |
+| **Slim huis** | Home Assistant koppelen (adres en token, versleuteld), toestellen kiezen voor het bord, lampen en schakelaars schakelen, sloten en rolluiken bedienen, scènes en scripts starten, momenten (ochtend, slapen, weg, thuis, gebedstijd) die automatisch lopen op de slaaptijden, de ezan en het aanwezigheidsgevoel van HA. De manager stelt voor de verwarming lager te zetten als niemand thuis is. |
+
+### 5.8 Kalenders en tradities (opt-in, aanwezig)
+
+Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per gebed), ezan op elk scherm met eigen geluiden, Koran (114 soera's, vertalingen NL/TR/EN/FR, audio per vers, achtergrondspeler), islamitische feestdagen tot 2028, Belgische feestdagen, islam-leerspelletjes voor kinderen. Alles staat standaard uit.
+
+---
+
+## 6. API (185 routes, gegroepeerd)
+
+| Groep | Voorbeelden |
+|---|---|
+| Auth en accounts | `/auth/*`, `/me`, `/households`, `/invites`, `/access/*`, `/shares` |
+| Bootstrap en instellingen | `/bootstrap`, `/settings`, `/backup` |
+| Agenda | `/events` (met iCal- en koppelingslagen), `/calendars`, `/holidays` |
+| Taken | `/chores`, `/chores/:id/done`, `/rewards`, `/points` |
+| Eten | `/meals`, `/recipes`, `/library/*`, `/nutrition/*`, `/diet/*`, `/photos` |
+| Lijsten | `/lists`, `/lists/:id/items`, `/staples` |
+| Communicatie | `/notes`, `/memos`, `/push/*`, `/cast`, `/devices` |
+| Manager | `/manager/briefing`, `/manager/apply`, `/manager/memory` |
+| Netwerk | `/family/links`, `/family/feed`, `/family/links/:id/note` |
+| Het huis | `/upkeep`, `/upkeep/templates`, `/upkeep/:id/done`, `/upkeep/:id/attest`, `/waste`, `/waste/sync`, `/care`, `/care/:id/done`, `/ha/states`, `/ha/call`, `/ha/moment`, `/ha/test` |
+| Koppelingen | `/connectors`, `/connections`, `/connections/:id/sync`, `/connections/widgets`, `/connections/links` |
+| Geld | `/billing`, `/billing/redeem`, `/billing/plan/:householdId`, `/partners*` |
+| Religie | `/prayer`, `/ezan/*`, `/quran/*` |
+| Assistent | `/assistant`, `/assistant/key`, `/import` |
+| Overig | `/weather`, `/health` (healthcheck), `/search` |
+
+---
+
+## 7. Verdienmodel
+
+| Formule | Prijs | Inhoud |
+|---|---|---|
+| Zelf hosten | gratis | alles, eigen server en eigen AI-sleutel, geen budgetgrens |
+| Gezin | €4,99/maand of €49/jaar | manager, briefings, 150 assistentvragen per maand (budget $2,50), gezinsinbox, koppelingen zonder kosten bij de aanbieder |
+| Gezin+ | €8,99/maand | onbeperkte assistent binnen budget $8, gezinsnetwerk, slim huis, koppelingen met kosten bij de aanbieder |
+
+**Hardware**: wandscherm of tafelmodel €449 incl. 1 jaar Gezin+; ledenprijs €349 (partner betaalt €50); huur €12,99/maand over 24 maanden; leden-huur €9,99; eigen tablet gratis + houder €39.
+
+**Partnerinkomsten**: ledenvoordeel (partner betaalt een deel), affiliate-commissie op bestellingen (Takeaway, Deliveroo, Uber Eats, supermarkten), aggregator-feeds voor folders en deals.
+
+**Kostenbeheersing AI**: klein model voor alles wat sjabloonwerk is, chat alleen op het middelgrote model, budget per gezin, cache van zes uur op briefings, sjabloon als terugval. Doel: AI-kost onder 25 % van de abonnementsprijs.
+
+---
+
+## 8. Roadmap
+
+| Stap | Status | Inhoud |
+|---|---|---|
+| 1. Geld | ✅ klaar | modelkeuze, budget, abonnementen, partnercodes, partnerdashboard |
+| 2. Koppelingen-kader | ✅ klaar | kader, catalogus, versleuteling, acht werkende koppelingen |
+| 3. Het huis | ✅ klaar | vier tabbladen en widget |
+| **Merk en taal** | 🔜 volgende | merknaam als instelling, Engels als basistaal, NL en TR als vertalingen, landenpakket als begrip in de code |
+| 4. Rondes van koppelingen | gepland | gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), folders en deals (aggregator-feed, deals bewaren), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
+| 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
+| 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
+| 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |
+
+---
+
+## 9. Open punten en risico's
+
+1. **Naam.** Nog te beslissen: Kinday (voorkeur), Kinloop of iets anders. Daarna merkonderzoek door een merkenbureau en domeinregistratie. Tot dan blijft "Gezinsbord" de werknaam in de code.
+2. **Deploy geblokkeerd.** Railway kan de GitHub-repo niet meer lezen sinds 21 oktober ("User does not have access to the repo"). De laatste live versie is commit `185c0de`; alles vanaf 2.0 staat op de tak maar niet live. Oplossing: in Railway bij Settings → Source de GitHub-koppeling opnieuw leggen, of eenmalig op Deploy drukken.
+3. **Engels als basis.** De code gebruikt Nederlandse teksten als sleutel en Turks als vertaling. De omzetting (Engelse sleutels, NL en TR als woordenboeken, Engelse briefings en koppelingsteksten op de server) is de volgende stap. Datum- en uurnotatie, valuta en maten volgen de taal- en landinstelling.
+4. **UiTinVlaanderen** vraagt een gratis API-sleutel van publiq (`UIT_API_KEY`), anders moet elk gezin er zelf een invullen.
+5. **Gezinsinbox** vraagt een mailbox met IMAP en een eigen domein voor plus-adressen (bv. `gezin-xyz@inbox.<merk>.be`).
+6. **Betalen in de app** ontbreekt nog (Stripe). Tot dan zet de operator de formule of gebruikt het gezin een ledencode.
+7. **Juridisch**: GDPR-documentatie, verwerkersovereenkomsten met partners, gezondheidsgegevens (bijzondere categorie) alleen per gezin en versleuteld in rust op de hosting.
+8. **Distributie** is het grootste risico: zonder partners (Gezinsbond, mutualiteit, retailer) is de hardware moeilijk te verkopen.
+
+---
+
+## 10. Ontwikkelen en testen
+
+```bash
+# server
+cd server && npm install
+rm -rf /tmp/gezinsbord-test && npm test          # 38 tests
+npx tsc --noEmit -p .                            # typecheck
+DATA_DIR=/tmp/gb PORT=8100 LIBRARY_AUTOCRAWL=0 npx tsx src/index.ts
+
+# web
+cd web && npm install
+npx tsc -b && npx vite build                     # typecheck en bundel
+npx vite                                         # dev-server met proxy naar de API
+```
+
+Tests: `accounts, devices, manager, family, home, billing, connectors, recipes/importer`. End-to-end wordt met Playwright tegen een lokale server gecontroleerd (login, hub- en telefoonrol via `localStorage gb.device`).
+
+Belangrijke bestanden:
+
+| Bestand | Rol |
+|---|---|
+| `server/src/routes.ts` | alle API-routes (1.200 regels) |
+| `server/src/db.ts` | schema, migraties, instellingen, per-gezin context |
+| `server/src/store.ts` | gezinsleden, taken, maaltijden, recepten, lijsten |
+| `server/src/manager.ts` | briefings, voorstellen, geheugen, scheduler |
+| `server/src/connectors.ts` | koppelingen-kader en de koppelingen zelf |
+| `server/src/home.ts`, `smarthome.ts` | onderhoud, afval, gezondheid, Home Assistant |
+| `server/src/billing.ts` | modellen, verbruik, budget, abonnementen, partners |
+| `web/src/App.tsx` | rollen, navigatie, cast, schermen |
+| `web/src/screens/*` | Bord, Mijn dag, Kalender, Taken, Maaltijden, Lijsten, Apps, Instellingen, Toegang |
+| `web/src/components/*` | Briefing, Connectors, Home, Family, Billing, Devices, Recipes, Diet, Learn, Prayer, Quran, … |
+| `web/src/i18n.ts`, `i18n.tr.ts` | vertaling (nu Nederlands als sleutel) |
+| `web/src/device.ts` | toestelrol, registratie, cast |
+
+---
+
+## 11. Productplan
+
+Het uitgebreide productplan (positionering, markt en groeipad, partnerprogramma, prijzen, roadmap met motivering) staat als levend document op <https://claude.ai/artifact/TuutbBJkoVUX3dtf5hb112>. Dit dossier is de technische en functionele samenvatting van dat plan en van de code.
