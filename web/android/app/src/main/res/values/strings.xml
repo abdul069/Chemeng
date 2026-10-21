@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Gezinsbord</string>
-    <string name="title_activity_main">Gezinsbord</string>
+    <string name="app_name">Kinday</string>
+    <string name="title_activity_main">Kinday</string>
     <string name="package_name">be.gezinsbord.app</string>
     <string name="custom_url_scheme">be.gezinsbord.app</string>
 </resources>

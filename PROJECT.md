@@ -1,4 +1,4 @@
-# Projectdossier — het gezinsplatform (werknaam Gezinsbord)
+# Projectdossier — Kinday (code-werknaam Gezinsbord)
 
 Stand: 21 oktober 2026 · tak `ccr-7a0c27b6-t5r72q` · laatste commit `5b0cc81` · 83 commits · 38 servertests slagen.
 
@@ -27,7 +27,7 @@ Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoo
 |---|---|
 | Platform | Eén codebasis, één server, twee rollen per toestel (hub of telefoon). Rol staat op het toestel; server houdt het toestelregister bij. |
 | Doelgroep | Alle gezinnen, per levenssituatie. Nooit per gemeenschap, cultuur of godsdienst. Culturele en religieuze inhoud als opt-in pakket. |
-| Naam | De merknaam is één instelling (`BRAND_NAME` op de server, overal `{brand}` in de teksten); standaard nog "Gezinsbord". "Gezinsbord" was de werknaam van de oorspronkelijke maker en werkt alleen in Nederlandstalig gebied. Het product wordt een wereldmerk; **de nieuwe naam is nog niet beslist.** "Kinvo" is afgevallen (Braziliaanse beleggingsapp met geregistreerd merk, en "Kinvo" van Kinvolved/PowerSchool in het schoolsegment). Kandidaten die bij een eerste webcheck vrij lijken: **Kinday** (voorkeur) en **Kinloop**. Een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) plus .com/.app. De merknaam wordt één instelling in de code, zodat de naam met één regel wijzigt. |
+| Naam | **Kinday** (beslist 21 oktober 2026). De merknaam is één instelling (`BRAND_NAME`, standaard "Kinday"; overal `{brand}` in de teksten). "Gezinsbord" blijft als interne werknaam in bestandsnamen en sleutels. "Kinvo" is afgevallen (Braziliaanse beleggingsapp met geregistreerd merk, en "Kinvo" van Kinvolved/PowerSchool). Bij een eerste webcheck is op Kinday niets gevonden; wel bestaat "Kindy" (één letter verschil). Nog te doen: merkonderzoek door een merkenbureau bij EUIPO en USPTO (klassen 9 en 42) en registratie van kinday.com en kinday.app. Tot dat rond is: geen drukwerk of hardware met de naam. |
 | Basistaal | **Engels is de basistaal van het product**: de app, de briefings, de voorstellen, de koppelingen, feestdagen en meldingen bestaan in Engels, Nederlands en Turks (Instellingen → Taal). Later Frans, Duits, Spaans. In de code zijn de vertaalsleutels nog Nederlands; het omdraaien naar Engelse sleutels is een mechanische stap (zie §9). |
 | Lanceervolgorde | België en Nederland eerst, daarna VK en Duitsland. |
 | Koppelingen | Eén systeem: catalogus, alles standaard uit, eigenaar gezin of persoon, ouders zien de koppelingen van kinderen, koppelingen met kosten bij de aanbieder alleen in Gezin+, geen nieuw scherm per koppeling, maximaal zes widgets op het bord, onzichtbaar als er niets te melden is, landenpakketten. |
@@ -79,7 +79,7 @@ Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoo
 | `CLAUDE_MODEL_CHAT`, `CLAUDE_MODEL_LIGHT`, `CLAUDE_MODEL_PREMIUM` | modelkeuze per taak (standaard Sonnet-klasse, Haiku-klasse, Opus-klasse) |
 | `DEFAULT_PLAN` | formule voor gezinnen zonder abonnement (standaard `gezin`) |
 | `DATA_DIR`, `DB_FILE`, `WEB_DIR`, `PORT`, `TZ` | opslag en server |
-| `BRAND_NAME` | merknaam die overal in de app en meldingen verschijnt (standaard "Gezinsbord") |
+| `BRAND_NAME` | merknaam die overal in de app en meldingen verschijnt (standaard "Kinday") |
 | `GB_SECRET` | versleutelingssleutel voor koppelingen en HA-token |
 | `GB_BUILD` | bouwnummer; verschilt het van het scherm, dan herlaadt de app |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | pushmeldingen |
@@ -245,7 +245,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 
 ## 9. Open punten en risico's
 
-1. **Naam.** Nog te beslissen: Kinday (voorkeur), Kinloop of iets anders. Daarna merkonderzoek door een merkenbureau en domeinregistratie. Tot dan blijft "Gezinsbord" de werknaam in de code.
+1. **Merkonderzoek Kinday.** De naam is gekozen; een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) en de domeinen kinday.com en kinday.app moeten geregistreerd worden voor er drukwerk of hardware komt.
 2. **Deploy geblokkeerd.** Railway kan de GitHub-repo niet meer lezen sinds 21 oktober ("User does not have access to the repo"). De laatste live versie is commit `185c0de`; alles vanaf 2.0 staat op de tak maar niet live. Oplossing: in Railway bij Settings → Source de GitHub-koppeling opnieuw leggen, of eenmalig op Deploy drukken.
 3. **Engelse sleutels in de code.** Engels, Nederlands en Turks werken volledig; de vertaalsleutels in de code zijn nog Nederlands. Het omdraaien (Engelse sleutels, NL en TR als woordenboeken) is een scriptmatige stap zodra de naam vastligt. Valuta en maten per land volgen met de landenpakketten.
 4. **UiTinVlaanderen** vraagt een gratis API-sleutel van publiq (`UIT_API_KEY`), anders moet elk gezin er zelf een invullen.

@@ -1,4 +1,6 @@
-# Gezinsbord
+# Kinday (werknaam Gezinsbord)
+
+Kinday is de naam van het platform; "Gezinsbord" was de oorspronkelijke werknaam en komt nog voor in de code (bestandsnamen, interne sleutels). De zichtbare naam komt uit de instelling `BRAND_NAME`.
 
 Een slim gezinsscherm voor in de keuken: één groot touchscreen (of een tablet op een standaard) met de
 gezinskalender, taken, maaltijden, lijsten, een fotolijst en een AI-assistent waarmee je kunt praten.

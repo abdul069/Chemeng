@@ -10,7 +10,7 @@ let lang: Lang = (() => { try { return asLang(localStorage.getItem(KEY)); } catc
 const subs = new Set<() => void>();
 
 /** Merknaam: één instelling, komt van de server (BRAND_NAME). Overal in teksten staat {brand}. */
-let brandName = "Gezinsbord";
+let brandName = "Kinday";
 export const brand = () => brandName;
 export function setBrand(name: string | undefined | null) {
   if (!name || name === brandName) return;

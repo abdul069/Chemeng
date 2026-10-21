@@ -24,9 +24,9 @@ self.addEventListener("fetch", (e) => {
 
 // Pushmeldingen (afspraak over 15 minuten, ochtendoverzicht, nieuwe memo)
 self.addEventListener("push", (e) => {
-  let d = { title: "Gezinsbord", body: "" };
+  let d = { title: "Kinday", body: "" };
   try { d = e.data.json(); } catch { d.body = e.data ? e.data.text() : ""; }
-  e.waitUntil(self.registration.showNotification(d.title || "Gezinsbord", {
+  e.waitUntil(self.registration.showNotification(d.title || "Kinday", {
     body: d.body || "", icon: "/icon.svg", badge: "/icon.svg", tag: d.tag || undefined, data: { url: d.url || "/" }, renotify: !!d.tag,
   }));
 });
