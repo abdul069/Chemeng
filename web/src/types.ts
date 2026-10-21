@@ -114,3 +114,13 @@ export interface Connector { id: string; name: string; description: string; cate
 export interface Connection { id: string; memberId: string | null; connector: string; config: Record<string, unknown>; enabled: boolean; onBoard: boolean; lastSync: string | null; status: string; error: string }
 export interface ConnWidget { id: string; connector: string; memberId: string | null; widget: { title: string; icon: string; lines: { icon?: string; text: string; sub?: string; url?: string }[] } }
 export interface ConnLink { label: string; url: string; icon: string; connector: string }
+
+/** Het huis: onderhoud en keuringen, afvalkalender, gezondheid, slim huis. */
+export type UpkeepStatus = "ok" | "soon" | "due" | "late" | "none";
+export interface Upkeep { id: string; title: string; category: string; icon: string; intervalMonths: number; lastDone: string | null; nextDue: string | null; leadDays: number; memberId: string | null; provider: string; providerPhone: string; providerUrl: string; cost: string; notes: string; attest: string | null; daysLeft: number | null; status: UpkeepStatus; log: { id: string; doneOn: string; note: string }[] }
+export interface UpkeepTemplate { key: string; title: string; titleTr: string; category: string; icon: string; intervalMonths: number; leadDays: number; notes: string }
+export interface WasteRule { id: string; fraction: string; weekday: number; everyWeeks: number; startDate: string; notes: string }
+export interface WasteData { rules: WasteRule[]; next: { date: string; fractions: string[] }[]; fractions: { id: string; nl: string; tr: string; icon: string }[] }
+export type HealthKind = "visit" | "checkup" | "vaccine" | "medication";
+export interface HealthItem { id: string; memberId: string; kind: HealthKind; title: string; date: string | null; time: string | null; provider: string; providerPhone: string; notes: string; followUpMonths: number; times: string; days: number[]; stock: number | null; done: boolean; createdAt: string }
+export interface HaState { entity_id: string; state: string; attributes: Record<string, unknown>; last_changed: string }

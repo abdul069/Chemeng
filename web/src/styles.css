@@ -1677,3 +1677,36 @@ body.gb-big { font-size: 118%; } body.gb-big .btn, body.gb-big .pill, body.gb-bi
 a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .connw-txt { display: flex; flex-direction: column; min-width: 0; } .connw-txt b { font-size: 14.5px; font-weight: 600; } .connw-txt small { font-size: 12.5px; }
 .linkbtns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .linkbtns .btn { text-decoration: none; }
+
+/* ---- Het huis ---- */
+.home-seg { align-self: flex-start; flex-wrap: wrap; }
+.home-tab { display: flex; flex-direction: column; gap: 10px; }
+.home-tab h3 { font-size: 14px; color: var(--muted); margin: 6px 0 4px; }
+.home-two { gap: 12px; align-items: start; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+@media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+.empty-card { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; border-radius: 16px; background: var(--surface); box-shadow: var(--ring); }
+.upks { display: flex; flex-direction: column; gap: 8px; }
+.upk { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--surface); box-shadow: var(--ring); border-left: 5px solid var(--line); }
+.upk.soon { border-left-color: #e0a63c; } .upk.due { border-left-color: #e07b3c; } .upk.late { border-left-color: var(--danger); } .upk.ok { border-left-color: #4f9e5b; } .upk.dim { opacity: .6; }
+.upk-ic { width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.upk-txt { display: flex; flex-direction: column; min-width: 0; gap: 2px; } .upk-txt b { font-size: 15.5px; } .upk-txt small { font-size: 13px; color: var(--muted); }
+.upk-btns { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.upk > .badge { grid-column: 2; justify-self: start; } .upk-more { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+@media (min-width: 821px) { .upk { grid-template-columns: 44px 1fr auto auto; } .upk > .badge { grid-column: auto; } }
+.upk-attest { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent-ink); } .upk-attest img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+.st-ok { color: #2f7a3a; background: #e4f3e6; } .st-soon { color: #8a5a00; background: #fff1d6; } .st-due { color: #9a3f00; background: #ffe3d1; } .st-late { color: var(--danger); background: #ffe1e1; } .st-none { color: var(--muted); background: var(--line); }
+.badge.st-ok, .badge.st-soon, .badge.st-due, .badge.st-late, .badge.st-none { padding: 3px 9px; }
+.waste-days { display: flex; flex-direction: column; gap: 6px; }
+.waste-day { display: grid; grid-template-columns: 110px 90px 1fr; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.waste-day:first-child { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.waste-day span { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip-sm { font-style: normal; font-size: 13px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--surface); box-shadow: var(--ring); }
+.waste-rule { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); } .waste-rule > span:first-child { font-weight: 600; } .waste-rule .iconbtn { margin-left: auto; }
+.ha-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.ha-tile { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--fg) 4%, transparent); border: 1px solid transparent; }
+.ha-tile.on { background: #fff8dc; border-color: #f0d98a; }
+.ha-tile b { font-size: 14.5px; grid-column: 1; } .ha-tile small { color: var(--muted); grid-column: 1; } .ha-tile .switch, .ha-tile .btn, .ha-tile .upk-btns { grid-column: 2; grid-row: 1 / span 2; }
+.ha-picks { max-height: 240px; overflow: auto; }
+.homew .fam-line b { font-weight: 600; }
+@media (max-width: 640px) { .waste-day { grid-template-columns: 1fr 1fr; } .waste-day span { grid-column: 1 / -1; } .upk { grid-template-columns: 40px 1fr; } .upk-btns { grid-column: 1 / -1; justify-content: flex-start; } .upk > .badge { grid-column: 2; } }

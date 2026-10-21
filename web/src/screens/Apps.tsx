@@ -13,14 +13,16 @@ const QuranApp = lazyRetry(() => import("../components/Quran").then((m) => ({ de
 const LearnApp = lazyRetry(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
 const DietApp = lazyRetry(() => import("../components/Diet").then((m) => ({ default: m.DietApp })));
 const PrikbordApp = lazyRetry(() => import("../components/Prikbord").then((m) => ({ default: m.PrikbordApp })));
+const HomeApp = lazyRetry(() => import("../components/Home").then((m) => ({ default: m.HomeApp })));
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 
-export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn" | "diet" | "notes";
+export type AppView = "grid" | "photos" | "weather" | "clock" | "memos" | "prayer" | "quran" | "learn" | "diet" | "notes" | "home";
 
 interface Tile { id: string; label: string; icon: string; color: string; view?: AppView; href?: string; goto?: "meals" | "settings"; domain?: string }
 const TILES: Tile[] = [
   { id: "notes", label: "Prikbord", icon: "📌", color: "#fff6c9", view: "notes" },
+  { id: "home", label: "Het huis", icon: "🏠", color: "#e8f1ea", view: "home" },
   { id: "photos", label: "Foto's", icon: "🖼️", color: "#e9f6f4", view: "photos" },
   { id: "weather", label: "Weer", icon: "⛅", color: "#eaf2fd", view: "weather" },
   { id: "clock", label: "Klok & timers", icon: "⏰", color: "#fdf1e6", view: "clock" },
@@ -47,6 +49,7 @@ export function AppsScreen({ header, view, setView, gotoMeals, gotoSettings, sta
   header: (title: string, back?: () => void) => React.ReactNode; view: AppView; setView: (v: AppView) => void; gotoMeals: () => void; gotoSettings: () => void; startSlideshow: () => void;
 }) {
   const back = () => setView("grid");
+  if (view === "home") return <><div className="topbar">{header(tr("Het huis"), back)}</div><Suspense fallback={<p className="empty">…</p>}><HomeApp /></Suspense></>;
   if (view === "notes") return <><div className="topbar">{header(tr("Prikbord"), back)}</div><Suspense fallback={<p className="empty">…</p>}><PrikbordApp /></Suspense></>;
   if (view === "photos") return <Suspense fallback={<p className="empty">…</p>}><PhotosScreen header={header(tr("Foto's"), back)} startSlideshow={startSlideshow} /></Suspense>;
   if (view === "weather") return <><div className="topbar">{header(tr("Weer"), back)}</div><WeatherApp /></>;

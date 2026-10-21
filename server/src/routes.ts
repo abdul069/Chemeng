@@ -397,11 +397,11 @@ api.post("/waste/sync", async (req, res) => {
   void req;
 });
 
-api.get("/health", (req, res) => { const q = z.object({ member: z.string().optional() }).parse(req.query); res.json(H.listHealth(hid(), q.member)); });
-api.post("/health", (req, res) => { res.json({ id: H.createHealth(H.HealthInput.parse(req.body)) }); broadcast("home"); });
-api.put("/health/:id", (req, res) => { if (!H.updateHealth(p(req), H.HealthInput.parse(req.body))) return void res.status(404).json({ error: "Niet gevonden" }); res.json({ ok: true }); broadcast("home"); });
-api.post("/health/:id/done", (req, res) => { const r = H.healthDone(p(req)); if (!r) return void res.status(404).json({ error: "Niet gevonden" }); res.json(r); broadcast("home"); });
-api.delete("/health/:id", (req, res) => { H.deleteHealth(p(req)); res.json({ ok: true }); broadcast("home"); });
+api.get("/care", (req, res) => { const q = z.object({ member: z.string().optional() }).parse(req.query); res.json(H.listHealth(hid(), q.member)); });
+api.post("/care", (req, res) => { res.json({ id: H.createHealth(H.HealthInput.parse(req.body)) }); broadcast("home"); });
+api.put("/care/:id", (req, res) => { if (!H.updateHealth(p(req), H.HealthInput.parse(req.body))) return void res.status(404).json({ error: "Niet gevonden" }); res.json({ ok: true }); broadcast("home"); });
+api.post("/care/:id/done", (req, res) => { const r = H.healthDone(p(req)); if (!r) return void res.status(404).json({ error: "Niet gevonden" }); res.json(r); broadcast("home"); });
+api.delete("/care/:id", (req, res) => { H.deleteHealth(p(req)); res.json({ ok: true }); broadcast("home"); });
 
 api.get("/ha/states", async (req, res) => {
   const q = z.object({ all: z.string().optional() }).parse(req.query);

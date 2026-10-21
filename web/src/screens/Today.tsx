@@ -13,6 +13,7 @@ import { PrikbordWidget } from "../components/Prikbord";
 import { BriefingCard, BriefingModal } from "../components/Briefing";
 import { FamilyWidget } from "../components/Family";
 import { ConnectorWidgets } from "../components/Connectors";
+import { HomeWidget } from "../components/Home";
 import { t as tr } from "../i18n";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
@@ -42,7 +43,7 @@ function useClock() {
 
 /** Het Bord: het startscherm voor het scherm in de keuken — assistent bovenaan, de dag per gezinslid in het midden, eten en taken onderaan. */
 export function TodayScreen({ openEditor, openAssistant, goto, openSearch, online }: {
-  openEditor: (s: EditorState) => void; openAssistant: (prompt?: string) => void; goto: (s: "meals" | "chores") => void; openSearch: () => void; online: boolean;
+  openEditor: (s: EditorState) => void; openAssistant: (prompt?: string) => void; goto: (s: "meals" | "chores" | "apps") => void; openSearch: () => void; online: boolean;
 }) {
   const { data, hidden } = useData();
   const t = todayIso();
@@ -107,6 +108,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           <ChoreTracker date={t} grouped={false} compact />
         </section>
         <PrikbordWidget max={3} />
+        <HomeWidget onOpen={() => { try { sessionStorage.setItem("gb.app", "home"); } catch { /* */ } goto("apps"); }} />
         <FamilyWidget />
         <ConnectorWidgets board />
         {!!data?.countdowns.length && (

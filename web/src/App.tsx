@@ -47,7 +47,7 @@ export function App() {
   const [resetToken, setResetToken] = useState(resetTokenFromUrl);
   const [screen, setScreenState] = useState<Screen>(() => { const h = location.hash.slice(1); return (h === "photos" ? "apps" : h as Screen) || "today"; });
   const [appView, setAppView] = useState<AppView>("grid");
-  const setScreen = (s: Screen) => { setScreenState(s); if (s === "apps") setAppView("grid"); };
+  const setScreen = (s: Screen) => { setScreenState(s); if (s === "apps") { let v: AppView = "grid"; try { v = (sessionStorage.getItem("gb.app") as AppView) || "grid"; sessionStorage.removeItem("gb.app"); } catch { /* */ } setAppView(v); } };
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [assist, setAssist] = useState<{ prompt?: string; key: number } | null>(null);
   const [convo, setConvo] = useState<Msg[]>([]);
