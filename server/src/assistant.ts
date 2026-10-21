@@ -16,7 +16,8 @@ import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
 import { memoryContext, remember, listMemory } from "./manager.js";
 
-export const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
+import { MODELS, aiAllowed, recordUsage, BUDGET_MESSAGE } from "./billing.js";
+export const MODEL = MODELS.chat;
 import { getClient, aiReady } from "./ai.js";
 export const assistantAvailable = () => aiReady();
 
@@ -328,6 +329,7 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
   }
   const changes: Change[] = [];
   const lang = getSettings().language === "tr" ? "tr" : "nl";
+  if (!aiAllowed("chat")) return { reply: BUDGET_MESSAGE[lang], changes };
   const langNote = lang === "tr" ? "\n\nBELANGRIJK: dit gezin heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : "";
   const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   while (messages.length && messages[0].role !== "user") messages.shift();
@@ -335,8 +337,8 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
   // De gezinscontext verandert dagelijks; ze staat na het vaste systeembericht zodat de prefix gecachet blijft.
   messages[0] = { role: "user", content: `${context()}\n\n${messages[0].content as string}` };
 
-  const final = await client.beta.messages.toolRunner({
-    model: MODEL,
+  const runner = client.beta.messages.toolRunner({
+    model: MODELS.chat,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -346,6 +348,10 @@ export async function chat(history: ChatTurn[]): Promise<{ reply: string; change
     messages,
     max_iterations: 8,
   });
+  // elke tussenstap boeken, zodat het budget per gezin klopt
+  let final: Anthropic.Beta.BetaMessage | null = null;
+  for await (const m of runner) { recordUsage("chat", MODELS.chat, m.usage); final = m; }
+  if (!final) return { reply: "Ik heb geen antwoord gevonden. Probeer het anders te vragen.", changes };
 
   if (final.stop_reason === "refusal") {
     return { reply: "Daar kan ik je niet mee helpen. Vraag me gerust iets anders over de planning van het gezin.", changes };

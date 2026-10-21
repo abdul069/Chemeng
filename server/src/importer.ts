@@ -6,7 +6,8 @@ import { listMembers } from "./store.js";
 import { today, weekday } from "./dates.js";
 
 import { getClient, aiReady } from "./ai.js";
-const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
+import { MODELS, aiAllowed, recordUsage } from "./billing.js";
+const MODEL = MODELS.light;
 export const importAvailable = () => aiReady();
 
 const DAYS = ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"];
@@ -46,6 +47,7 @@ ${input.hint ? `Extra aanwijzing van de gebruiker: ${input.hint}` : ""}`;
   const content: Anthropic.ContentBlockParam[] = [];
   if (input.image) content.push({ type: "image", source: { type: "base64", media_type: input.image.mediaType, data: input.image.data } });
   content.push({ type: "text", text: input.text ? `Document:\n${input.text}` : "Lees het document op de foto." });
+  if (!aiAllowed("import")) return { summary: "Het AI-budget van dit gezin is deze maand op; importeren kan volgende maand weer of na een upgrade.", events: [], listItems: [] };
   const res = await client.messages.parse({
     model: MODEL,
     max_tokens: 8000,
@@ -53,6 +55,7 @@ ${input.hint ? `Extra aanwijzing van de gebruiker: ${input.hint}` : ""}`;
     system: instructions,
     messages: [{ role: "user", content }],
   });
+  recordUsage("import", MODEL, res.usage);
   if (res.stop_reason === "refusal" || !res.parsed_output) return { summary: "Ik kon hier geen afspraken uit halen.", events: [], listItems: [] };
   return res.parsed_output;
 }

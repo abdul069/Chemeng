@@ -7,6 +7,7 @@ import { Icon } from "../components/Icons";
 import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 import { DevicesSection } from "../components/Devices";
 import { ManagerSection } from "../components/ManagerSettings";
+import { BillingSection } from "../components/Billing";
 import { FamilySection } from "../components/Family";
 import { t, getLang, setLang } from "../i18n";
 
@@ -24,6 +25,7 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
       <div className="topbar">{header}</div>
       <div className="page-scroll settings-grid" style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 16, maxWidth: 900 }}>
         <AccountSection />
+        <BillingSection />
         <Language />
         <Family />
         <DevicesSection />

@@ -1648,3 +1648,11 @@ body.gb-hub .rcheck { width: 36px; height: 36px; }
 .link-h { display: flex; align-items: center; justify-content: space-between; }
 /* grote letters (oma-modus) */
 body.gb-big { font-size: 118%; } body.gb-big .btn, body.gb-big .pill, body.gb-big .pick { min-height: 48px; font-size: 1.05em; } body.gb-big .navbtn { font-size: 14px; } body.gb-big .brief-text { font-size: 21px; } body.gb-big .item b { font-size: 17px; }
+
+/* ---------- abonnement en AI-budget ---------- */
+.planrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.planbadge { font-weight: 800; font-size: 13px; border-radius: 999px; padding: 4px 12px; background: var(--surface-2); } .planbadge.plus { background: #1e2632; color: #fff; } .planbadge.operator { background: #e8f7ee; color: #1b7a3d; }
+.budgetbar { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; } .budgetbar i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width .3s; } .budgetbar i.warn { background: #f0a830; } .budgetbar i.full { background: #d9576b; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 10px 0 4px; }
+.plancard { border: 2px solid var(--line); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; } .plancard.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); } .plancard small { color: var(--muted); font-size: 12px; }
+.partneradmin { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }

@@ -8,7 +8,7 @@ import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
 import { prayerTimes } from "./prayer.js";
 import { getClient, aiReady } from "./ai.js";
-import { MODEL } from "./assistant.js";
+import { MODELS, aiAllowed, recordUsage } from "./billing.js";
 import { pushToUsers, usersFor } from "./push.js";
 import { broadcastTo } from "./realtime.js";
 import * as H from "./home.js";
@@ -213,12 +213,13 @@ async function narrate(b: Briefing, lang: "nl" | "tr", name: string | null, focu
   const key = `${hid()}|${b.kind}|${b.date}|${b.memberId}|${b.items.map((i) => i.text).join(";")}|${b.proposals.length}`;
   const hit = cache.get(key); if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.text;
   let text = template(b, lang, name, focus);
-  if (aiReady()) {
+  if (aiReady() && aiAllowed("briefing")) {
     try {
       const client = getClient()!;
-      const r = await client.messages.create({ model: MODEL, max_tokens: 300, output_config: { effort: "low" } as never,
+      const r = await client.messages.create({ model: MODELS.light, max_tokens: 300, output_config: { effort: "low" } as never,
         system: lang === "tr" ? "Sen bir ailenin mutfak ekranındaki yardımcısın. Aşağıdaki notları 2-4 kısa, sıcak, konuşma dilinde Türkçe cümleyle anlat; sesli okunacak. Yeni bilgi ekleme, saatleri ve isimleri aynen koru, emoji ve başlık kullanma." : "Je bent de assistent op het keukenscherm van een gezin. Vertel de notities hieronder in 2 tot 4 korte, warme spreektaalzinnen in het Nederlands (Vlaams mag); ze worden voorgelezen. Voeg niets toe, houd uren en namen exact, geen emoji en geen titel.",
         messages: [{ role: "user", content: `${b.title}.\n${b.items.map((i) => `- ${i.text}`).join("\n")}${b.proposals.length ? `\nVoorstellen die de gebruiker kan aanvaarden: ${b.proposals.map((p) => p.title).join("; ")}.` : ""}${memoryContext() ? `\n${memoryContext()}` : ""}` }] });
+      recordUsage("briefing", MODELS.light, r.usage);
       const out = r.content.flatMap((c) => (c.type === "text" ? [c.text] : [])).join(" ").trim();
       if (out) text = out;
     } catch { /* sjabloon volstaat */ }

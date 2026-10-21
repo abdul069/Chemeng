@@ -16,7 +16,8 @@ export const TURKISH_SITES = [
 ];
 
 import { getClient, aiReady } from "./ai.js";
-const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
+import { MODELS, aiAllowed, recordUsage } from "./billing.js";
+const MODEL = MODELS.chat;
 export const aiAvailable = () => aiReady();
 
 export class RecipeError extends Error {}
@@ -179,6 +180,7 @@ export async function searchTurkishRecipes(query: string, opts: { translate?: bo
   }];
   const hits = new Map<string, string>();
   for (let i = 0; i < 4; i++) {
+    if (!aiAllowed("search")) break;
     const msg = await client.messages.create({
       model: MODEL,
       max_tokens: 4000,
@@ -186,6 +188,7 @@ export async function searchTurkishRecipes(query: string, opts: { translate?: bo
       tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 3, allowed_domains: TURKISH_SITES }],
       messages,
     });
+    recordUsage("search", MODEL, msg.usage);
     for (const block of msg.content) {
       if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
         for (const r of block.content) if (r.type === "web_search_result" && !hits.has(r.url)) hits.set(r.url, r.title);
@@ -220,9 +223,9 @@ const Translated = z.object({
 
 export async function translateRecipe(r: RecipeInputT): Promise<RecipeInputT> {
   const client = getClient();
-  if (!client || r.lang === "nl") return r;
+  if (!client || r.lang === "nl" || !aiAllowed("translate")) return r;
   const res = await client.messages.parse({
-    model: MODEL,
+    model: MODELS.light,
     max_tokens: 8000,
     output_config: { effort: "low", format: zodOutputFormat(Translated) },
     messages: [{
@@ -252,7 +255,7 @@ ${r.instructions}`,
 
 /** Vertaalt een lijst receptnamen in één keer naar het Nederlands. */
 /** Korte vertalingen (titels van de bibliotheek) mogen met een sneller, goedkoper model. */
-const LIBRARY_MODEL = process.env.LIBRARY_MODEL ?? "claude-haiku-5-5";
+const LIBRARY_MODEL = MODELS.light;
 export async function translateTitles(titles: string[]): Promise<string[]> {
   const client = getClient();
   if (!client || !titles.length) return titles;

@@ -30,6 +30,7 @@ import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
+import * as B from "./billing.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
@@ -291,6 +292,21 @@ api.get("/bootstrap", (req, res) => {
     build: process.env.GB_BUILD || null,
   });
 });
+
+// ---------- abonnement, AI-budget en ledencodes ----------
+api.get("/billing", (_req, res) => { res.json({ ...B.budgetState(), models: B.MODELS, plans: B.PLANS.filter((p) => p !== "operator").map((p) => ({ id: p, label: B.PLAN_LABEL[p], budgetMicro: B.BUDGET[p] })) }); });
+api.post("/billing/redeem", requireAdmin, (req, res) => {
+  const b = z.object({ code: z.string().trim().min(3).max(40), identifier: z.string().trim().max(120).optional() }).parse(req.body);
+  try { res.json(B.redeem(b.code, b.identifier ?? null)); broadcast("settings"); }
+  catch (e) { if (e instanceof B.RedeemError) return void res.status(400).json({ error: e.message }); throw e; }
+});
+// alleen de eigenaar van de server: partners, codes, handmatige abonnementen
+api.get("/partners", requireOperator, (_req, res) => { res.json(B.listPartners().map((p) => ({ ...p, stats: B.partnerStats(p.id) }))); });
+api.post("/partners", requireOperator, (req, res) => { res.json({ id: B.createPartner(B.PartnerInput.parse(req.body)) }); });
+api.delete("/partners/:id", requireOperator, (req, res) => { B.deletePartner(p(req)); res.json({ ok: true }); });
+api.post("/partners/:id/codes", requireOperator, (req, res) => { const b = z.object({ code: z.string().trim().max(40).optional(), maxUses: z.number().int().min(1).max(1_000_000).optional(), expiresAt: z.string().nullable().optional() }).parse(req.body ?? {}); res.json({ code: B.createCode(p(req), b) }); });
+api.post("/partners/:id/members", requireOperator, (req, res) => { const b = z.object({ identifiers: z.array(z.string().min(2)).min(1) }).parse(req.body); B.addMembers(p(req), b.identifiers); res.json({ ok: true }); });
+api.put("/billing/plan/:householdId", requireOperator, (req, res) => { const b = z.object({ plan: z.enum(["free", "gezin", "plus"]), validUntil: z.string().nullable().optional() }).parse(req.body); B.setPlan(req.params.householdId as string, b.plan, { source: "manual", validUntil: b.validUntil ?? null }); res.json({ ok: true }); broadcastTo(req.params.householdId as string, ["settings"]); });
 
 // ---------- toestellen (wandscherm, tafelmodel, telefoons) en cast ----------
 api.get("/devices", (_req, res) => { res.json(S.listDevices()); });

@@ -87,6 +87,10 @@ export type Proposal =
 export interface BriefingItem { icon: string; text: string; memberId?: string | null; kind: string }
 export interface Briefing { kind: "morning" | "evening"; date: string; memberId: string | null; title: string; narration: string; items: BriefingItem[]; proposals: Proposal[]; conflicts: number }
 export interface Memory { id: string; text: string; memberId: string | null; source: string; createdAt: string }
+export type Plan = "free" | "gezin" | "plus" | "operator";
+export interface Subscription { plan: Plan; source: string; partnerId: string | null; partnerName: string | null; discountPct: number; validUntil: string | null }
+export interface Billing { plan: Plan; planLabel: string; usedMicro: number; budgetMicro: number | null; pct: number; blocked: boolean; perTask: { task: string; calls: number; costMicro: number }[]; subscription: Subscription; models: { chat: string; light: string; premium: string }; plans: { id: Plan; label: string; budgetMicro: number }[] }
+export interface Partner { id: string; name: string; slug: string; plan: Plan; freeMonths: number; discountPct: number; verify: string; domains: string; note: string; createdAt: string; stats: { redeemed: number; inFreePeriod: number; activeInFreePeriod: number; afterFreePeriod: number; retainedAfterFree: number; codes: { code: string; maxUses: number; uses: number; expiresAt: string | null }[] } }
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
