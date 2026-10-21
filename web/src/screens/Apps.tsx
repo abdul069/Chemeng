@@ -1,16 +1,17 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { lazyRetry } from "../lazy";
 import { api, photoUrl } from "../api";
 import { useAction, useRemote } from "../store";
 import type { Memo, Weather } from "../types";
 import { Confirm, Fold } from "../components/ui";
 import { Icon } from "../components/Icons";
-const PhotosScreen = lazy(() => import("./Photos").then((m) => ({ default: m.PhotosScreen })));
+const PhotosScreen = lazyRetry(() => import("./Photos").then((m) => ({ default: m.PhotosScreen })));
 import { fmtLeft, useTimers, type Alarm } from "../components/Timers";
 import { BrandIcon, OWN_ICONS } from "../components/AppIcons";
-const PrayerApp = lazy(() => import("../components/Prayer").then((m) => ({ default: m.PrayerApp })));
-const QuranApp = lazy(() => import("../components/Quran").then((m) => ({ default: m.QuranApp })));
-const LearnApp = lazy(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
-const DietApp = lazy(() => import("../components/Diet").then((m) => ({ default: m.DietApp })));
+const PrayerApp = lazyRetry(() => import("../components/Prayer").then((m) => ({ default: m.PrayerApp })));
+const QuranApp = lazyRetry(() => import("../components/Quran").then((m) => ({ default: m.QuranApp })));
+const LearnApp = lazyRetry(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
+const DietApp = lazyRetry(() => import("../components/Diet").then((m) => ({ default: m.DietApp })));
 import { DAYS, DSHORT, cap, clock, longDate, todayIso } from "../dates";
 import { t as tr } from "../i18n";
 

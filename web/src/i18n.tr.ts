@@ -948,4 +948,6 @@ export const TR: Record<string, string> = {
   "Avond": "Akşam",
   "{n} sterren vandaag verdiend": "bugün {n} yıldız kazanıldı",
   "Niets voor dit moment — alles al gedaan? 🎈": "Bu zaman için bir şey yok — hepsi bitti mi? 🎈",
+  "Dit scherm kon niet geladen worden. Waarschijnlijk is er net een update.": "Bu ekran yüklenemedi. Muhtemelen az önce bir güncelleme yapıldı.",
+  "Opnieuw laden": "Yeniden yükle",
 };

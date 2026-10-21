@@ -934,7 +934,7 @@ h1, h2, h3 { font-family: var(--f-body); font-weight: 600; letter-spacing: -0.01
   .bord-meta .iconbtn { display: none; }
   .bord-suggest { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -12px; padding-inline: 12px; }
   .bord-suggest button { flex: none; font-size: 13px; padding: 7px 12px; }
-  .bord-cal { height: 58vh; min-height: 360px; }
+  .bord-cal { height: 36vh; min-height: 230px; }
   .bord-widgets { grid-template-columns: 1fr; gap: 8px; }
   .mealtile.main .rthumb, .mealtile.main .mealtile-ic { width: 54px !important; height: 54px !important; }
   .topbar h1 { font-size: 21px; }
@@ -1451,6 +1451,8 @@ img.illu.path-ic { width: 48px; height: 48px; }
   .card, .rail, .learn-bar, .glass, .bubble, .mbubble { background-color: rgba(255,255,255,.96) !important; background-image: none !important; }
   .card, .learn-tile, .learn-opt, .item, .pick { box-shadow: 0 1px 3px rgba(30,38,50,.08) !important; }
   .wiggle, .bob, .spin-star { animation: none !important; }
+  /* overlays die op glas rekenden, krijgen een dekkende achtergrond */
+  .assist { background: linear-gradient(160deg, #eaf6f3, #f6f1ea 60%, #fbeee6) !important; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 

@@ -1,27 +1,28 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { ScreenBoundary, lazyRetry } from "./lazy";
 import { connectRealtime, onConnection } from "./api";
 import { AcceptInvite, AuthScreen, NoHousehold, ResetPassword, inviteTokenFromUrl, resetTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
 import { Icon } from "./components/Icons";
 import type { EditorState } from "./components/EventEditor";
-const EventEditor = lazy(() => import("./components/EventEditor").then((m) => ({ default: m.EventEditor })));
-const Screensaver = lazy(() => import("./components/Screensaver").then((m) => ({ default: m.Screensaver })));
+const EventEditor = lazyRetry(() => import("./components/EventEditor").then((m) => ({ default: m.EventEditor })));
+const Screensaver = lazyRetry(() => import("./components/Screensaver").then((m) => ({ default: m.Screensaver })));
 import type { Msg } from "./assistant/Assistant";
-const Assistant = lazy(() => import("./assistant/Assistant").then((m) => ({ default: m.Assistant })));
+const Assistant = lazyRetry(() => import("./assistant/Assistant").then((m) => ({ default: m.Assistant })));
 import { TodayScreen } from "./screens/Today";
 import { CalendarScreen } from "./screens/Calendar";
-const ChoresScreen = lazy(() => import("./screens/Chores").then((m) => ({ default: m.ChoresScreen })));
-const MealsScreen = lazy(() => import("./screens/Meals").then((m) => ({ default: m.MealsScreen })));
-const ListsScreen = lazy(() => import("./screens/Lists").then((m) => ({ default: m.ListsScreen })));
+const ChoresScreen = lazyRetry(() => import("./screens/Chores").then((m) => ({ default: m.ChoresScreen })));
+const MealsScreen = lazyRetry(() => import("./screens/Meals").then((m) => ({ default: m.MealsScreen })));
+const ListsScreen = lazyRetry(() => import("./screens/Lists").then((m) => ({ default: m.ListsScreen })));
 import type { AppView } from "./screens/Apps";
-const AppsScreen = lazy(() => import("./screens/Apps").then((m) => ({ default: m.AppsScreen })));
-const Search = lazy(() => import("./components/Search").then((m) => ({ default: m.Search })));
+const AppsScreen = lazyRetry(() => import("./screens/Apps").then((m) => ({ default: m.AppsScreen })));
+const Search = lazyRetry(() => import("./components/Search").then((m) => ({ default: m.Search })));
 import { emitNav } from "./nav";
-const RecipeHost = lazy(() => import("./components/Recipes").then((m) => ({ default: m.RecipeHost })));
-const SettingsScreen = lazy(() => import("./screens/Settings").then((m) => ({ default: m.SettingsScreen })));
+const RecipeHost = lazyRetry(() => import("./components/Recipes").then((m) => ({ default: m.RecipeHost })));
+const SettingsScreen = lazyRetry(() => import("./screens/Settings").then((m) => ({ default: m.SettingsScreen })));
 import { cap, clock, longDate, todayIso } from "./dates";
 import { EzanOverlay, useEzan } from "./components/Ezan";
-const QuranMiniPlayer = lazy(() => import("./components/Quran").then((m) => ({ default: m.QuranMiniPlayer })));
+const QuranMiniPlayer = lazyRetry(() => import("./components/Quran").then((m) => ({ default: m.QuranMiniPlayer })));
 import { t as tr } from "./i18n";
 
 type Screen = "today" | "calendar" | "chores" | "meals" | "lists" | "apps" | "settings";
@@ -130,7 +131,7 @@ export function App() {
         <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>
       </nav>
       <main className={`page${screen === "today" ? tr(" page-bord") : ""}`}>
-        <Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}>
+        <ScreenBoundary><Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}>
         {screen === "today" && <TodayScreen openEditor={openEditor} openAssistant={openAssistant} goto={(s) => setScreen(s)} openSearch={() => setSearch(true)} online={online} />}
         {screen === "calendar" && <CalendarScreen header={header} openEditor={openEditor} />}
         {screen === "chores" && <ChoresScreen header={header} />}
@@ -138,7 +139,7 @@ export function App() {
         {screen === "lists" && <ListsScreen header={header} />}
         {screen === "apps" && <AppsScreen header={makeHeader} view={appView} setView={setAppView} gotoMeals={() => { try { sessionStorage.setItem("gb.meals", "recipes"); } catch { /* */ } setScreen("meals"); }} startSlideshow={() => setSaver(true)} />}
         {screen === "settings" && <SettingsScreen header={header} />}
-        </Suspense>
+        </Suspense></ScreenBoundary>
       </main>
       {(screen === "today" || screen === "calendar") && <button className="fab" onClick={() => openEditor({ defaults: { date: todayIso() } })} aria-label={tr("Afspraak toevoegen")}>+</button>}
       <button className="mascot-btn mascot-float" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><div className="mascot" /></button>
