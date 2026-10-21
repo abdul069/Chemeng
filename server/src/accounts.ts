@@ -4,6 +4,7 @@ import { all, get, run, newId, tx } from "./db.js";
 import { createMember, createList } from "./store.js";
 import { expand, rowsBetween, toEvent, type Occurrence } from "./events.js";
 import { hashPassword, randomToken, sha256 } from "./auth.js";
+import { createLink } from "./family.js";
 
 export const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#3d9bd1"];
 const pickColor = () => COLORS[Math.floor(Math.random() * COLORS.length)];
@@ -47,6 +48,8 @@ export function householdsOf(userId: string) {
 export const InviteInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("household"), memberId: z.string().nullable().optional(), role: z.enum(["beheerder", "lid"]).default("lid"), label: z.string().max(60).default("") }),
   z.object({ kind: z.literal("agenda"), level: z.enum(["details", "bezet"]).default("details"), label: z.string().max(60).default("") }),
+  // een ander gezin (oma, co-ouder) met het onze verbinden
+  z.object({ kind: z.literal("link"), label: z.string().max(60).default("") }),
 ]);
 
 export function createInvite(userId: string, householdId: string | null, i: z.infer<typeof InviteInput>) {
@@ -62,6 +65,9 @@ export function createInvite(userId: string, householdId: string | null, i: z.in
       "INSERT INTO invites(id, token_hash, kind, created_by, household_id, member_id, role, label, expires_at) VALUES (?,?,?,?,?,?,?,?, datetime('now','+7 days'))",
       id, sha256(token), "household", userId, householdId, i.memberId ?? null, i.role, i.label,
     );
+  } else if (i.kind === "link") {
+    if (!householdId) throw new UserError("Kies eerst een gezin.");
+    run("INSERT INTO invites(id, token_hash, kind, created_by, household_id, role, label, expires_at) VALUES (?,?,?,?,?,?,?, datetime('now','+7 days'))", id, sha256(token), "link", userId, householdId, "link", i.label);
   } else {
     if (!linkedMembers(userId).length) throw new UserError("Koppel je account eerst aan je eigen profiel in een gezin; dan weten we welke afspraken van jou zijn.");
     run(
@@ -72,7 +78,7 @@ export function createInvite(userId: string, householdId: string | null, i: z.in
   return { id, token };
 }
 
-type InviteRow = { id: string; kind: "household" | "agenda"; created_by: string; household_id: string | null; member_id: string | null; role: string; label: string; expires_at: string; used_at: string | null };
+type InviteRow = { id: string; kind: "household" | "agenda" | "link"; created_by: string; household_id: string | null; member_id: string | null; role: string; label: string; expires_at: string; used_at: string | null };
 function findInvite(token: string) {
   return get<InviteRow>("SELECT * FROM invites WHERE token_hash=?", sha256(token));
 }
@@ -88,18 +94,30 @@ export function describeInvite(token: string) {
     const member = inv.member_id ? get<{ name: string }>("SELECT name FROM members WHERE id=?", inv.member_id)?.name : null;
     return { valid: true as const, kind: "household" as const, from, household, member, role: inv.role };
   }
+  if (inv.kind === "link") {
+    const household = get<{ name: string }>("SELECT name FROM households WHERE id=?", inv.household_id)?.name ?? "";
+    return { valid: true as const, kind: "link" as const, from, household };
+  }
   return { valid: true as const, kind: "agenda" as const, from, level: inv.role };
 }
 
 export class UserError extends Error {}
 
 /** Aanvaardt een uitnodiging; geeft het gezin terug waar de gebruiker naartoe moet. */
-export function acceptInvite(token: string, userId: string): { householdId: string | null; kind: "household" | "agenda"; ownerId?: string } {
+export function acceptInvite(token: string, userId: string, currentHousehold: string | null = null): { householdId: string | null; kind: "household" | "agenda" | "link"; ownerId?: string; linked?: string } {
   const d = describeInvite(token);
   if (!d.valid) throw new UserError(d.reason);
   const inv = findInvite(token)!;
   if (inv.created_by === userId) throw new UserError("Dit is je eigen uitnodiging. Stuur de link naar de persoon die je wilt uitnodigen.");
   return tx(() => {
+    if (inv.kind === "link") {
+      if (!currentHousehold) throw new UserError("Meld je aan in het gezin dat je wilt verbinden en open de link dan opnieuw.");
+      if (currentHousehold === inv.household_id) throw new UserError("Dit is een uitnodiging van je eigen gezin. Stuur de link naar het andere gezin.");
+      if (!get("SELECT 1 FROM household_users WHERE household_id=? AND user_id=? AND role='beheerder'", currentHousehold, userId)) throw new UserError("Alleen een beheerder van je gezin kan het met een ander gezin verbinden.");
+      run("UPDATE invites SET used_by=?, used_at=datetime('now') WHERE id=?", userId, inv.id);
+      createLink(inv.household_id!, currentHousehold);
+      return { householdId: null, kind: "link" as const, linked: inv.household_id!, ownerId: inv.created_by };
+    }
     run("UPDATE invites SET used_by=?, used_at=datetime('now') WHERE id=?", userId, inv.id);
     if (inv.kind === "household") {
       const hid = inv.household_id!;

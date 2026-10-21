@@ -59,6 +59,7 @@ export function DevicesSection() {
             <div className="picks">{data?.members.filter((m) => m.role !== "huisdier").map((m) => <button type="button" key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={me.memberId === m.id} onClick={() => setDevice({ memberId: me.memberId === m.id ? null : m.id })}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}</div>
           </div>
         )}
+        <label className="check-row"><input type="checkbox" checked={!!me.big} onChange={(e) => setDevice({ big: e.target.checked })} />{" "}{t("Grote letters en knoppen op dit toestel (voor oma en opa)")}</label>
         <div className="addrow"><input value={rename} onChange={(e) => setRename(e.target.value)} aria-label={t("Naam van dit toestel")} /><button className="btn ghost" disabled={!rename.trim() || rename === me.name} onClick={() => setDevice({ name: rename.trim() })}>{t("Naam bewaren")}</button></div>
       </div>
       <div className="devlist">

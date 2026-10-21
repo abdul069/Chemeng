@@ -4,8 +4,9 @@ import { WebSocketServer, WebSocket } from "ws";
 import { sessionFromCookie } from "./auth.js";
 import { viewersOfHousehold } from "./accounts.js";
 import { hid } from "./db.js";
+import { linkedHouseholdIds } from "./family.js";
 
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family";
 
 const sockets = new Map<WebSocket, { userId: string; householdId: string | null }>();
 
@@ -32,6 +33,11 @@ function send(filter: (s: { userId: string; householdId: string | null }) => boo
 
 export function broadcastTo(householdId: string, topics: Topic[]) {
   send((s) => s.householdId === householdId, topics);
+  // verbonden gezinnen zien onze agenda, foto's en briefjes op hun Bord
+  if (topics.some((t) => t === "events" || t === "photos" || t === "notes" || t === "members")) {
+    const linked = new Set(linkedHouseholdIds(householdId));
+    if (linked.size) send((s) => !!s.householdId && linked.has(s.householdId), ["family"]);
+  }
   if (topics.includes("events") || topics.includes("members")) {
     const viewers = new Set(viewersOfHousehold(householdId));
     if (viewers.size) send((s) => viewers.has(s.userId) && s.householdId !== householdId, ["events", "sharing"]);

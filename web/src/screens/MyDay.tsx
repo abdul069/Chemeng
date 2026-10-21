@@ -11,6 +11,7 @@ import { Icon } from "../components/Icons";
 import { RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { PrikbordWidget } from "../components/Prikbord";
 import { BriefingCard } from "../components/Briefing";
+import { FamilyWidget } from "../components/Family";
 import { addDays, cap, greeting, longDate, todayIso, weekday } from "../dates";
 import { cast, setDevice, useDevice } from "../device";
 import { t as tr } from "../i18n";
@@ -133,6 +134,7 @@ export function MyDayScreen({ openEditor, openAssistant, goto, openSearch, onPic
       )}
 
       <PrikbordWidget max={3} onMore={() => goto("apps")} />
+      <FamilyWidget />
       {dev.role === "phone" && !dev.memberId && data.members.length > 0 && (
         <p className="hint center-text">{tr("Tip: kies van wie deze telefoon is, dan zie je alleen jouw afspraken en taken.")} <button className="linkbtn" onClick={() => setDevice({ memberId: data.me.memberId ?? data.members[0].id })}>{tr("Dat ben ik")}</button></p>
       )}

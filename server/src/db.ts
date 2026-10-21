@@ -331,6 +331,15 @@ CREATE TABLE IF NOT EXISTS memory (
   source TEXT NOT NULL DEFAULT 'user',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- gezinsnetwerk: twee gezinnen die met elkaar verbonden zijn, elk met wat het deelt
+CREATE TABLE IF NOT EXISTS household_links (
+  id TEXT PRIMARY KEY,
+  a TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  b TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  a_share TEXT NOT NULL DEFAULT 'events,photos,notes,birthdays',
+  b_share TEXT NOT NULL DEFAULT 'events,photos,notes,birthdays',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- prikbord: briefjes voor het hele gezin
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
@@ -342,6 +351,9 @@ CREATE TABLE IF NOT EXISTS notes (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+// kolommen die later bijkwamen op tabellen uit het tweede blok
+addColumn("notes", "from_household", "TEXT");
+addColumn("notes", "author", "TEXT");
 
 type Row = Record<string, unknown>;
 export const all = <T = Row>(sql: string, ...p: unknown[]) => db.prepare(sql).all(...(p as never[])) as T[];

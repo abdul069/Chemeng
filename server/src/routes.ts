@@ -29,6 +29,7 @@ import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
+import * as F from "./family.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
@@ -64,8 +65,8 @@ api.post("/auth/register", (req, res) => {
   if (invite?.valid && invite.kind === "household") householdId = A.acceptInvite(b.invite!, userId).householdId;
   else {
     householdId = A.createHousehold(userId, `Gezin ${b.name}`);
-    if (invite?.valid && invite.kind === "agenda") {
-      const r = A.acceptInvite(b.invite!, userId);
+    if (invite?.valid && (invite.kind === "agenda" || invite.kind === "link")) {
+      const r = A.acceptInvite(b.invite!, userId, householdId);
       if (r.ownerId) notifyUsers([r.ownerId], ["sharing"]);
     }
   }
@@ -115,7 +116,8 @@ api.get("/auth/me", (req, res) => {
 
 api.post("/invites/:token/accept", (req, res) => {
   const s = req.session!;
-  const r = A.acceptInvite(req.params.token as string, s.user.id);
+  const r = A.acceptInvite(req.params.token as string, s.user.id, s.householdId);
+  if (r.kind === "link" && r.linked && s.householdId) { broadcastTo(r.linked, ["family", "settings"]); broadcastTo(s.householdId, ["family", "settings"]); }
   if (r.householdId) {
     run("UPDATE sessions SET household_id=? WHERE token_hash=?", r.householdId, s.tokenHash);
     broadcastTo(r.householdId, ["members", "access"]);
@@ -200,7 +202,7 @@ api.post("/sharing/share-back/:id", (req, res) => {
 // ---------- foto's bekijken (eigen gezin of profielfoto van wie deelt) ----------
 api.get("/photos/file/:name", (req, res) => {
   const name = path.basename(req.params.name as string);
-  if (!A.canSeePhoto(req.session!.user.id, name)) return void res.status(404).end();
+  if (!A.canSeePhoto(req.session!.user.id, name) && !(req.session!.householdId && F.canSeePhoto(req.session!.householdId, name))) return void res.status(404).end();
   res.sendFile(path.join(PHOTO_DIR, name), { maxAge: "30d" }, (err) => {
     if (err && !res.headersSent) res.status(404).end();
   });
@@ -210,8 +212,8 @@ api.get("/photos/file/:name", (req, res) => {
 api.post("/invites", (req, res, next) => {
   const b = A.InviteInput.parse(req.body);
   const s = req.session!;
-  if (b.kind === "household") {
-    if (!s.householdId || !isAdmin(s.user.id, s.householdId)) return void res.status(403).json({ error: "Alleen een beheerder kan mensen in het gezin uitnodigen." });
+  if (b.kind === "household" || b.kind === "link") {
+    if (!s.householdId || !isAdmin(s.user.id, s.householdId)) return void res.status(403).json({ error: "Alleen een beheerder kan mensen of gezinnen uitnodigen." });
   }
   try {
     const { id, token } = A.createInvite(s.user.id, s.householdId, b);
@@ -322,6 +324,27 @@ api.post("/manager/apply", (req, res) => {
 api.get("/memory", (_req, res) => { res.json(listMemory()); });
 api.post("/memory", (req, res) => { res.json({ id: remember(MemoryInput.parse(req.body)) }); broadcast("settings"); });
 api.delete("/memory/:id", (req, res) => { forget(p(req)); res.json({ ok: true }); broadcast("settings"); });
+
+// ---------- gezinsnetwerk ----------
+api.get("/family/links", (_req, res) => { res.json(F.listLinks()); });
+api.put("/family/links/:id/share", requireAdmin, (req, res) => {
+  const b = z.object({ share: z.array(z.enum(F.SHARE_KINDS)) }).parse(req.body);
+  if (!F.setMyShare(p(req), b.share)) return void res.status(404).json({ error: "Deze verbinding bestaat niet." });
+  res.json({ ok: true });
+  const l = F.listLinks().find((x) => x.id === p(req)); if (l) broadcastTo(l.otherId, ["family"]); broadcast("settings");
+});
+api.delete("/family/links/:id", requireAdmin, (req, res) => {
+  const l = F.listLinks().find((x) => x.id === p(req));
+  F.deleteLink(p(req)); res.json({ ok: true });
+  if (l) broadcastTo(l.otherId, ["family", "settings"]); broadcast("family", "settings");
+});
+api.get("/family/feed", (_req, res) => { res.json(F.familyFeed()); });
+api.post("/family/links/:id/note", (req, res) => {
+  const other = F.sendFamilyNote(p(req), F.FamilyNoteInput.parse(req.body));
+  if (!other) return void res.status(404).json({ error: "Deze verbinding bestaat niet." });
+  res.json({ ok: true });
+  broadcastTo(other, ["notes"]);
+});
 
 // ---------- prikbord ----------
 api.get("/notes", (_req, res) => { res.json(S.listNotes()); });

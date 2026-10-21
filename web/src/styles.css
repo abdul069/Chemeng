@@ -1635,3 +1635,16 @@ body.gb-hub .rcheck { width: 36px; height: 36px; }
 .memlist { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
 .memrow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 12px; background: var(--surface-2); font-size: 14px; } .mem-txt { flex: 1; min-width: 0; }
 @media (max-width: 820px) { .brief-text { font-size: 15.5px; } .prop { padding: 7px 8px; } .prop-btns .btn { padding: 6px 10px; font-size: 13px; } }
+
+/* ---------- gezinsnetwerk ---------- */
+.famcards { display: flex; flex-direction: column; gap: 8px; }
+.famcard { border-radius: 14px; background: var(--surface); box-shadow: var(--ring); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.fam-h { display: flex; align-items: center; gap: 8px; } .fam-h b { flex: 1; min-width: 0; font-size: 15px; }
+.fam-avs { display: inline-flex; } .fam-avs .avatar { margin-right: -8px; border: 2px solid var(--surface); font-size: 11px; background-size: cover; }
+.fam-line { display: flex; gap: 6px; align-items: baseline; font-size: 14px; } .fam-line > span:first-child { flex: none; }
+.fam-note { border-radius: 4px 4px 12px 4px; padding: 8px 10px; font-family: var(--f-display); font-size: 14px; color: #1e2632; box-shadow: 1px 2px 8px rgba(30,38,50,.12); } .fam-note small { display: block; color: rgba(30,38,50,.65); font-family: var(--f-body, inherit); margin-top: 2px; }
+.fam-photos { display: flex; gap: 6px; } .fam-photos img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+.linkrow { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); margin-bottom: 8px; }
+.link-h { display: flex; align-items: center; justify-content: space-between; }
+/* grote letters (oma-modus) */
+body.gb-big { font-size: 118%; } body.gb-big .btn, body.gb-big .pill, body.gb-big .pick { min-height: 48px; font-size: 1.05em; } body.gb-big .navbtn { font-size: 14px; } body.gb-big .brief-text { font-size: 21px; } body.gb-big .item b { font-size: 17px; }

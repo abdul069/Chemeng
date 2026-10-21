@@ -66,7 +66,19 @@ export interface Invite { id: string; kind: "household" | "agenda"; memberId: st
 export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
-  | { valid: true; kind: "agenda"; from: string; level: string };
+  | { valid: true; kind: "agenda"; from: string; level: string }
+  | { valid: true; kind: "link"; from: string; household: string };
+export type ShareKind = "events" | "photos" | "notes" | "birthdays";
+export interface FamilyLink { id: string; otherId: string; otherName: string; myShare: ShareKind[]; theirShare: ShareKind[]; createdAt: string }
+export interface FamilyCard {
+  linkId: string; household: string; name: string;
+  members: { id: string; name: string; color: string; avatar: string; photo: string | null }[];
+  events: { on: string; title: string; startTime: string | null; endTime: string | null; allDay: boolean; members: string[] }[];
+  birthdays: { name: string; date: string; days: number; age: number | null }[];
+  photos: { id: string; filename: string; householdId: string }[];
+  notes: { id: string; text: string; color: string; author: string | null; createdAt: string; pinned: boolean }[];
+  shares: ShareKind[];
+}
 export type Proposal =
   | { id: string; kind: "plan_meal"; title: string; why: string; date: string; slot: "diner" | "lunch" | "ontbijt"; recipeId: string; recipe: string }
   | { id: string; kind: "move_event"; title: string; why: string; eventId: string; on: string; newStart: string; newEnd: string }
@@ -78,7 +90,7 @@ export interface Memory { id: string; text: string; memberId: string | null; sou
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }

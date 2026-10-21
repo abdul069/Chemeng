@@ -11,7 +11,12 @@ export function InviteCard({ info }: { info: InviteInfo }) {
   if (!info.valid) return <div className="invite-card"><b>{t("Uitnodiging niet geldig")}</b><p className="hint">{info.reason}</p></div>;
   return (
     <div className="invite-card">
-      {info.kind === "household" ? (
+      {info.kind === "link" ? (
+        <>
+          <b>{t("{n} wil gezin “{h}” met jouw gezin verbinden", { n: info.from, h: info.household })}</b>
+          <p className="hint">{t("Jullie zien dan elkaars agenda, foto's, verjaardagen en briefjes op het Bord, en kunnen elkaar briefjes sturen. Wat je deelt kies je zelf bij Instellingen → Verbonden gezinnen. Je moet beheerder zijn van je eigen gezin.")}</p>
+        </>
+      ) : info.kind === "household" ? (
         <>
           <b>{t("{n} nodigt je uit in “{h}”", { n: info.from, h: info.household })}</b>
           <p className="hint">Je ziet en beheert dan de kalender, taken, maaltijden en lijsten van dit gezin{info.member ? `, als ${info.member}` : ""}.</p>
