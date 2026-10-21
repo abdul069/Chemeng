@@ -322,6 +322,15 @@ CREATE TABLE IF NOT EXISTS devices (
   last_seen TEXT NOT NULL DEFAULT (datetime('now')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- gezinsgeheugen: feiten die de assistent en de manager onthouden ("Elif lust geen spinazie")
+CREATE TABLE IF NOT EXISTS memory (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  member_id TEXT REFERENCES members(id) ON DELETE SET NULL,
+  text TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'user',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 -- prikbord: briefjes voor het hele gezin
 CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,
@@ -389,6 +398,10 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   ezan_volume: "80",
   // taal van de app: nl of tr
   language: "nl",
+  // de manager: ochtendbriefing en avondafsluiting (leeg = geen melding), en of telefoons een pushmelding krijgen
+  briefing_morning: "07:00",
+  briefing_evening: "20:30",
+  briefing_push: "1",
   // koran: voordrager en vertaling
   quran_reciter: "ar.alafasy",
   quran_translation: "nl.siregar",

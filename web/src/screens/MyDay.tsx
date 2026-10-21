@@ -10,6 +10,7 @@ import { Avatar, cvar } from "../components/ui";
 import { Icon } from "../components/Icons";
 import { RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { PrikbordWidget } from "../components/Prikbord";
+import { BriefingCard } from "../components/Briefing";
 import { addDays, cap, greeting, longDate, todayIso, weekday } from "../dates";
 import { cast, setDevice, useDevice } from "../device";
 import { t as tr } from "../i18n";
@@ -83,6 +84,8 @@ export function MyDayScreen({ openEditor, openAssistant, goto, openSearch, onPic
         <button className="glass" onClick={() => openAssistant()}>💧 {tr("Vraag het")}</button>
         <button className="glass" onClick={() => goto("apps")}>🎒 {tr("Apps")}</button>
       </div>
+
+      <BriefingCard memberId={me?.id ?? null} compact />
 
       <section className="glass widget-sm">
         <div className="widget-h"><h2>{me ? tr("Mijn dag") : tr("Vandaag")}</h2><button className="linkbtn" onClick={() => goto("calendar")}>{tr("Agenda")}</button></div>

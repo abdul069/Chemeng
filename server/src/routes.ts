@@ -29,6 +29,7 @@ import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
+import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
 export const api = express.Router();
@@ -306,6 +307,21 @@ api.post("/cast", (req, res) => {
   castTo(hid(), b);
   res.json({ ok: true, hubs: b.to ? 1 : hubs.length });
 });
+
+// ---------- de manager: briefings, voorstellen en gezinsgeheugen ----------
+api.get("/manager/briefing", async (req, res) => {
+  const q = z.object({ kind: z.enum(["morning", "evening"]).optional(), member: z.string().optional(), date: day.optional() }).parse(req.query);
+  const kind = q.kind ?? (new Date().getHours() >= 17 ? "evening" : "morning");
+  res.json(await buildBriefing(kind, q.date ?? today(), q.member || null));
+});
+api.post("/manager/apply", (req, res) => {
+  const r = applyProposal(ProposalInput.parse(req.body));
+  res.json(r);
+  if (r.topics.length) broadcast(...r.topics);
+});
+api.get("/memory", (_req, res) => { res.json(listMemory()); });
+api.post("/memory", (req, res) => { res.json({ id: remember(MemoryInput.parse(req.body)) }); broadcast("settings"); });
+api.delete("/memory/:id", (req, res) => { forget(p(req)); res.json({ ok: true }); broadcast("settings"); });
 
 // ---------- prikbord ----------
 api.get("/notes", (_req, res) => { res.json(S.listNotes()); });

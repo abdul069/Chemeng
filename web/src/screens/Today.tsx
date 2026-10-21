@@ -10,6 +10,7 @@ import { addDays, cap, clock, greeting, longDate, todayIso } from "../dates";
 import type { PrayerDay } from "../types";
 import { PRAYER_ICON, PRAYER_NAME, hm, nextPrayer } from "../islam";
 import { PrikbordWidget } from "../components/Prikbord";
+import { BriefingCard, BriefingModal } from "../components/Briefing";
 import { t as tr } from "../i18n";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
@@ -55,6 +56,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const hour = new Date().getHours();
   const mealOrder: ("ontbijt" | "lunch" | "diner")[] = hour < 10 ? ["ontbijt", "lunch", "diner"] : hour < 14 ? ["lunch", "diner", "ontbijt"] : ["diner", "lunch", "ontbijt"];
   const mealTitle = hour < 10 ? tr("Vandaag eten") : hour < 14 ? tr("Straks eten") : "Vanavond eten";
+  const [briefOpen, setBriefOpen] = useState(false);
 
   return (
     <div className="bord">
@@ -81,6 +83,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           onSlot={(date, startTime, m) => openEditor({ defaults: { date, startTime, members: m ? [m] : [] } })} />
       </section>
       <div className="bord-widgets">
+        <BriefingCard memberId={null} compact onOpen={() => setBriefOpen(true)} />
         <section className="glass widget-sm">
           <div className="widget-h"><h2>{mealTitle}</h2><button className="linkbtn" onClick={() => goto("meals")}>{tr("Plannen")}</button></div>
           <div className="mealstrip">
@@ -119,6 +122,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           </section>
         )}
       </div>
+      {briefOpen && <BriefingModal onClose={() => setBriefOpen(false)} />}
     </div>
   );
 }

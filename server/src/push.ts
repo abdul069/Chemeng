@@ -62,7 +62,7 @@ export async function pushToUsers(userIds: string[], msg: PushMessage) {
 }
 
 /** Gebruikers van een gezin, optioneel enkel wie aan deze profielen gekoppeld is. */
-function usersFor(householdId: string, memberIds: string[]): string[] {
+export function usersFor(householdId: string, memberIds: string[]): string[] {
   const rows = all<{ user_id: string; member_id: string | null }>("SELECT user_id, member_id FROM household_users WHERE household_id=?", householdId);
   if (!memberIds.length) return rows.map((r) => r.user_id);
   const direct = rows.filter((r) => r.member_id && memberIds.includes(r.member_id)).map((r) => r.user_id);

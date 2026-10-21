@@ -14,6 +14,7 @@ import { fillMissingPhotos } from "./dishphotos.js";
 import { broadcastTo } from "./realtime.js";
 import { addDays, today, weekday } from "./dates.js";
 import { getWeather } from "./weather.js";
+import { memoryContext, remember, listMemory } from "./manager.js";
 
 export const MODEL = process.env.CLAUDE_MODEL ?? "claude-opus-5-5";
 import { getClient, aiReady } from "./ai.js";
@@ -271,6 +272,22 @@ function buildTools(changes: Change[]) {
       },
     }),
     betaZodTool({
+      name: "onthouden",
+      description: "Onthoudt een blijvend feit over het gezin voor later (voorkeuren, allergieën, vaste gewoontes, wie wat doet). Gebruik dit zodra iemand iets vertelt dat later nuttig is, bv. 'Elif lust geen spinazie' of 'papa werkt op woensdag thuis'. Niet voor afspraken (die gaan in de agenda).",
+      inputSchema: z.object({ feit: z.string().min(2).max(300), gezinslid: z.string().optional().describe("Naam, als het feit over één persoon gaat") }),
+      run: async ({ feit, gezinslid }) => {
+        const m = gezinslid ? memberByName(gezinslid) : null;
+        remember({ text: feit, memberId: m?.id ?? null, source: "assistent" });
+        return `Onthouden: ${feit}`;
+      },
+    }),
+    betaZodTool({
+      name: "geheugen_bekijken",
+      description: "Toont wat je al over het gezin onthouden hebt.",
+      inputSchema: z.object({}),
+      run: async () => { const ms = listMemory(); return ms.length ? ms.map((m) => `- ${m.text}`).join("\n") : "Nog niets onthouden."; },
+    }),
+    betaZodTool({
       name: "weer_bekijken",
       description: "Geeft het huidige weer en de verwachting voor de komende 7 dagen.",
       inputSchema: z.object({}),
@@ -298,7 +315,8 @@ function context(): string {
   const s = getSettings();
   const t = today();
   const members = listMembers().map((m) => `${m.name} (${m.role}${m.diet ? `, vermijdt: ${m.diet}` : ""})`).join(", ");
-  return `Vandaag is ${DAYS[weekday(t)]} ${t}. Gezin: ${s.family_name}, woonplaats ${s.city}. Gezinsleden: ${members || "nog niemand ingesteld"}.`;
+  const mem = memoryContext();
+  return `Vandaag is ${DAYS[weekday(t)]} ${t}. Gezin: ${s.family_name}, woonplaats ${s.city}. Gezinsleden: ${members || "nog niemand ingesteld"}.${mem ? `\n${mem}` : ""}`;
 }
 
 export interface ChatTurn { role: "user" | "assistant"; content: string }

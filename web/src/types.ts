@@ -35,6 +35,7 @@ export interface Settings {
   sleep_from: string; sleep_until: string; home_after_minutes: string;
   ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
   quran_reciter: string; quran_translation: string; language: string;
+  briefing_morning: string; briefing_evening: string; briefing_push: string;
 }
 export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
 export interface PrayerDay { date: string; times: Record<Prayer, string>; tomorrow: Record<Prayer, string>; methods: { id: string; label: string }[]; city: string }
@@ -66,6 +67,14 @@ export type InviteInfo =
   | { valid: false; reason: string }
   | { valid: true; kind: "household"; from: string; household: string; member: string | null; role: string }
   | { valid: true; kind: "agenda"; from: string; level: string };
+export type Proposal =
+  | { id: string; kind: "plan_meal"; title: string; why: string; date: string; slot: "diner" | "lunch" | "ontbijt"; recipeId: string; recipe: string }
+  | { id: string; kind: "move_event"; title: string; why: string; eventId: string; on: string; newStart: string; newEnd: string }
+  | { id: string; kind: "add_list"; title: string; why: string; items: string[] }
+  | { id: string; kind: "remind"; title: string; why: string; memberId: string | null; text: string };
+export interface BriefingItem { icon: string; text: string; memberId?: string | null; kind: string }
+export interface Briefing { kind: "morning" | "evening"; date: string; memberId: string | null; title: string; narration: string; items: BriefingItem[]; proposals: Proposal[]; conflicts: number }
+export interface Memory { id: string; text: string; memberId: string | null; source: string; createdAt: string }
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
