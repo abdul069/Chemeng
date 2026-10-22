@@ -1,0 +1,55 @@
+name: iOS-app
+# Handmatig starten (macOS-minuten kosten 10x). Bouwt het Xcode-project zonder ondertekening om te checken dat alles compileert.
+# Een installeerbare .ipa vraagt een Apple Developer-account: zet dan APPLE_CERT_P12_BASE64, APPLE_CERT_PASSWORD en
+# APPLE_PROVISIONING_PROFILE_BASE64 als secrets; de stap "IPA" draait alleen als die bestaan.
+on:
+  workflow_dispatch:
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Webbundel en iOS-project
+        working-directory: web
+        run: |
+          npm run build
+          npm install @capacitor/ios@^8
+          [ -d ios ] || npx cap add ios
+          npx cap sync ios
+      - name: Compileren zonder ondertekening
+        working-directory: web/ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -20
+      - name: IPA (alleen met Apple-secrets)
+        if: ${{ env.CERT != '' }}
+        working-directory: web/ios/App
+        env:
+          CERT: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          echo "$CERT" | base64 -d > cert.p12
+          security create-keychain -p ci build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci build.keychain
+          security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci build.keychain
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE" | base64 -d > ~/Library/MobileDevice/Provisioning\ Profiles/kinday.mobileprovision
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos -archivePath build/App.xcarchive archive
+          cat > export.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict><key>method</key><string>app-store-connect</string></dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/App.xcarchive -exportPath build/out -exportOptionsPlist export.plist
+      - uses: actions/upload-artifact@v4
+        if: ${{ hashFiles('web/ios/App/build/out/*.ipa') != '' }}
+        with:
+          name: kinday-ios
+          path: web/ios/App/build/out/*.ipa

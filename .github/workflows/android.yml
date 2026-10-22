@@ -46,20 +46,31 @@ jobs:
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+          # App Bundle voor de Play Store (zelfde keystore)
+          ./gradlew bundleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file=$PWD/release.keystore \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
       - name: APK's verzamelen
         run: |
           mkdir -p out
           cp web/android/app/build/outputs/apk/debug/app-debug.apk out/gezinsbord-debug.apk
-          [ -f web/android/app/build/outputs/apk/release/app-release.apk ] && cp web/android/app/build/outputs/apk/release/app-release.apk out/gezinsbord-release.apk || true
+          [ -f web/android/app/build/outputs/apk/release/app-release.apk ] && cp web/android/app/build/outputs/apk/release/app-release.apk out/kinday-release.apk || true
+          [ -f web/android/app/build/outputs/bundle/release/app-release.aab ] && cp web/android/app/build/outputs/bundle/release/app-release.aab out/kinday-playstore.aab || true
       - uses: actions/upload-artifact@v4
         with:
           name: gezinsbord-apk
-          path: out/*.apk
+          path: |
+            out/*.apk
+            out/*.aab
       - name: Vaste downloadlink bijwerken (release "android-latest")
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: Gezinsbord Android-app (laatste build)
-          body: "Download gezinsbord-debug.apk, open het bestand op je telefoon en sta installatie uit onbekende bronnen toe. De app laadt de live Gezinsbord-server."
+          name: Kinday Android-app (laatste build)
+          body: "Download gezinsbord-debug.apk, open het bestand op je telefoon en sta installatie uit onbekende bronnen toe. De app laadt de live Kinday-server. Met keystore-secrets staan hier ook de ondertekende APK en de Play Store-bundle (.aab)."
           prerelease: true
-          files: out/*.apk
+          files: |
+            out/*.apk
+            out/*.aab
