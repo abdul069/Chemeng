@@ -184,7 +184,11 @@ App "Het huis" met vier tabbladen en een widget op het Bord die alleen verschijn
 | **Gezondheid** | per persoon: doktersbezoeken, controles met automatische opvolging (na X maanden staat de volgende klaar), vaccins, medicatie met innametijden, dagen en voorraad; medicatie in de briefing van die persoon en als pushmelding op het uur. |
 | **Slim huis** | Home Assistant koppelen (adres en token, versleuteld), toestellen kiezen voor het bord, lampen en schakelaars schakelen, sloten en rolluiken bedienen, scènes en scripts starten, momenten (ochtend, slapen, weg, thuis, gebedstijd) die automatisch lopen op de slaaptijden, de ezan en het aanwezigheidsgevoel van HA. De manager stelt voor de verwarming lager te zetten als niemand thuis is. |
 
-### 5.8 Kalenders en tradities (opt-in, aanwezig)
+### 5.8 Prijsgeheugen (ronde Weekbox, stap 1)
+
+Wat kostte wat, waar en wanneer. Bronnen: kassaticket (foto, het kleine AI-model leest winkel, datum, regels en prijzen), prijsetiket in de winkel (foto), handmatig. Elke prijs wordt omgerekend per kg, liter of stuk. Op de boodschappenlijst en in de voorraad staat bij elk item de laatste prijs en waar het goedkoper is; bij "Prijzen" de beste winkel voor de hele lijst (per winkel totaal en dekking, en de besparing bij splitsen), het prijsverloop per product en de uitgaven per maand per winkel uit de tickets. Een ingelezen ticket vinkt gekochte items af op de boodschappenlijst (ze gaan naar de voorraad) en zet de rest in de voorraad. Tabellen `receipts` en `prices`; routes onder `/prices`. Gedeelde, anonieme prijzen over gezinnen heen (opt-in) komen in een latere ronde.
+
+### 5.9 Kalenders en tradities (opt-in, aanwezig)
 
 Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per gebed), ezan op elk scherm met eigen geluiden, Koran (114 soera's, vertalingen NL/TR/EN/FR, audio per vers, achtergrondspeler), islamitische feestdagen tot 2028, Belgische feestdagen, islam-leerspelletjes voor kinderen. Alles staat standaard uit.
 
@@ -236,6 +240,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 2. Koppelingen-kader | ✅ klaar | kader, catalogus, versleuteling, acht werkende koppelingen |
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
+| **Weekbox** | 🔜 bezig | stap 1 prijsgeheugen ✅; stap 2 beste winkel en prijsverloop ✅; stap 3 Weekbox-wizard (menu per avond op maat van agenda, dieet, voorraad en deals; gebundelde ingrediëntenlijst met prijsschatting); stap 4 productkoppeling per keten; stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
 | 4. Rondes van koppelingen | gepland | gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), folders en deals (aggregator-feed, deals bewaren), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |

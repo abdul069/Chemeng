@@ -1710,3 +1710,21 @@ a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transpare
 .ha-picks { max-height: 240px; overflow: auto; }
 .homew .fam-line b { font-weight: 600; }
 @media (max-width: 640px) { .waste-day { grid-template-columns: 1fr 1fr; } .waste-day span { grid-column: 1 / -1; } .upk { grid-template-columns: 40px 1fr; } .upk-btns { grid-column: 1 / -1; justify-content: flex-start; } .upk > .badge { grid-column: 2; } }
+
+/* ---- Prijsgeheugen ---- */
+.pricetag { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; color: var(--muted); }
+.pricetag .cheaper { color: #2f7a3a; font-weight: 600; }
+.scan-preview { max-height: 220px; border-radius: 12px; object-fit: contain; align-self: flex-start; }
+.scan-rows { display: flex; flex-direction: column; gap: 6px; }
+.scan-row { display: grid; grid-template-columns: 1fr 84px 84px 96px 36px; gap: 6px; align-items: center; }
+.scan-row.head { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.scan-row input, .scan-row select { min-width: 0; padding: 8px 10px; }
+.scan-foot { display: flex; justify-content: space-between; align-items: center; }
+.storerows { display: flex; flex-direction: column; gap: 4px; }
+.storerow { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "a c" "b c"; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.storerow b { grid-area: a; } .storerow small { grid-area: b; } .storerow .num { grid-area: c; font-weight: 700; font-variant-numeric: tabular-nums; }
+.storerow:has(.iconbtn) { grid-template-columns: 1fr auto auto; grid-template-areas: "a c d" "b c d"; } .storerow .iconbtn { grid-area: d; }
+.hist { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.hist-row { display: grid; grid-template-columns: 70px 1fr 90px auto 32px; gap: 8px; align-items: center; font-size: 14px; }
+.hist-bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+@media (max-width: 640px) { .scan-row { grid-template-columns: 1fr 56px 60px 70px 32px; } .hist-row { grid-template-columns: 60px 1fr 80px 28px; } .hist-row > small:last-of-type { display: none; } }

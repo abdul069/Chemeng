@@ -32,6 +32,7 @@ import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
 import * as B from "./billing.js";
 import * as C from "./connectors.js";
+import * as P from "./prices.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
@@ -296,6 +297,28 @@ api.get("/bootstrap", (req, res) => {
   });
 });
 
+
+// ---------- prijsgeheugen ----------
+const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|gif|webp)$/.test(f.mimetype)) });
+api.get("/prices", (req, res) => { const q = z.object({ product: z.string().optional(), store: z.string().optional(), days: z.coerce.number().int().min(1).max(730).optional() }).parse(req.query); res.json(P.listPrices({ product: q.product ? P.productKey(q.product) : undefined, store: q.store, days: q.days, limit: 300 })); });
+api.post("/prices", (req, res) => { res.json(P.addPrice(P.PriceInput.parse(req.body))); broadcast("prices"); });
+api.delete("/prices/:id", (req, res) => { P.deletePrice(p(req)); res.json({ ok: true }); broadcast("prices"); });
+api.get("/prices/stores", (_req, res) => { const own = [...new Set(P.listPrices({ days: 730, limit: 3000 }).map((x) => x.store))]; res.json([...new Set([...own, ...P.STORE_NAMES])]); });
+api.get("/prices/lookup", (req, res) => { const items = String(req.query.items ?? "").split("\u001f").filter(Boolean).slice(0, 200); res.json(P.lookup(items)); });
+api.get("/prices/list/:id", (req, res) => { const list = S.listLists().find((l) => l.id === p(req)); if (!list) return void res.status(404).json({ error: "Niet gevonden" }); const texts = list.items.filter((i) => !i.done).map((i) => i.text); const r = P.bestStores(texts); res.json({ ...r, infos: undefined }); });
+api.get("/prices/history", (req, res) => { const q = z.object({ product: z.string().min(1) }).parse(req.query); res.json(P.history(q.product)); });
+api.get("/prices/spend", (req, res) => { const q = z.object({ months: z.coerce.number().int().min(1).max(24).default(6) }).parse(req.query); res.json(P.spend(q.months)); });
+api.get("/prices/receipts", (_req, res) => { res.json(P.listReceipts()); });
+api.delete("/prices/receipts/:id", (req, res) => { P.deleteReceipt(p(req)); res.json({ ok: true }); broadcast("prices"); });
+api.post("/prices/scan", memUpload.single("image"), async (req, res) => {
+  const kind = req.body?.kind === "label" ? "label" : "ticket";
+  if (!req.file) return void res.status(400).json({ error: "Geen foto" });
+  if (!P.scanAvailable()) return void res.status(400).json({ error: "De assistent is niet ingesteld; prijzen lezen van een foto vraagt de Claude-sleutel." });
+  try { res.json(await P.scanImage({ data: req.file.buffer.toString("base64"), mediaType: req.file.mimetype as "image/jpeg" }, kind)); }
+  catch (e) { res.status(400).json({ error: e instanceof Error ? e.message : "Lezen mislukte" }); }
+});
+api.post("/prices/commit", (req, res) => { const r = P.commit(P.CommitInput.parse(req.body)); res.json(r); broadcast("prices", "lists"); });
+
 // ---------- koppelingen ----------
 api.get("/connectors", (_req, res) => { res.json(C.catalog()); });
 api.get("/connections", (_req, res) => { res.json(C.listConnections().map(C.publicConn)); });
@@ -544,7 +567,6 @@ api.delete("/events/:id", (req, res) => {
 });
 
 // ---------- slim importeren ----------
-const memUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 }, fileFilter: (_req, f, cb) => cb(null, /^image\/(jpeg|png|gif|webp)$/.test(f.mimetype)) });
 api.post("/import/extract", memUpload.single("image"), async (req, res) => {
   if (!importAvailable()) return void res.status(400).json({ error: "Importeren gebruikt de assistent. Vul eerst de Claude API-sleutel in bij Instellingen → Assistent." });
   const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 20000) : "";

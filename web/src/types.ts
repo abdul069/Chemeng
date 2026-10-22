@@ -100,7 +100,7 @@ export interface Partner { id: string; name: string; slug: string; plan: Plan; f
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections" | "prices";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }
@@ -126,3 +126,9 @@ export interface WasteData { rules: WasteRule[]; next: { date: string; fractions
 export type HealthKind = "visit" | "checkup" | "vaccine" | "medication";
 export interface HealthItem { id: string; memberId: string; kind: HealthKind; title: string; date: string | null; time: string | null; provider: string; providerPhone: string; notes: string; followUpMonths: number; times: string; days: number[]; stock: number | null; done: boolean; createdAt: string }
 export interface HaState { entity_id: string; state: string; attributes: Record<string, unknown>; last_changed: string }
+
+/** Prijsgeheugen */
+export interface Price { id: string; receiptId: string | null; product: string; label: string; store: string; seenOn: string; price: number; qty: number; unit: "kg" | "l" | "st"; unitPrice: number; source: string }
+export interface PriceInfo { text: string; latest: Price | null; cheapest: Price | null; byStore: Price[] }
+export interface StoreTotal { store: string; total: number; known: number; items: { text: string; price: number }[] }
+export interface ScanResult { store: string; date: string; total: number | null; items: { label: string; qty: number; unit: "kg" | "g" | "l" | "ml" | "st"; price: number }[] }
