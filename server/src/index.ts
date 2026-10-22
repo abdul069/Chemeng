@@ -6,6 +6,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { api } from "./routes.js";
+import * as Stripe from "./stripe.js";
 import { attachRealtime, broadcastTo } from "./realtime.js";
 import { syncAll } from "./ics.js";
 import { assistantAvailable } from "./assistant.js";
@@ -32,6 +33,8 @@ app.use((_req, res, next) => {
   next();
 });
 app.use(compression({ threshold: 1024 }));
+// Stripe wil de ruwe body voor de handtekening, dus vóór express.json.
+app.post("/api/billing/stripe/webhook", express.raw({ type: "*/*", limit: "1mb" }), (req, res) => { const r = Stripe.webhook(req.body as Buffer, req.header("stripe-signature")); res.status(r.status).json(r.body); });
 app.use(express.json({ limit: "1mb" }));
 app.use("/api", api);
 

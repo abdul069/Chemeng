@@ -83,6 +83,8 @@ export function setPlan(h: string, plan: Plan, opts: { source?: string; partnerI
     h, plan, opts.source ?? "manual", opts.partnerId ?? null, opts.discountPct ?? 0, opts.validUntil ?? null,
   );
 }
+/** Formule weghalen die door één bron gezet was (bv. Stripe na opzegging); een ledenvoordeel van een partner blijft staan. */
+export function clearPlan(h: string, source: string) { run("DELETE FROM subscriptions WHERE household_id=? AND source=?", h, source); }
 export interface BudgetState { plan: Plan; planLabel: string; usedMicro: number; budgetMicro: number | null; pct: number; blocked: boolean; perTask: { task: string; calls: number; costMicro: number }[]; subscription: Subscription }
 export function budgetState(h = hid()): BudgetState {
   const sub = subscription(h);

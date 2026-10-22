@@ -85,6 +85,8 @@ Daarbovenop zit **de manager**: een AI-laag die elke ochtend en avond per persoo
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | pushmeldingen |
 | `CALENDAR_SYNC_MINUTES`, `LIBRARY_AUTOCRAWL`, `LIBRARY_MAX_PER_SITE`, `LIBRARY_MODEL` | agenda-sync en receptenbibliotheek |
 | `UIT_API_KEY` | UiTdatabank (publiq) voor de koppeling UiTinVlaanderen |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_GEZIN_MONTH`, `STRIPE_PRICE_GEZIN_YEAR`, `STRIPE_PRICE_PLUS_MONTH`, `STRIPE_PRICE_PLUS_YEAR`, `PUBLIC_URL` | betalen in de app via Stripe Checkout; zonder sleutel staat er "komt eraan" |
+| `INBOX_IMAP_HOST`, `INBOX_IMAP_PORT`, `INBOX_IMAP_USER`, `INBOX_IMAP_PASS`, `INBOX_ADDRESS` | gedeelde mailbox voor de gezinsinbox (plus-adres per gezin) |
 | `GEZINSBORD_URL`, `API_URL` | publieke URL (links in e-mails en app) |
 
 ---
@@ -148,6 +150,7 @@ Gezinnen verbinden over huizen heen (grootouders, co-ouder, familie in het buite
 - Verbruik per gezin in microdollar (`ai_usage`), maandbudget per formule: free 0, gezin $2,50, plus $8, operator onbeperkt. Chat en zoeken stoppen op het budget; sjabloonwerk mag tot 120 %. Nette budgetboodschap in NL/TR.
 - Abonnementen (`subscriptions`), operator = eerste gezin op de server, `DEFAULT_PLAN`.
 - Partners, ledencodes en ledenlijsten: `redeem(code, identifier)` met verificatie `none | domain | list`, gratis maanden en korting daarna, partnerstatistieken, operator-only partnerbeheer in Instellingen → Abonnement.
+- **Betalen in de app** (`server/src/stripe.ts`): Stripe Checkout voor Gezin en Gezin+ per maand of per jaar (knoppen in Instellingen → Abonnement, alleen beheerder), klantenportaal (kaart, factuur, opzeggen), webhook `POST /api/billing/stripe/webhook` met HMAC-handtekening en ruwe body, idempotent (`stripe_events`); `customer.subscription.*` zet de formule (`source: "stripe"`, geldig tot periode-einde + 3 dagen), opzegging valt terug op `DEFAULT_PLAN`. Ledenkorting na de gratis periode via coupon `STRIPE_COUPON_<pct>`. Geen SDK, gewone HTTPS-calls. Zonder sleutel: "komt eraan".
 
 ### 5.6 Koppelingen-kader (commit `8e88e4a`)
 
@@ -200,7 +203,7 @@ Maaltijden → "✨ Weekbox": kies de avonden (standaard vanaf vandaag), de mana
 
 ### 5.10 Kalenders en tradities (opt-in, aanwezig)
 
-Pakketten bij Instellingen → Feestdagen, vrij te combineren: 🇧🇪 Belgische feestdagen, 🇳🇱 Nederlandse feestdagen (Koningsdag verschuift naar zaterdag als 27 april een zondag is), 🎁 Sinterklaas, advent en Kerst (adventsaftelling op het Bord), 🌙 Ramadan, Suiker- en Offerfeest (tijdens de ramadan een widget met dag x van 30, iftar met aftelling, sahur en de datum van het Suikerfeest). Alles komt in de agenda als alleen-lezen laag en in het aftellen, in de taal van het gezin. Route `/traditions/today`.
+Pakketten bij Instellingen → Feestdagen, vrij te combineren: 🇧🇪 Belgische feestdagen, 🇳🇱 Nederlandse feestdagen (Koningsdag verschuift naar zaterdag als 27 april een zondag is), 🎁 Sinterklaas, advent en Kerst (adventsaftelling op het Bord), 🌙 Ramadan, Suiker- en Offerfeest (tijdens de ramadan een widget met dag x van 30, iftar met aftelling, sahur en de datum van het Suikerfeest). Alles komt in de agenda als alleen-lezen laag en in het aftellen, in de taal van het gezin. Route `/traditions/today`. **Bayram-modus**: een week vóór en tijdens Suiker- en Offerfeest een widget op het Bord met aftelling of dag x, hoeveel familiebezoeken in de agenda staan (Plannen), feestboodschappen met één tik op de lijst (`POST /traditions/bayram-list`, NL/TR/EN) en een sprong naar het weekmenu.
 
 Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per gebed), ezan op elk scherm met eigen geluiden, Koran (114 soera's, vertalingen NL/TR/EN/FR, audio per vers, achtergrondspeler), islamitische feestdagen tot 2028, Belgische feestdagen, islam-leerspelletjes voor kinderen. Alles staat standaard uit.
 
@@ -253,9 +256,9 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
-| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed), gezinsinbox (IMAP, plus-adres per gezin, extractie via AI); nog: De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
+| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed), gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), barcode scannen op de lijsten (camera of intikken, Open Food Facts); nog: De Lijn, MIVB, NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | deels ✅ | ✅ widgets op het Bord herschikken en verbergen (Instellingen → Scherm), ✅ volledig scherm zonder statusbalk op de hub (Android), wake lock en nachtrust bestonden al; nog: dimmen op omgevingslicht, iOS-build, Play Store met ondertekende APK (keystore nodig) |
-| 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
+| 6. Kalenders en tradities | deels ✅ | ✅ Ramadan-modus, Bayram-modus, Sinterklaas en Kerst met adventsaftelling, BE- en NL-feestdagen; nog: pakketten voor andere landen (UK, DE, FR, TR, MA) |
 | 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |
 
 ---
@@ -263,11 +266,11 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 ## 9. Open punten en risico's
 
 1. **Merkonderzoek Kinday.** De naam is gekozen; een merkenbureau moet EUIPO en USPTO checken (klassen 9 en 42) en de domeinen kinday.com en kinday.app moeten geregistreerd worden voor er drukwerk of hardware komt.
-2. **Deploy geblokkeerd.** Railway kan de GitHub-repo niet meer lezen sinds 21 oktober ("User does not have access to the repo"). De laatste live versie is commit `185c0de`; alles vanaf 2.0 staat op de tak maar niet live. Oplossing: in Railway bij Settings → Source de GitHub-koppeling opnieuw leggen, of eenmalig op Deploy drukken.
+2. **Deploy.** Railway is op 22 oktober opnieuw aan GitHub gekoppeld; nakijken of de laatste commit van de tak live staat (Instellingen → Over toont het bouwnummer).
 3. **Engelse sleutels in de code.** Engels, Nederlands en Turks werken volledig; de vertaalsleutels in de code zijn nog Nederlands. Het omdraaien (Engelse sleutels, NL en TR als woordenboeken) is een scriptmatige stap zodra de naam vastligt. Valuta en maten per land volgen met de landenpakketten.
 4. **UiTinVlaanderen** vraagt een gratis API-sleutel van publiq (`UIT_API_KEY`), anders moet elk gezin er zelf een invullen.
 5. **Gezinsinbox**: gebouwd; om de gedeelde inbox aan te zetten zijn een mailbox met IMAP en een domein nodig (`INBOX_IMAP_*` in Railway), anders vult elk gezin zijn eigen mailbox in.
-6. **Betalen in de app** ontbreekt nog (Stripe). Tot dan zet de operator de formule of gebruikt het gezin een ledencode.
+6. **Betalen in de app** is gebouwd maar staat uit tot de Stripe-sleutels in Railway staan: in Stripe twee producten (Gezin, Gezin+) met maand- en jaarprijs aanmaken, de `price_…`-id's en de geheime sleutel invullen, een webhook naar `https://<domein>/api/billing/stripe/webhook` zetten met de gebeurtenissen `checkout.session.completed` en `customer.subscription.*`, en `STRIPE_WEBHOOK_SECRET` invullen. Tot dan zet de operator de formule of gebruikt het gezin een ledencode.
 7. **Juridisch**: GDPR-documentatie, verwerkersovereenkomsten met partners, gezondheidsgegevens (bijzondere categorie) alleen per gezin en versleuteld in rust op de hosting.
 8. **Distributie** is het grootste risico: zonder partners (Gezinsbond, mutualiteit, retailer) is de hardware moeilijk te verkopen.
 
@@ -278,7 +281,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 ```bash
 # server
 cd server && npm install
-rm -rf /tmp/gezinsbord-test && npm test          # 38 tests
+rm -rf /tmp/gezinsbord-test && npm test          # 45 tests
 npx tsc --noEmit -p .                            # typecheck
 DATA_DIR=/tmp/gb PORT=8100 LIBRARY_AUTOCRAWL=0 npx tsx src/index.ts
 

@@ -1431,4 +1431,12 @@ export const TR: Record<string, string> = {
   "dag {d}": "{d}. gün",
   "snoep, chocolade, baklava, koffie, thee, servetten": "şeker, çikolata, baklava, kahve, çay, peçete",
   "{n} bezoeken gepland": "{n} ziyaret planlandı",
+  "Bedankt! Je abonnement wordt zo meteen actief.": "Teşekkürler! Aboneliğin birazdan etkinleşir.",
+  "Betaling afgebroken, er is niets aangerekend.": "Ödeme iptal edildi, hiçbir ücret alınmadı.",
+  "Per maand": "Aylık",
+  "Per jaar": "Yıllık",
+  "Abonnement beheren": "Aboneliği yönet",
+  "Betaling mislukt, werk je kaart bij.": "Ödeme başarısız oldu, kartını güncelle.",
+  "volgende afrekening {d}": "sonraki ödeme {d}",
+  "Veilig betalen via Stripe met kaart, Bancontact of iDEAL. Een ledencode kun je op de betaalpagina invullen als kortingscode.": "Stripe ile kart, Bancontact veya iDEAL kullanarak güvenli ödeme. Üye kodunu ödeme sayfasında indirim kodu olarak girebilirsin.",
 };

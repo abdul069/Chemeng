@@ -1,5 +1,5 @@
 /** Instellingen → Abonnement en AI-gebruik: formule, budget van deze maand, ledencode; voor de eigenaar van de server ook partners en codes. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Billing, Partner } from "../types";
@@ -15,6 +15,14 @@ export function BillingSection() {
   const [b, reload] = useRemote<Billing | null>("/billing", ["settings"], null);
   const [code, setCode] = useState(""); const [ident, setIdent] = useState("");
   const admin = data?.me.role === "beheerder";
+  const { toast } = useData();
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get("billing"); if (!q) return;
+    history.replaceState(null, "", location.pathname);
+    if (q === "ok") toast(t("Bedankt! Je abonnement wordt zo meteen actief.")); else if (q === "cancel") toast(t("Betaling afgebroken, er is niets aangerekend."));
+  }, [toast]);
+  const pay = async (plan: "gezin" | "plus", interval: "month" | "year") => { const r = await act(() => api.post<{ url: string }>("/billing/checkout", { plan, interval })); if (r?.url) location.assign(r.url); };
+  const portal = async () => { const r = await act(() => api.post<{ url: string }>("/billing/portal")); if (r?.url) location.assign(r.url); };
   if (!b) return null;
   const sub = b.subscription;
   return (
@@ -45,9 +53,22 @@ export function BillingSection() {
         </div>
       )}
       <div className="plans">
-        {b.plans.map((p) => <div className={`plancard${p.id === b.plan ? " on" : ""}`} key={p.id}><b>{p.label}</b><small>{p.id === "free" ? t("zelf hosten, eigen sleutel") : p.id === "gezin" ? t("€4,99 per maand of €49 per jaar · manager, 150 vragen, inbox") : t("€8,99 per maand · onbeperkte assistent, gezinsnetwerk, slim huis")}</small></div>)}
+        {b.plans.map((p) => (
+          <div className={`plancard${p.id === b.plan ? " on" : ""}`} key={p.id}>
+            <b>{p.label}</b>
+            <small>{p.id === "free" ? t("zelf hosten, eigen sleutel") : p.id === "gezin" ? t("€4,99 per maand of €49 per jaar · manager, 150 vragen, inbox") : t("€8,99 per maand · onbeperkte assistent, gezinsnetwerk, slim huis")}</small>
+            {b.stripe.available && admin && (p.id === "gezin" || p.id === "plus") && p.id !== b.plan && (
+              <span className="plan-btns">
+                {b.stripe.offers[p.id].month && <button className="btn small" onClick={() => pay(p.id as "gezin" | "plus", "month")}>{t("Per maand")}</button>}
+                {b.stripe.offers[p.id].year && <button className="btn small ghost" onClick={() => pay(p.id as "gezin" | "plus", "year")}>{t("Per jaar")}</button>}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
-      <p className="hint">{t("Betalen via de app komt eraan; tot dan zet de eigenaar van de server de formule, of gebruik je een ledencode.")}</p>
+      {b.stripe.managed && admin && <div className="actions"><button className="btn ghost" onClick={portal}>{t("Abonnement beheren")}</button><span className="muted">{b.stripe.status === "past_due" ? t("Betaling mislukt, werk je kaart bij.") : b.stripe.periodEnd ? t("volgende afrekening {d}", { d: b.stripe.periodEnd.slice(0, 10) }) : ""}</span></div>}
+      {!b.stripe.available && <p className="hint">{t("Betalen via de app komt eraan; tot dan zet de eigenaar van de server de formule, of gebruik je een ledencode.")}</p>}
+      {b.stripe.available && !b.stripe.managed && <p className="hint">{t("Veilig betalen via Stripe met kaart, Bancontact of iDEAL. Een ledencode kun je op de betaalpagina invullen als kortingscode.")}</p>}
       {data?.assistant.canEditKey && <PartnerAdmin />}
     </Fold>
   );

@@ -31,6 +31,7 @@ import { searchEzan } from "./ezan.js";
 import { FOODS, searchFoods, macrosFor, estimateLine } from "./nutrition.js";
 import * as F from "./family.js";
 import * as B from "./billing.js";
+import * as Stripe from "./stripe.js";
 import * as C from "./connectors.js";
 import * as P from "./prices.js";
 import * as W from "./weekbox.js";
@@ -365,7 +366,18 @@ api.get("/connections/widgets", (req, res) => { const q = z.object({ member: z.s
 api.get("/connections/links", (req, res) => { const q = z.object({ kind: z.enum(["list", "meal", "event", "store"]), q: z.string().optional(), address: z.string().optional(), title: z.string().optional(), member: z.string().optional() }).parse(req.query); res.json(C.connectorLinks(q, q.member || null)); });
 
 // ---------- abonnement, AI-budget en ledencodes ----------
-api.get("/billing", (_req, res) => { res.json({ ...B.budgetState(), models: B.MODELS, plans: B.PLANS.filter((p) => p !== "operator").map((p) => ({ id: p, label: B.PLAN_LABEL[p], budgetMicro: B.BUDGET[p] })) }); });
+api.get("/billing", (_req, res) => { res.json({ ...B.budgetState(), models: B.MODELS, plans: B.PLANS.filter((p) => p !== "operator").map((p) => ({ id: p, label: B.PLAN_LABEL[p], budgetMicro: B.BUDGET[p] })), stripe: Stripe.state(hid()) }); });
+const originOf = (req: Request) => (process.env.PUBLIC_URL || req.header("origin") || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
+/** Betalen in de app: Stripe Checkout openen (alleen een beheerder van het gezin). */
+api.post("/billing/checkout", requireAdmin, async (req, res) => {
+  const b = z.object({ plan: z.enum(["gezin", "plus"]), interval: z.enum(["month", "year"]).default("month") }).parse(req.body);
+  try { const url = await Stripe.checkout(hid(), b.plan, b.interval, originOf(req), { email: req.session!.user.email ?? null, name: req.session!.user.name }); res.json({ url }); }
+  catch (e) { res.status(e instanceof Stripe.StripeError ? 400 : 502).json({ error: e instanceof Error ? e.message : "Betalen mislukte" }); }
+});
+api.post("/billing/portal", requireAdmin, async (req, res) => {
+  try { res.json({ url: await Stripe.portal(hid(), originOf(req)) }); }
+  catch (e) { res.status(e instanceof Stripe.StripeError ? 400 : 502).json({ error: e instanceof Error ? e.message : "Portaal openen mislukte" }); }
+});
 api.post("/billing/redeem", requireAdmin, (req, res) => {
   const b = z.object({ code: z.string().trim().min(3).max(40), identifier: z.string().trim().max(120).optional() }).parse(req.body);
   try { res.json(B.redeem(b.code, b.identifier ?? null)); broadcast("settings"); }

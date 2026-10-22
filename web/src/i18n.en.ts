@@ -1424,4 +1424,12 @@ export const EN: Record<string, string> = {
   "dag {d}": "day {d}",
   "snoep, chocolade, baklava, koffie, thee, servetten": "sweets, chocolate, baklava, coffee, tea, napkins",
   "{n} bezoeken gepland": "{n} visits planned",
+  "Bedankt! Je abonnement wordt zo meteen actief.": "Thank you! Your subscription will be active in a moment.",
+  "Betaling afgebroken, er is niets aangerekend.": "Payment cancelled, nothing was charged.",
+  "Per maand": "Monthly",
+  "Per jaar": "Yearly",
+  "Abonnement beheren": "Manage subscription",
+  "Betaling mislukt, werk je kaart bij.": "Payment failed, please update your card.",
+  "volgende afrekening {d}": "next billing {d}",
+  "Veilig betalen via Stripe met kaart, Bancontact of iDEAL. Een ledencode kun je op de betaalpagina invullen als kortingscode.": "Secure payment through Stripe with card, Bancontact or iDEAL. A member code can be entered on the payment page as a promo code.",
 };
