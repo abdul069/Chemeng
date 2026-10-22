@@ -178,7 +178,8 @@ Gezinnen verbinden over huizen heen (grootouders, co-ouder, familie in het buite
 | Webhooks (Siri, IFTTT, n8n) | gezin, Gezin+ | boodschappen, briefje of afspraak van buitenaf | geheime sleutel per gezin, `POST /api/hooks/<sleutel>` |
 | Folders en deals (partnerfeed) | gezin | promo's in het prijsgeheugen | JSON-feed van een partner (Promojagers, Tiendeo/ShopFully, een keten) |
 
-| Gezinsinbox | gezin | briefing, widget, scherm "Gezinsinbox" | IMAP: eigen mailbox van het gezin, of de gedeelde mailbox van de operator (`INBOX_IMAP_HOST/USER/PASS`, `INBOX_ADDRESS`) met een plus-adres per gezin (`inbox+code@domein`). Elke 5 minuten; het kleine AI-model maakt van een mail afspraken en boodschappen (importer) of van een ticketfoto prijzen (prijsgeheugen). Nakijken en met één tik toepassen. Zonder AI-sleutel blijft de tekst leesbaar. Route `/inbox/raw` voor een mailserver die rechtstreeks doorstuurt. |
+| Gezinsinbox | gezin | briefing, widget, scherm "Gezinsinbox" | IMAP: eigen mailbox van het gezin, of de gedeelde mailbox van de operator (`INBOX_IMAP_HOST/USER/PASS`, `INBOX_ADDRESS`) met een plus-adres per gezin (`inbox+code@domein`). Elke 5 minuten; het kleine AI-model maakt van een mail afspraken en boodschappen (importer) of van een ticketfoto prijzen (prijsgeheugen). Nakijken en met één tik toepassen. Zonder AI-sleutel blijft de tekst leesbaar. Route `/inbox/raw` voor een mailserver die rechtstreeks doorstuurt. Zelfde verwerking (`processMessage`) voor de Telegram-bot. |
+| Telegram-bot | gezin | briefing, widget | `server/src/telegram.ts`: het gezin maakt via @BotFather een bot en plakt de token; elke minuut `getUpdates`; tekst, foto of beeldbestand → gezinsinbox (kassaticket → prijzen, brief → afspraken en boodschappen); de bot antwoordt in de gezinstaal; `/start` geeft uitleg. Geen operator-sleutel nodig. |
 
 **Zichtbaar als "Binnenkort"**: De Lijn, MIVB (vragen een API-sleutel), Recycle!, Teams-status, Withings, Telegram-bot.
 
@@ -256,7 +257,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
-| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed), gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), barcode scannen op de lijsten (camera of intikken, Open Food Facts); nog: De Lijn, MIVB, NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
+| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed), gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), barcode scannen op de lijsten (camera of intikken, Open Food Facts), Telegram-bot van het gezin (eigen BotFather-token, foto of tekst → gezinsinbox, bevestiging in de gezinstaal); nog: De Lijn en MIVB (API-sleutel aanvragen), NEVO, Teams-status (Azure-app), Apple Health en Withings (OAuth-app), Twizzit, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | deels ✅ | ✅ widgets op het Bord herschikken en verbergen (Instellingen → Scherm), ✅ volledig scherm zonder statusbalk op de hub (Android), wake lock en nachtrust bestonden al; nog: dimmen op omgevingslicht, iOS-build, Play Store met ondertekende APK (keystore nodig) |
 | 6. Kalenders en tradities | deels ✅ | ✅ Ramadan-modus, Bayram-modus, Sinterklaas en Kerst met adventsaftelling, BE- en NL-feestdagen; nog: pakketten voor andere landen (UK, DE, FR, TR, MA) |
 | 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |
@@ -281,7 +282,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 ```bash
 # server
 cd server && npm install
-rm -rf /tmp/gezinsbord-test && npm test          # 45 tests
+rm -rf /tmp/gezinsbord-test && npm test          # 47 tests
 npx tsc --noEmit -p .                            # typecheck
 DATA_DIR=/tmp/gb PORT=8100 LIBRARY_AUTOCRAWL=0 npx tsx src/index.ts
 

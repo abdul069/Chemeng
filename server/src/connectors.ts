@@ -10,6 +10,7 @@ import { L, asLang, UA as USER_AGENT, type Lang } from "./i18n.js";
 import { REGIONS, breaksBetween, type Region } from "./schoolyear.js";
 import { addPrice, listPrices, productKey } from "./prices.js";
 import * as Inbox from "./inbox.js";
+import * as TG from "./telegram.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS connections (
@@ -68,7 +69,7 @@ const EN_TEXT: Record<string, { name: string; description: string }> = {
   school_holidays: { name: "School holidays", description: "Flemish, French-community or Dutch school holidays as a calendar layer, with a nudge the day before they start and end." },
   teams_status: { name: "Teams status", description: "“Dad is in a meeting until 3pm” on the board. Coming in a next round." },
   withings: { name: "Withings", description: "Scale and blood pressure monitor in the diet and health section. Coming in a next round." },
-  telegram: { name: "Telegram bot", description: "Send a photo of the school letter or a message to the bot. Coming in a next round." },
+  telegram: { name: "Telegram bot", description: "Your family's own bot: send a photo of the school letter or the receipt, or type \"milk, bread, nappies\". Everything lands in the family inbox and the bot confirms." },
   webhooks: { name: "Webhooks (Siri, IFTTT, n8n)", description: "A secret address through which Siri shortcuts, IFTTT, n8n or a smart speaker add something to the shopping list, the noticeboard or the calendar. POST JSON: {\"list\": \"milk\"}, {\"note\": \"…\"} or {\"event\": {\"title\", \"date\", \"startTime\"}}." },
   deals_feed: { name: "Flyers and deals (partner feed)", description: "A JSON feed with promotions from a partner (Promojagers, Tiendeo/ShopFully, a chain). Deals enter the price memory and count on the shopping list and in the Weekbox." },
 };
@@ -277,7 +278,21 @@ export const CONNECTORS: ConnectorDef[] = [
   },
   { id: "teams_status", name: "Teams-status", description: "“Papa zit in vergadering tot 15u” op het bord. Komt in een volgende ronde.", category: "werk", icon: "💼", scope: "member", plan: "plus", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "withings", name: "Withings", description: "Weegschaal en bloeddrukmeter in het dieet- en gezondheidsdeel. Komt in een volgende ronde.", category: "gezondheid", icon: "⚖️", scope: "member", plan: "plus", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
-  { id: "telegram", name: "Telegram-bot", description: "Stuur een foto van de schoolbrief of een boodschap naar de bot. Komt in een volgende ronde.", category: "automatisering", icon: "✈️", scope: "household", plan: "gezin", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
+  {
+    id: "telegram", name: "Telegram-bot", description: "Een eigen bot voor je gezin: stuur een foto van de schoolbrief of het kassaticket, of typ \"melk, brood, luiers\". Alles komt in de gezinsinbox en de bot bevestigt.", category: "automatisering", icon: "✈️",
+    scope: "household", plan: "gezin", country: [], status: "ready", refreshMinutes: 1, provides: ["briefing", "widget"],
+    fields: [{ key: "token", label: "Bot-token", type: "secret", required: true, placeholder: "123456:ABC-…", hint: "Open @BotFather in Telegram, stuur /newbot, kies een naam, en plak de token hier. Stuur daarna /start naar je bot." }],
+    sync: async (c) => {
+      const token = str(c.config.token); if (!token) throw new Error("Vul de bot-token in.");
+      const lang = asLang(getSettings(c.householdId).language);
+      const info = c.state.username ? { username: str(c.state.username), name: str(c.state.botName) } : await TG.botInfo(token);
+      const r = await TG.poll(token, Number(c.state.offset ?? 0), c.householdId, lang);
+      const chats = new Set<number>([...arr(c.state.chats).map(Number), ...r.chats]);
+      return { ...c.state, username: info.username, botName: info.name, offset: r.offset || Number(c.state.offset ?? 0), items: Number(c.state.items ?? 0) + r.items, chats: [...chats].filter(Boolean), at: new Date().toISOString() };
+    },
+    briefing: (c, ctx) => { const n = Inbox.newCount(c.householdId, "Telegram"); return n ? [{ kind: "note", icon: "✈️", text: L(ctx.lang, { nl: `${n} ${n === 1 ? "bericht" : "berichten"} via Telegram om na te kijken in de gezinsinbox.`, tr: `Aile gelen kutusunda incelenecek ${n} Telegram mesajı.`, en: `${n} Telegram ${n === 1 ? "message" : "messages"} to review in the family inbox.` }) }] : []; },
+    widget: (c, lang) => { const u = str(c.state.username); if (!u) return null; const n = Inbox.newCount(c.householdId, "Telegram"); return { title: L(lang, { nl: "Telegram-bot", tr: "Telegram botu", en: "Telegram bot" }), icon: "✈️", lines: [{ icon: n ? "🔔" : "✈️", text: n ? L(lang, { nl: `${n} na te kijken`, tr: `${n} incelenecek`, en: `${n} to review` }) : `@${u}`, sub: n ? `@${u}` : L(lang, { nl: "stuur een foto of een boodschap", tr: "bir fotoğraf ya da mesaj gönder", en: "send a photo or a message" }), url: `https://t.me/${u}` }] }; },
+  },
   {
     id: "webhooks", name: "Webhooks (Siri, IFTTT, n8n)", description: "Een geheim adres waarmee Siri-opdrachten, IFTTT, n8n of een slimme speaker iets op de boodschappenlijst, het prikbord of in de agenda zetten. Stuur een POST met JSON: {\"list\": \"melk\"}, {\"note\": \"…\"} of {\"event\": {\"title\", \"date\", \"startTime\"}}.", category: "automatisering", icon: "🔗",
     scope: "household", plan: "plus", country: [], status: "ready", refreshMinutes: 0, provides: ["widget"],

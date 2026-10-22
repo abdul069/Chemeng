@@ -31,7 +31,7 @@ export const listItems = (h = hid(), status?: InboxItem["status"]) => all<Row>(`
 export const getItem = (id: string, h = hid()) => { const r = get<Row>("SELECT * FROM inbox_items WHERE id=? AND household_id=?", id, h); return r ? shape(r) : null; };
 export const setStatus = (id: string, status: InboxItem["status"], h = hid()) => run("UPDATE inbox_items SET status=? WHERE id=? AND household_id=?", status, id, h);
 export const deleteItem = (id: string, h = hid()) => run("DELETE FROM inbox_items WHERE id=? AND household_id=?", id, h);
-export const newCount = (h = hid()) => get<{ n: number }>("SELECT COUNT(*) AS n FROM inbox_items WHERE household_id=? AND status='new'", h)?.n ?? 0;
+export const newCount = (h = hid(), senderPrefix?: string) => get<{ n: number }>(`SELECT COUNT(*) AS n FROM inbox_items WHERE household_id=? AND status='new'${senderPrefix ? " AND sender LIKE ?" : ""}`, h, ...(senderPrefix ? [`${senderPrefix}%`] : []))?.n ?? 0;
 
 // ---------- gedeelde mailbox van de operator ----------
 export const shared = () => (process.env.INBOX_IMAP_HOST && process.env.INBOX_IMAP_USER && process.env.INBOX_IMAP_PASS ? { host: process.env.INBOX_IMAP_HOST, port: Number(process.env.INBOX_IMAP_PORT || 993), user: process.env.INBOX_IMAP_USER, pass: process.env.INBOX_IMAP_PASS, address: process.env.INBOX_ADDRESS || process.env.INBOX_IMAP_USER } : null);
@@ -43,13 +43,13 @@ export function plusAddress(h: string): string | null { const s = shared(); if (
 const RECEIPT_RE = /\b(kassaticket|kassabon|ticket|bon|receipt|aankoopbewijs|fiş|fis|kasa fişi)\b/i;
 const isImage = (ct: string) => /^image\/(jpeg|png|gif|webp)$/.test(ct);
 const addrText = (a: ParsedMail["to"]) => (Array.isArray(a) ? a.map((x) => x.text).join(", ") : a?.text ?? "");
-/** Van een geparsede mail een inbox-item maken: kassaticket → prijzen; anders afspraken en lijstjes. Zonder AI blijft de tekst leesbaar. */
-export async function processMail(mail: ParsedMail, h: string): Promise<InboxItem | null> {
-  const msgId = mail.messageId || `${mail.date?.toISOString() ?? Date.now()}-${crypto.createHash("md5").update(mail.subject ?? "").digest("hex").slice(0, 8)}`;
-  if (get("SELECT 1 FROM inbox_items WHERE household_id=? AND msg_id=?", h, msgId)) return null;
-  const sender = addrText(mail.from); const subject = mail.subject ?? ""; const received = (mail.date ?? new Date()).toISOString();
-  const text = (mail.text || (typeof mail.html === "string" ? mail.html.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ") : "")).replace(/\s+/g, " ").trim().slice(0, 20000);
-  const images = (mail.attachments ?? []).filter((a) => isImage(a.contentType) && a.content.length < 8 * 1024 * 1024).slice(0, 3);
+export interface Incoming { msgId: string; sender: string; subject: string; date?: Date; text: string; images?: { content: Buffer; contentType: string }[] }
+/** Van een binnengekomen bericht (mail, Telegram, …) een inbox-item maken: kassaticket → prijzen; anders afspraken en lijstjes. Zonder AI blijft de tekst leesbaar. */
+export async function processMessage(m: Incoming, h: string): Promise<InboxItem | null> {
+  if (get("SELECT 1 FROM inbox_items WHERE household_id=? AND msg_id=?", h, m.msgId)) return null;
+  const { sender, subject } = m; const received = (m.date ?? new Date()).toISOString();
+  const text = m.text.replace(/\s+/g, " ").trim().slice(0, 20000);
+  const images = (m.images ?? []).filter((a) => isImage(a.contentType) && a.content.length < 8 * 1024 * 1024).slice(0, 3);
   let kind: Kind = "other"; let summary = ""; const data: InboxItem["data"] = { images: images.length };
   const ai = importAvailable();
   try {
@@ -57,14 +57,20 @@ export async function processMail(mail: ParsedMail, h: string): Promise<InboxIte
       const scan = await scanImage({ data: images[0].content.toString("base64"), mediaType: images[0].contentType as "image/jpeg" }, "ticket");
       kind = "receipt"; data.scan = scan; summary = `${scan.store || "?"} · ${scan.items.length} ${scan.items.length === 1 ? "regel" : "regels"}${scan.total !== null ? ` · €${scan.total.toFixed(2).replace(".", ",")}` : ""}`;
     } else if (ai && (text.length > 20 || images.length)) {
-      const r = await extractEvents({ text: text || undefined, image: images[0] ? { data: images[0].content.toString("base64"), mediaType: images[0].contentType as "image/jpeg" } : undefined, hint: `E-mail van ${sender}, onderwerp "${subject}".` });
+      const r = await extractEvents({ text: text || undefined, image: images[0] ? { data: images[0].content.toString("base64"), mediaType: images[0].contentType as "image/jpeg" } : undefined, hint: `Bericht van ${sender}${subject ? `, onderwerp "${subject}"` : ""}.` });
       summary = r.summary; data.events = r.events; data.listItems = r.listItems;
       kind = r.events.length ? "school" : "other";
     } else summary = text.slice(0, 160);
   } catch (e) { summary = `${text.slice(0, 120)} (${e instanceof Error ? e.message : "lezen mislukte"})`; }
   const id = newId();
-  run("INSERT INTO inbox_items(id, household_id, msg_id, sender, subject, received_at, kind, summary, body, data) VALUES (?,?,?,?,?,?,?,?,?,?)", id, h, msgId, sender.slice(0, 200), subject.slice(0, 300), received, kind, summary.slice(0, 500), text.slice(0, 4000), JSON.stringify(data));
+  run("INSERT INTO inbox_items(id, household_id, msg_id, sender, subject, received_at, kind, summary, body, data) VALUES (?,?,?,?,?,?,?,?,?,?)", id, h, m.msgId, sender.slice(0, 200), subject.slice(0, 300), received, kind, summary.slice(0, 500), text.slice(0, 4000), JSON.stringify(data));
   return getItem(id, h);
+}
+/** Een geparsede e-mail doorgeven aan processMessage. */
+export async function processMail(mail: ParsedMail, h: string): Promise<InboxItem | null> {
+  const msgId = mail.messageId || `${mail.date?.toISOString() ?? Date.now()}-${crypto.createHash("md5").update(mail.subject ?? "").digest("hex").slice(0, 8)}`;
+  const text = mail.text || (typeof mail.html === "string" ? mail.html.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ") : "");
+  return processMessage({ msgId, sender: addrText(mail.from), subject: mail.subject ?? "", date: mail.date ?? undefined, text, images: (mail.attachments ?? []).map((a) => ({ content: a.content, contentType: a.contentType })) }, h);
 }
 export const parseRaw = (raw: Buffer | string) => simpleParser(raw);
 
