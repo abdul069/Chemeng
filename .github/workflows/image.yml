@@ -1,6 +1,7 @@
 name: Docker-image
 # Bouwt de container op GitHub en zet hem in de GitHub Container Registry (ghcr.io).
 # Railway (of elke andere host) start dan een kant-en-klare image en hoeft zelf niets te bouwen.
+# Na de build vraagt de workflow Railway om te herstarten (stap "Railway herdeployen").
 on:
   push:
     branches: ["**"]
