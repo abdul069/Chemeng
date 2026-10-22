@@ -4,6 +4,7 @@ import { connectRealtime, onCast, onConnection } from "./api";
 import { useDevice, useDeviceRegistration, getDevice } from "./device";
 import { useIsPhone } from "./components/ui";
 import { MyDayScreen } from "./screens/MyDay";
+const KidShell = lazyRetry(() => import("./screens/Kid").then((m) => ({ default: m.KidShell })));
 const DeviceSetup = lazyRetry(() => import("./components/DeviceSetup").then((m) => ({ default: m.DeviceSetup })));
 import { AcceptInvite, AuthScreen, NoHousehold, ResetPassword, inviteTokenFromUrl, resetTokenFromUrl } from "./components/Auth";
 import { useData } from "./store";
@@ -60,6 +61,7 @@ export function App() {
   const device = useDevice();
   const phoneLayout = useIsPhone();
   const [setup, setSetup] = useState(false);
+  const [parentMode, setParentMode] = useState(false);
   const [castMsg, setCastMsg] = useState<string | null>(null);
   useDeviceRegistration(!!data);
   // eerste start op dit toestel: vragen of het het wandscherm, het tafelmodel of een telefoon is
@@ -127,6 +129,16 @@ export function App() {
   if (error && !data) return <ErrorScreen error={error} />;
   if (!data) return <div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>;
 
+  // kindertablet: eigen scherm zonder menu; een ouder kan met de pincode tijdelijk de volledige app openen
+  if (device.role === "kid" && !parentMode) {
+    return (
+      <div className="shell kid-shell">
+        <ScreenBoundary><Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}><KidShell onParent={() => setParentMode(true)} /></Suspense></ScreenBoundary>
+        <Suspense fallback={null}>{setup && <DeviceSetup onDone={() => setSetup(false)} />}</Suspense>
+        {ezan.active && <EzanOverlay prayer={ezan.active.prayer} at={ezan.active.at} onClose={ezan.stop} />}
+      </div>
+    );
+  }
   const current = NAV.find((n) => n.id === screen);
   const makeHeader = (title: string, back?: () => void) => (
     <div className="titleblock">
@@ -179,6 +191,7 @@ export function App() {
       {saver && <Screensaver onWake={() => { lastActivity.current = Date.now(); setSaver(false); }} />}
       {setup && <DeviceSetup onDone={() => setSetup(false)} />}
       </Suspense>
+      {parentMode && <button className="parentbar" onClick={() => setParentMode(false)}>👨‍👩‍👧 {tr("Oudermodus")} · {tr("terug naar de kindertablet")}</button>}
       {castMsg && <div className="castmsg" role="status" onClick={() => setCastMsg(null)}><span className="castmsg-ic">📱</span><span>{castMsg}</span></div>}
     </div>
   );

@@ -58,12 +58,20 @@ jobs:
           cp web/android/app/build/outputs/apk/debug/app-debug.apk out/gezinsbord-debug.apk
           [ -f web/android/app/build/outputs/apk/release/app-release.apk ] && cp web/android/app/build/outputs/apk/release/app-release.apk out/kinday-release.apk || true
           [ -f web/android/app/build/outputs/bundle/release/app-release.aab ] && cp web/android/app/build/outputs/bundle/release/app-release.aab out/kinday-playstore.aab || true
+          # QR-provisionering van een kindertablet: checksum van de ondertekende APK (base64url, zonder =)
+          if [ -f out/kinday-release.apk ]; then
+            sum=$(sha256sum out/kinday-release.apk | cut -d' ' -f1 | xxd -r -p | base64 -w0 | tr '+/' '-_' | tr -d '=')
+            cat > out/provisioning.json <<JSON
+          {"android.app.extra.PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME":"be.gezinsbord.app/be.gezinsbord.app.KioskAdminReceiver","android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_DOWNLOAD_LOCATION":"https://github.com/${{ github.repository }}/releases/download/android-latest/kinday-release.apk","android.app.extra.PROVISIONING_DEVICE_ADMIN_PACKAGE_CHECKSUM":"$sum","android.app.extra.PROVISIONING_SKIP_ENCRYPTION":true,"android.app.extra.PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED":true,"android.app.extra.PROVISIONING_KEEP_SCREEN_ON":true}
+          JSON
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: gezinsbord-apk
           path: |
             out/*.apk
             out/*.aab
+            out/provisioning.json
       - name: Vaste downloadlink bijwerken (release "android-latest")
         uses: softprops/action-gh-release@v2
         with:
@@ -74,3 +82,4 @@ jobs:
           files: |
             out/*.apk
             out/*.aab
+            out/provisioning.json

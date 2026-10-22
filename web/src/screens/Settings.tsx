@@ -6,6 +6,8 @@ import { Avatar, Confirm, Fold, MemberPicks, Modal, cvar } from "../components/u
 import { Icon } from "../components/Icons";
 import { AccountSection, AgendaSharing, HouseholdAccess } from "./Access";
 import { DevicesSection } from "../components/Devices";
+import { KidSettings } from "../components/KidSettings";
+import { useSetting } from "../components/settings-hooks";
 import { ManagerSection } from "../components/ManagerSettings";
 import { BillingSection } from "../components/Billing";
 import { FamilySection } from "../components/Family";
@@ -31,6 +33,7 @@ export function SettingsScreen({ header }: { header: React.ReactNode }) {
         <Language />
         <Family />
         <DevicesSection />
+        <KidSettings />
         <ManagerSection />
         <ConnectorsSection />
         <PricesSection />
@@ -73,10 +76,6 @@ function Section({ title, children, action }: { title: string; children: React.R
   return <Fold title={title} action={action}>{children}</Fold>;
 }
 
-function useSetting() {
-  const act = useAction();
-  return (values: Record<string, string | number | boolean>, msg = "Bewaard") => act(() => api.put("/settings", values), msg);
-}
 
 /** Taal van de hele app; bij Turks blijven recepten in het Turks. */
 function Language() {

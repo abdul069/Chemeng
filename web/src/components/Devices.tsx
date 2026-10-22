@@ -7,8 +7,8 @@ import { Avatar, Fold, Modal, cvar } from "./ui";
 import { setDevice, useDevice, type DeviceRole, type HubVariant } from "../device";
 import { t } from "../i18n";
 
-const ROLE_ICON: Record<string, string> = { wall: "🖼️", table: "🪑", phone: "📱" };
-const roleLabel = (d: { role: string; variant: string }) => d.role === "hub" ? (d.variant === "table" ? t("Tafelmodel") : t("Wandscherm")) : t("Telefoon");
+const ROLE_ICON: Record<string, string> = { wall: "🖼️", table: "🪑", phone: "📱", kid: "🧒" };
+const roleLabel = (d: { role: string; variant: string }) => d.role === "hub" ? (d.variant === "table" ? t("Tafelmodel") : t("Wandscherm")) : d.role === "kid" ? t("Kindertablet") : t("Telefoon");
 const seen = (iso: string) => { const m = Math.round((Date.now() - Date.parse(iso + "Z")) / 60_000); return m < 3 ? t("nu online") : m < 60 ? t("{n} min geleden", { n: m }) : m < 1440 ? t("{n} u geleden", { n: Math.round(m / 60) }) : t("{n} dagen geleden", { n: Math.round(m / 1440) }); };
 
 export function QrPair({ onClose }: { onClose: () => void }) {
@@ -44,18 +44,18 @@ export function DevicesSection() {
   const [qr, setQr] = useState(false);
   const [rename, setRename] = useState(me.name);
   const setRole = (role: DeviceRole, variant: HubVariant | "") => { setDevice({ role, variant, memberId: role === "hub" ? null : me.memberId }); };
-  const hubs = devices.filter((d) => d.role === "hub"), phones = devices.filter((d) => d.role === "phone");
+  const hubs = devices.filter((d) => d.role === "hub"), phones = devices.filter((d) => d.role !== "hub");
   return (
     <Fold title={t("Toestellen")} action={<button className="btn accent small" onClick={() => setQr(true)}>{t("📱 Telefoon koppelen")}</button>}>
       <div className="thisdev">
         <b>{t("Dit toestel")}</b>
         <div className="picks">
-          {([["hub", "wall", "🖼️ Wandscherm"], ["hub", "table", "🪑 Tafelmodel"], ["phone", "", "📱 Telefoon"]] as const).map(([r, v, l]) => (
-            <button key={l} type="button" className="pick" aria-pressed={me.role === r && (r === "phone" || me.variant === v)} onClick={() => setRole(r, v)}>{t(l)}</button>
+          {([["hub", "wall", "🖼️ Wandscherm"], ["hub", "table", "🪑 Tafelmodel"], ["phone", "", "📱 Telefoon"], ["kid", "", "🧒 Kindertablet"]] as const).map(([r, v, l]) => (
+            <button key={l} type="button" className="pick" aria-pressed={me.role === r && (r !== "hub" || me.variant === v)} onClick={() => setRole(r, v)}>{t(l)}</button>
           ))}
         </div>
-        {me.role === "phone" && (
-          <div className="field"><span>{t("Van wie is deze telefoon?")}</span>
+        {(me.role === "phone" || me.role === "kid") && (
+          <div className="field"><span>{me.role === "kid" ? t("Van welk kind is deze tablet?") : t("Van wie is deze telefoon?")}</span>
             <div className="picks">{data?.members.filter((m) => m.role !== "huisdier").map((m) => <button type="button" key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={me.memberId === m.id} onClick={() => setDevice({ memberId: me.memberId === m.id ? null : m.id })}><Avatar m={m} size={22} dot={false} /> {m.name}</button>)}</div>
           </div>
         )}
@@ -67,7 +67,7 @@ export function DevicesSection() {
           const m = d.memberId ? data?.members.find((x) => x.id === d.memberId) : undefined;
           return (
             <div className={`devrow${d.online ? " online" : ""}${d.id === me.id ? " me" : ""}`} key={d.id}>
-              <span className="dev-ic" aria-hidden>{ROLE_ICON[d.role === "hub" ? (d.variant || "wall") : "phone"]}</span>
+              <span className="dev-ic" aria-hidden>{ROLE_ICON[d.role === "hub" ? (d.variant || "wall") : d.role]}</span>
               <span className="dev-txt"><b>{d.name}{d.id === me.id ? ` · ${t("dit toestel")}` : ""}</b><small>{roleLabel(d)}{m ? ` · ${m.name}` : ""} · <i className={`dot${d.online ? " on" : ""}`} /> {seen(d.lastSeen)}</small></span>
               {d.id !== me.id && <button className="iconbtn" aria-label={t("Toestel verwijderen")} onClick={() => act(() => api.del(`/devices/${d.id}`), t("Toestel verwijderd"))}>✕</button>}
             </div>

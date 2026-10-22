@@ -11,6 +11,8 @@ import { getLang } from "./i18n";
 
 interface BatteryPlugin { status(): Promise<{ ignoring: boolean }>; requestIgnore(): Promise<{ ignoring: boolean }> }
 const Battery = registerPlugin<BatteryPlugin>("Battery");
+interface KioskPlugin { status(): Promise<{ deviceOwner: boolean; lockTask: boolean; launcher: boolean }>; start(): Promise<{ lockTask: boolean }>; stop(): Promise<void>; setLauncher(): Promise<void>; launch(o: { package: string }): Promise<{ ok: boolean }>; setAllowed(o: { packages: string[] }): Promise<void> }
+const Kiosk = registerPlugin<KioskPlugin>("Kiosk");
 
 export const isNative = () => Capacitor.isNativePlatform();
 export const platform = () => Capacitor.getPlatform();
@@ -64,4 +66,22 @@ export async function scheduleEzan(settings: Settings, today: PrayerDay | null, 
     }
   }
   if (list.length) { try { await LocalNotifications.schedule({ notifications: list }); } catch { /* */ } }
+}
+
+// ---------- kindertablet: kiosk-modus en toegelaten apps ----------
+export type KioskStatus = { deviceOwner: boolean; lockTask: boolean; launcher: boolean } | null;
+export async function kioskStatus(): Promise<KioskStatus> { if (!isNative()) return null; try { return await Kiosk.status(); } catch { return null; } }
+/** start = vergrendelen (lukt echt alleen als de app device owner is), stop = vrijgeven, launcher = Android vragen om Kinday als startscherm te kiezen. */
+export async function kiosk(action: "start" | "stop" | "launcher", packages: string[] = []): Promise<void> {
+  if (!isNative()) return;
+  try {
+    if (action === "start") { if (packages.length) await Kiosk.setAllowed({ packages }); await Kiosk.start(); }
+    else if (action === "stop") await Kiosk.stop();
+    else await Kiosk.setLauncher();
+  } catch { /* geen plugin (oude APK) of geen rechten */ }
+}
+/** Een toegelaten app openen: op Android via de pakketnaam, in de browser via de link. */
+export async function launchApp(pkg: string, url?: string): Promise<void> {
+  if (isNative() && pkg) { try { const r = await Kiosk.launch({ package: pkg }); if (r.ok) return; } catch { /* */ } }
+  if (url) window.open(url, "_blank", "noopener");
 }

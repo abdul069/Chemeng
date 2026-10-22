@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { isNative, platform } from "./native";
 
-export type DeviceRole = "hub" | "phone";
+export type DeviceRole = "hub" | "phone" | "kid";
 export type HubVariant = "wall" | "table";
 export interface DeviceState { id: string; role: DeviceRole | null; variant: HubVariant | ""; memberId: string | null; name: string; big?: boolean }
 
@@ -29,11 +29,13 @@ export function setDevice(patch: Partial<DeviceState>) {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* */ }
   document.body.classList.toggle("gb-hub", state.role === "hub");
   document.body.classList.toggle("gb-phone", state.role === "phone");
+  document.body.classList.toggle("gb-kid", state.role === "kid");
   document.body.classList.toggle("gb-big", !!state.big);
   listeners.forEach((l) => l());
 }
 document.body.classList.toggle("gb-hub", state.role === "hub");
 document.body.classList.toggle("gb-phone", state.role === "phone");
+document.body.classList.toggle("gb-kid", state.role === "kid");
 document.body.classList.toggle("gb-big", !!state.big);
 
 /** Een voorstel voor de rol: smal of een echte telefoon-app → telefoon; groot aanraakscherm → hub. */

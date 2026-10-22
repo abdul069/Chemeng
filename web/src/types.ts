@@ -36,7 +36,7 @@ export interface Settings {
   ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
   quran_reciter: string; quran_translation: string; language: string;
   briefing_morning: string; briefing_evening: string; briefing_push: string; routine_remind_morning?: string; routine_remind_evening?: string;
-  country: string; board_widgets: string; waste_ical: string; waste_notify: string; ha_url: string; ha_entities: string; ha_scenes: string; ha_configured?: boolean;
+  country: string; board_widgets: string; waste_ical: string; waste_notify: string; kid_bedtime_from?: string; kid_bedtime_until?: string; kid_screen_minutes?: string; kid_apps?: string; ha_url: string; ha_entities: string; ha_scenes: string; ha_configured?: boolean;
 }
 export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";
 export interface PrayerDay { date: string; times: Record<Prayer, string>; tomorrow: Record<Prayer, string>; methods: { id: string; label: string }[]; city: string }
@@ -97,7 +97,7 @@ export type Plan = "free" | "gezin" | "plus" | "operator";
 export interface Subscription { plan: Plan; source: string; partnerId: string | null; partnerName: string | null; discountPct: number; validUntil: string | null }
 export interface Billing { plan: Plan; planLabel: string; usedMicro: number; budgetMicro: number | null; pct: number; blocked: boolean; perTask: { task: string; calls: number; costMicro: number }[]; subscription: Subscription; models: { chat: string; light: string; premium: string }; plans: { id: Plan; label: string; budgetMicro: number }[]; stripe: { available: boolean; managed: boolean; status: string | null; periodEnd: string | null; offers: Record<"gezin" | "plus", { month: boolean; year: boolean }> } }
 export interface Partner { id: string; name: string; slug: string; plan: Plan; freeMonths: number; discountPct: number; verify: string; domains: string; note: string; createdAt: string; stats: { redeemed: number; inFreePeriod: number; activeInFreePeriod: number; afterFreePeriod: number; retainedAfterFree: number; codes: { code: string; maxUses: number; uses: number; expiresAt: string | null }[] } }
-export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
+export interface Device { id: string; name: string; role: "hub" | "phone" | "kid"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
 export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections" | "prices" | "inbox";

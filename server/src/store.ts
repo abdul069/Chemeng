@@ -487,7 +487,7 @@ export const dietHits = (ingredients: string, words = avoidWords()) => { const t
 // ---------- toestellen en prikbord ----------
 export const DeviceInput = z.object({
   name: z.string().trim().min(1).max(60),
-  role: z.enum(["hub", "phone"]),
+  role: z.enum(["hub", "phone", "kid"]),
   variant: z.string().max(20).default(""),
   platform: z.string().max(40).default(""),
   memberId: z.string().nullable().optional(),

@@ -455,6 +455,11 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   // afvalkalender: iCal-adres van de intercommunale en het uur van de melding de avond ervoor (leeg = geen)
   waste_ical: "",
   waste_notify: "20:00",
+  // kindertablet: bedtijd (toestel toont dan een gedimde klok), schermtijd per dag in minuten (0 = geen grens), toegelaten apps (JSON)
+  kid_bedtime_from: "19:30",
+  kid_bedtime_until: "07:00",
+  kid_screen_minutes: "0",
+  kid_apps: "[]",
   // slim huis via Home Assistant
   ha_url: "",
   ha_token: "",

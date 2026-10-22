@@ -463,6 +463,15 @@ api.put("/care/:id", (req, res) => { if (!H.updateHealth(p(req), H.HealthInput.p
 api.post("/care/:id/done", (req, res) => { const r = H.healthDone(p(req)); if (!r) return void res.status(404).json({ error: "Niet gevonden" }); res.json(r); broadcast("home"); });
 api.delete("/care/:id", (req, res) => { H.deleteHealth(p(req)); res.json({ ok: true }); broadcast("home"); });
 
+/** Kindertablet vergrendelen: de provisioning-gegevens (QR) van de laatste ondertekende APK, gemaakt door de Android-workflow. */
+api.get("/kiosk/provisioning", async (_req, res) => {
+  const url = process.env.KIOSK_PROVISIONING_URL || "https://github.com/abdul069/Chemeng/releases/download/android-latest/provisioning.json";
+  try {
+    const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(10_000), headers: { "user-agent": USER_AGENT } });
+    if (!r.ok) return void res.status(404).json({ error: "Er is nog geen ondertekende APK met provisioning-gegevens. Zet de keystore-secrets in GitHub en laat de Android-workflow draaien." });
+    res.json(await r.json());
+  } catch { res.status(502).json({ error: "GitHub niet bereikbaar." }); }
+});
 api.get("/ha/states", async (req, res) => {
   const q = z.object({ all: z.string().optional() }).parse(req.query);
   // Home Assistant en Tuya naast elkaar; als één van de twee ontbreekt of hapert, tonen we de andere
