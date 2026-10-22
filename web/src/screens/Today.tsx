@@ -45,7 +45,7 @@ function useClock() {
 
 /** Het Bord: het startscherm voor het scherm in de keuken — assistent bovenaan, de dag per gezinslid in het midden, eten en taken onderaan. */
 export function TodayScreen({ openEditor, openAssistant, goto, openSearch, online }: {
-  openEditor: (s: EditorState) => void; openAssistant: (prompt?: string) => void; goto: (s: "meals" | "chores" | "apps") => void; openSearch: () => void; online: boolean;
+  openEditor: (s: EditorState) => void; openAssistant: (prompt?: string) => void; goto: (s: "meals" | "chores" | "apps" | "calendar" | "lists") => void; openSearch: () => void; online: boolean;
 }) {
   const { data, hidden } = useData();
   const t = todayIso();
@@ -99,7 +99,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
     family: (
         <FamilyWidget />
     ),
-    traditions: <TraditionsWidget />,
+    traditions: <TraditionsWidget goto={goto} />,
     connectors: (
         <ConnectorWidgets board />
     ),

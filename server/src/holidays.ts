@@ -99,6 +99,16 @@ export function ramadan(date: string): { day: number; total: number; start: stri
   }
   return null;
 }
+/** Bayram die eraan komt of bezig is (binnen 7 dagen vooraf): Suikerfeest of Offerfeest. */
+export function bayram(date: string): { title: string; icon: string; start: string; end: string; daysUntil: number; day: number | null } | null {
+  for (const h of ISLAMIC) {
+    if (!/Bayramı/.test(h.title)) continue;
+    const end = h.endDate ?? h.date;
+    const until = Math.round((Date.parse(h.date) - Date.parse(date)) / 864e5);
+    if (date <= end && until <= 7) return { title: h.title, icon: h.icon, start: h.date, end, daysUntil: Math.max(0, until), day: date >= h.date ? Math.round((Date.parse(date) - Date.parse(h.date)) / 864e5) + 1 : null };
+  }
+  return null;
+}
 export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"], country = "BE"): Holiday[] {
   const years: number[] = [];
   for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) years.push(y);

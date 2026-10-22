@@ -24,7 +24,7 @@ import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
-import { holidayOccurrences, holidaysBetween, localizeHoliday, isHolidayKind, ramadan } from "./holidays.js";
+import { holidayOccurrences, holidaysBetween, localizeHoliday, isHolidayKind, ramadan, bayram } from "./holidays.js";
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
@@ -1068,14 +1068,35 @@ function prayerDay(date: string) {
   const times = prayerTimes({ date, latitude: Number(s.latitude), longitude: Number(s.longitude), method: s.ezan_method, asr: s.ezan_asr === "hanafi" ? "hanafi" : "standard", adjust });
   return { date, times: Object.fromEntries(PRAYERS.map((p) => [p, new Date(times[p]).toISOString()])) as Record<Prayer, string> };
 }
-/** Tradities van vandaag: ramadan (dag, iftar, sahur) en advent (dag). Leeg als er niets speelt. */
+/** Barcode opzoeken bij Open Food Facts: naam, merk, inhoud. */
+api.get("/products/barcode/:ean", async (req, res) => {
+  const ean = String(req.params.ean ?? "").replace(/\D/g, ""); if (ean.length < 8 || ean.length > 14) return void res.status(400).json({ error: "Geen geldige barcode" });
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json?fields=product_name,product_name_nl,product_name_en,brands,quantity,categories_tags,nutriments`, { headers: { "user-agent": USER_AGENT }, signal: AbortSignal.timeout(8000) });
+    const j = (await r.json()) as { status?: number; product?: { product_name?: string; product_name_nl?: string; product_name_en?: string; brands?: string; quantity?: string; nutriments?: Record<string, number> } };
+    if (!j.product || j.status === 0) return void res.status(404).json({ error: "Niet gevonden bij Open Food Facts" });
+    const pr = j.product; const name = pr.product_name_nl || pr.product_name || pr.product_name_en || "";
+    res.json({ ean, name, brand: pr.brands ?? "", quantity: pr.quantity ?? "", label: [pr.brands?.split(",")[0]?.trim(), name, pr.quantity].filter(Boolean).join(" "), kcal100: pr.nutriments?.["energy-kcal_100g"] ?? null });
+  } catch { res.status(502).json({ error: "Open Food Facts is nu niet bereikbaar, probeer straks nog eens" }); }
+});
+/** Feestboodschappen voor bayram op de lijst (zonder dubbels). */
+api.post("/traditions/bayram-list", (_req, res) => {
+  const lang = asLang(getSettings().language);
+  const items = lang === "tr" ? ["şeker", "çikolata", "baklava", "kahve", "çay", "peçete", "kolonya"] : lang === "en" ? ["sweets", "chocolate", "baklava", "coffee", "tea", "napkins", "cologne"] : ["snoep", "chocolade", "baklava", "koffie", "thee", "servetten", "eau de cologne"];
+  const id = S.ensureShoppingList(); const shop = S.listLists().find((l) => l.id === id)!;
+  const open = new Set(shop.items.filter((i) => !i.done).map((i) => i.text.toLowerCase())); const did: string[] = [];
+  for (const it of items) if (!open.has(it)) { S.addItem(id, it); did.push(it); }
+  res.json({ ok: true, did }); broadcast("lists");
+});
+/** Tradities van vandaag: ramadan (dag, iftar, sahur), bayram en advent. Leeg als er niets speelt. */
 api.get("/traditions/today", (_req, res) => {
   const s = getSettings(); const t = today(); const kinds = s.holidays.split(",").filter(isHolidayKind);
-  const out: { ramadan?: { day: number; total: number; eid: string; iftar: string; imsak: string; imsakTomorrow: string }; advent?: { day: number } } = {};
+  const out: { ramadan?: { day: number; total: number; eid: string; iftar: string; imsak: string; imsakTomorrow: string }; advent?: { day: number }; bayram?: { title: string; icon: string; start: string; end: string; daysUntil: number; day: number | null; visits: number } } = {};
   if (kinds.includes("islam")) {
     const r = ramadan(t);
     if (r) { const pd = prayerDay(t); const pt = prayerDay(addDays(t, 1)); out.ramadan = { day: r.day, total: r.total, eid: r.eid, iftar: pd.times.maghrib, imsak: pd.times.fajr, imsakTomorrow: pt.times.fajr }; }
   }
+  if (kinds.includes("islam")) { const b = bayram(t); if (b) { const lb = localizeHoliday({ date: b.start, title: b.title, icon: b.icon, kind: "islam" }, s.language); out.bayram = { ...b, title: lb.title, visits: eventsBetween(b.start, b.end).filter((e) => /bezoek|ziyaret|visit|bayram/i.test(e.title)).length }; } }
   if (kinds.includes("sinterklaas") && t.slice(5) >= "12-01" && t.slice(5) <= "12-24") out.advent = { day: Number(t.slice(8)) };
   res.json(out);
 });

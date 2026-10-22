@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { holidaysBetween, dutchHolidays, sinterklaasKerst, ramadan, localizeHoliday } from "./holidays.ts";
+import { holidaysBetween, dutchHolidays, sinterklaasKerst, ramadan, bayram, localizeHoliday } from "./holidays.ts";
 
 test("tradities: Nederlandse feestdagen, Sinterklaas per land, ramadan-dag en vertaalde namen", () => {
   const nl2027 = dutchHolidays(2027);
@@ -15,6 +15,7 @@ test("tradities: Nederlandse feestdagen, Sinterklaas per land, ramadan-dag en ve
   const r = ramadan("2026-03-01")!;
   assert.equal(r.day, 12); assert.equal(r.eid, "2026-03-20"); assert.equal(r.total, 30);
   assert.equal(ramadan("2026-04-01"), null);
+  assert.equal(bayram("2026-03-15")!.daysUntil, 5); assert.equal(bayram("2026-03-21")!.day, 2); assert.equal(bayram("2026-03-01"), null); assert.equal(bayram("2026-05-28")!.title, "Kurban Bayramı (Offerfeest)");
   assert.equal(localizeHoliday({ date: "2027-04-27", title: "Koningsdag", icon: "🧡", kind: "nl" }, "en").title, "King's Day");
   assert.equal(localizeHoliday({ date: "2026-12-06", title: "Sinterklaas", icon: "🎁", kind: "sinterklaas" }, "tr").title, "Sinterklaas");
 });

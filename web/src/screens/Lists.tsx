@@ -12,6 +12,7 @@ import { PantryCook } from "../components/LibraryBrowser";
 import { t } from "../i18n";
 import { LinkButtons } from "../components/Connectors";
 import { PriceButtons, PriceTag, usePriceLookup } from "../components/Prices";
+import { BarcodeScan } from "../components/Barcode";
 
 /** Houdbaarheid van een voorraad-item: "verlopen", "vandaag", "nog 3 dagen" … */
 function expiry(i: ListItem): { label: string; cls: string } | null {
@@ -35,6 +36,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
   const [confirm, setConfirm] = useState(false);
   const [edit, setEdit] = useState<ListItem | null>(null);
   const [cook, setCook] = useState(false);
+  const [barcode, setBarcode] = useState(false);
   const [grouped, setGrouped] = useState(() => { try { return localStorage.getItem("gb.aisles") !== "0"; } catch { return true; } });
   if (!data) return null;
   const list = data.lists.find((l) => l.id === sel) ?? data.lists[0];
@@ -104,6 +106,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
               {pantry && <input id="item-qty" value={qty} onChange={(e) => setQty(e.target.value)} placeholder={t("aantal")} aria-label={t("Aantal")} style={{ width: 90, flex: "none" }} />}
               {pantry && <input id="item-exp" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} aria-label={t("Houdbaar tot")} style={{ width: 150, flex: "none" }} />}
               <button className="btn" type="submit" disabled={!text.trim()}>{t("Toevoegen")}</button>
+              <button className="iconbtn" type="button" aria-label={t("Barcode")} title={t("Barcode scannen")} onClick={() => setBarcode(true)}>📷</button>
             </form>)}
             <div className="items">
               {sections.map((sec) => (<div key={sec.key || "all"} className="items">
@@ -132,6 +135,7 @@ export function ListsScreen({ header }: { header: React.ReactNode }) {
       {newList && <NewList onClose={() => setNewList(false)} onCreated={setSel} hasPantry={data.lists.some((l) => l.kind === "pantry")} hasShop={data.lists.some(isShopping)} />}
       {edit && <ItemEditor item={edit} shop={isShop} onClose={() => setEdit(null)} />}
       {cook && <PantryCook onClose={() => setCook(false)} />}
+      {barcode && list && <BarcodeScan onClose={() => setBarcode(false)} onPick={async (p) => { setBarcode(false); await act(() => api.post(`/lists/${list.id}/items`, pantry ? { text: p.label || p.name || p.ean, qty: p.quantity || "" } : { text: p.label || p.name || p.ean }), t("Toegevoegd ✔")); }} />}
       {confirm && list && <Confirm title={`${list.name} verwijderen?`} text={t("Alle items op deze lijst verdwijnen.")} onClose={() => setConfirm(false)}
         actions={[{ label: t("Verwijderen"), run: () => { act(() => api.del(`/lists/${list.id}`), t("Lijst verwijderd")); setSel(null); } }]} />}
     </>
