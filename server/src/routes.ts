@@ -23,7 +23,7 @@ import { findDishPhotos, fillMissingPhotos, wikipedia } from "./dishphotos.js";
 import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
-import { isDate, today, addDays } from "./dates.js";
+import { isDate, today, addDays, weekday } from "./dates.js";
 import { holidayOccurrences, holidaysBetween, localizeHoliday, isHolidayKind, ramadan, bayram } from "./holidays.js";
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
@@ -645,6 +645,16 @@ api.post("/chores/routines", (req, res) => { const b = z.object({ memberId: z.st
 api.post("/chores", (req, res) => { res.json(S.createChore(S.ChoreInput.parse(req.body))); broadcast("chores"); });
 api.put("/chores/:id", (req, res) => { S.updateChore(p(req), S.ChoreInput.parse(req.body)); res.json({ ok: true }); broadcast("chores"); });
 api.delete("/chores/:id", (req, res) => { S.deleteChore(p(req)); res.json({ ok: true }); broadcast("chores", "rewards"); });
+/** Weekoverzicht per gezinslid: per dag gedaan/totaal en sterren, plus de langste reeks. */
+api.get("/chores/week", (req, res) => {
+  const { memberId, from } = req.query; const start = isDate(from) ? from : today();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const done = new Set(S.doneBetween(days[0], days[6]));
+  const chores = S.listChores().filter((c) => !memberId || c.memberId === memberId);
+  const t = today();
+  const rows = days.map((d) => { const planned = chores.filter((c) => c.days.includes(weekday(d))); const did = planned.filter((c) => done.has(`${d}|${c.id}`)); return { date: d, total: planned.length, done: did.length, stars: did.reduce((a, c) => a + c.points, 0), future: d > t }; });
+  res.json({ days: rows, stars: rows.reduce((a, r) => a + r.stars, 0), perfect: rows.filter((r) => r.total && r.done === r.total && !r.future).length });
+});
 api.get("/chores/done", (req, res) => {
   const { from, to } = req.query;
   if (!isDate(from) || !isDate(to)) return void res.status(400).json({ error: "Geef from en to op als YYYY-MM-DD." });

@@ -35,7 +35,7 @@ export interface Settings {
   sleep_from: string; sleep_until: string; home_after_minutes: string;
   ezan_on: string; ezan_method: string; ezan_asr: string; ezan_prayers: string; ezan_sounds: string; ezan_adjust: string; ezan_volume: string;
   quran_reciter: string; quran_translation: string; language: string;
-  briefing_morning: string; briefing_evening: string; briefing_push: string;
+  briefing_morning: string; briefing_evening: string; briefing_push: string; routine_remind_morning?: string; routine_remind_evening?: string;
   country: string; board_widgets: string; waste_ical: string; waste_notify: string; ha_url: string; ha_entities: string; ha_scenes: string; ha_configured?: boolean;
 }
 export type Prayer = "fajr" | "sunrise" | "dhuhr" | "asr" | "maghrib" | "isha";

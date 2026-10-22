@@ -205,7 +205,7 @@ Maaltijden → "✨ Weekbox": kies de avonden (standaard vanaf vandaag), de mana
 
 ### 5.10 Routinepakketten (Taken)
 
-Per gezinslid een knop "Routine": kant-en-klare dagelijkse taken (aankleden, tanden poetsen ochtend en avond, bed opmaken, boekentas, huiswerk op schooldagen, 10 minuten lezen, kamer opruimen, pyjama, schermen uit, tafel, vaatwasser, huisdier, planten, vuilnis, eigen was) in vier groepen, met een voorstel per leeftijd (kleuter, lagere school, tiener) dat uit de verjaardag geraden wordt. `server/src/routines.ts`, routes `GET/POST /chores/routines`; titels in NL/TR/EN; wat al bestaat wordt overgeslagen. Afvinken, sterren, reeksen en het feestje als alles af is bestonden al in Taken.
+Per gezinslid een knop "Routine": kant-en-klare dagelijkse taken (aankleden, tanden poetsen ochtend en avond, bed opmaken, boekentas, huiswerk op schooldagen, 10 minuten lezen, kamer opruimen, pyjama, schermen uit, tafel, vaatwasser, huisdier, planten, vuilnis, eigen was) in vier groepen, met een voorstel per leeftijd (kleuter, lagere school, tiener) dat uit de verjaardag geraden wordt. `server/src/routines.ts`, routes `GET/POST /chores/routines`; titels in NL/TR/EN; wat al bestaat wordt overgeslagen. Afvinken, sterren, reeksen en het feestje als alles af is bestonden al in Taken. **Herinneringen**: op een ochtend- en avonduur (Instellingen → De manager, standaard 07:45 en 19:30) krijgt wie nog routinetaken open heeft een pushmelding met de lijst, op de eigen telefoon of via de ouders (`routineReminders` in manager.ts). **Weekoverzicht** in het profiel van elk gezinslid: per dag gedaan/totaal, sterren en volle dagen (`GET /chores/week`).
 
 ### 5.11 Kalenders en tradities (opt-in, aanwezig)
 

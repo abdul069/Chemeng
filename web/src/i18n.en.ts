@@ -1446,4 +1446,8 @@ export const EN: Record<string, string> = {
   "Een voorstel per leeftijd; vink aan wat bij jullie past. Tanden poetsen, bed maken, kamer opruimen en huiswerk komen als dagelijkse taken met sterren in de ochtend-, middag- of avondroutine.": "A suggestion per age; tick what fits your family. Brushing teeth, making the bed, tidying the room and homework become daily tasks with stars in the morning, afternoon or evening routine.",
   "staat er al": "already there",
   "schooldagen": "school days",
+  "Herinnering ochtendroutine om": "Morning routine reminder at",
+  "Herinnering avondroutine om": "Evening routine reminder at",
+  "Wie dan nog taken open heeft, krijgt een melding op de eigen telefoon; kinderen zonder telefoon via de ouders. Leeg = geen herinnering.": "Whoever still has tasks open gets a notification on their own phone; children without a phone via the parents. Empty = no reminder.",
+  "{n} volle dagen": "{n} full days",
 };

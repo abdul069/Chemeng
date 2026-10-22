@@ -21,6 +21,11 @@ export function ManagerSection() {
         <label className="field"><span>{t("Avondafsluiting om")}</span><input type="time" value={s.briefing_evening} onChange={(e) => save({ briefing_evening: e.target.value })} /></label>
         <label className="check-row" style={{ alignSelf: "end" }}><input type="checkbox" checked={s.briefing_push === "1"} onChange={(e) => save({ briefing_push: e.target.checked ? "1" : "0" })} />{" "}{t("Melding op de telefoons")}</label>
       </div>
+      <div className="row3">
+        <label className="field"><span>{t("Herinnering ochtendroutine om")}</span><input type="time" value={s.routine_remind_morning ?? ""} onChange={(e) => save({ routine_remind_morning: e.target.value })} /></label>
+        <label className="field"><span>{t("Herinnering avondroutine om")}</span><input type="time" value={s.routine_remind_evening ?? ""} onChange={(e) => save({ routine_remind_evening: e.target.value })} /></label>
+        <p className="hint" style={{ alignSelf: "end" }}>{t("Wie dan nog taken open heeft, krijgt een melding op de eigen telefoon; kinderen zonder telefoon via de ouders. Leeg = geen herinnering.")}</p>
+      </div>
       <div className="field"><span>{t("Wat {brand} over ons weet")}</span>
         <p className="hint">{t("Feiten die de assistent onthoudt en gebruikt in gesprekken en briefings. Vertel het de assistent, of voeg het hier toe.")}</p>
         <div className="memlist">

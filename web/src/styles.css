@@ -1762,3 +1762,9 @@ a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transpare
 .rtn-item input { width: 18px; height: 18px; accent-color: var(--accent); }
 .rtn-ic { font-size: 20px; width: 26px; text-align: center; }
 .rtn-txt { display: flex; flex-direction: column; min-width: 0; } .rtn-txt small { font-size: 12px; }
+
+.weekgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.weekday { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border-radius: 12px; background: var(--surface-2); font-size: 13px; }
+.weekday.today { outline: 2px solid var(--accent); } .weekday.future { opacity: .5; }
+.weekbar { width: 14px; height: 48px; border-radius: 7px; background: rgba(0,0,0,.09); display: flex; align-items: flex-end; overflow: hidden; }
+.weekbar i { display: block; width: 100%; background: var(--accent); border-radius: 7px; transition: height .3s; }

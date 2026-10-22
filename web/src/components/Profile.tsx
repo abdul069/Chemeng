@@ -3,7 +3,7 @@ import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Member } from "../types";
 import { Avatar, Modal, cvar } from "./ui";
-import { todayIso, weekday } from "../dates";
+import { DSHORT, addDays, todayIso, weekday } from "../dates";
 import { t as tr } from "../i18n";
 
 /** Viering als alle taken van vandaag af zijn ("Ta-da!"). */
@@ -89,6 +89,7 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
           </div>
         </section>
       </div>
+      <WeekOverview memberId={member.id} />
       {todoList && (
         <section>
           <div className="section-title"><h3>{tr("Mijn briefjes")}</h3><span className="hint">{tr("eigen geheugensteuntjes")}</span></div>
@@ -135,5 +136,30 @@ export function StarsRanking({ bare = false }: { bare?: boolean } = {}) {
       {body}
       {!rows.length && <p className="hint">{tr("Nog geen gezinsleden.")}</p>}
     </aside>
+  );
+}
+
+interface Week { days: { date: string; total: number; done: number; stars: number; future: boolean }[]; stars: number; perfect: number }
+/** Deze week per dag: hoeveel van de taken gedaan, sterren en volle dagen. */
+function WeekOverview({ memberId }: { memberId: string }) {
+  const { data } = useData();
+  const t = todayIso();
+  const ws = Number(data?.settings.week_start ?? "1");
+  const start = addDays(t, -((weekday(t) - ws + 7) % 7));
+  const [w] = useRemote<Week | null>(`/chores/week?memberId=${memberId}&from=${start}`, ["chores"], null);
+  if (!w || !w.days.some((d) => d.total)) return null;
+  return (
+    <section>
+      <div className="section-title"><h3>{tr("Deze week")}</h3><span className="hint">⭐ {w.stars} · {tr("{n} volle dagen", { n: w.perfect })}</span></div>
+      <div className="weekgrid">
+        {w.days.map((d) => { const pct = d.total ? d.done / d.total : 0; const full = d.total > 0 && d.done === d.total; return (
+          <div key={d.date} className={`weekday${d.date === t ? " today" : ""}${d.future ? " future" : ""}`} title={`${d.done}/${d.total}`}>
+            <small>{DSHORT[weekday(d.date)]}</small>
+            <div className="weekbar"><i style={{ height: `${Math.round(pct * 100)}%` }} /></div>
+            <b>{d.future ? "·" : full ? "🏅" : d.total ? `${d.done}/${d.total}` : "–"}</b>
+          </div>
+        ); })}
+      </div>
+    </section>
   );
 }

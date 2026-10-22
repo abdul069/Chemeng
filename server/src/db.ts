@@ -447,6 +447,9 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   briefing_morning: "07:00",
   briefing_evening: "20:30",
   briefing_push: "1",
+  // herinnering aan openstaande routinetaken per kind (leeg = geen): ochtend en avond
+  routine_remind_morning: "07:45",
+  routine_remind_evening: "19:30",
   // land van het gezin: bepaalt feestdagen, afvalfracties en welke koppelingen getoond worden
   country: "BE",
   // afvalkalender: iCal-adres van de intercommunale en het uur van de melding de avond ervoor (leeg = geen)

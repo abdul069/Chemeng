@@ -1453,4 +1453,8 @@ export const TR: Record<string, string> = {
   "Een voorstel per leeftijd; vink aan wat bij jullie past. Tanden poetsen, bed maken, kamer opruimen en huiswerk komen als dagelijkse taken met sterren in de ochtend-, middag- of avondroutine.": "Yaşa göre bir öneri; size uyanları işaretle. Diş fırçalama, yatak toplama, oda toplama ve ödev; sabah, öğle ya da akşam rutininde yıldızlı günlük görevler olur.",
   "staat er al": "zaten var",
   "schooldagen": "okul günleri",
+  "Herinnering ochtendroutine om": "Sabah rutini hatırlatması",
+  "Herinnering avondroutine om": "Akşam rutini hatırlatması",
+  "Wie dan nog taken open heeft, krijgt een melding op de eigen telefoon; kinderen zonder telefoon via de ouders. Leeg = geen herinnering.": "O saatte hâlâ açık görevi olan kendi telefonuna bildirim alır; telefonu olmayan çocuklar için ebeveynler. Boş = hatırlatma yok.",
+  "{n} volle dagen": "{n} tam gün",
 };

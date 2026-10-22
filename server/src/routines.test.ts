@@ -4,6 +4,9 @@ import { withCtx } from "./db.ts";
 import { createUser, createHousehold } from "./accounts.ts";
 import { createMember, listChores } from "./store.ts";
 import { apply, catalog, AGE_SETS } from "./routines.ts";
+import { routineReminders } from "./manager.ts";
+import { setChoreDone } from "./store.ts";
+import { today } from "./dates.ts";
 
 test("routinepakket: taken per kind in de gezinstaal, dubbels overgeslagen, leeftijdssets bestaan", async () => {
   const userId = createUser({ name: "Test", email: `rt${Date.now()}@x.be`, password: "geheim123" });
@@ -20,5 +23,11 @@ test("routinepakket: taken per kind in de gezinstaal, dubbels overgeslagen, leef
     const cat = catalog("en");
     assert.ok(cat.items.find((i) => i.key === "bed")!.title === "Make the bed"); assert.equal(cat.groups.length, 4);
     for (const keys of Object.values(AGE_SETS)) for (const k of keys) assert.ok(cat.items.some((i) => i.key === k), `onbekende sleutel ${k}`);
+    // herinneringen: avondroutine open → melding voor Elif; na afvinken van alles niets meer
+    const d = today();
+    const ev = routineReminders("avond", d, h);
+    assert.equal(ev.length, 1); assert.equal(ev[0].name, "Elif"); assert.ok(ev[0].body.includes("Odayı toplamak") || ev[0].open.some((o) => o.title === "Odayı toplamak"));
+    for (const c of listChores().filter((c) => c.memberId === kid.id)) setChoreDone(c.id, d, true);
+    assert.equal(routineReminders("avond", d, h).length, 0);
   });
 });

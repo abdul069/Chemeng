@@ -306,6 +306,12 @@ export function startManagerScheduler() {
           const key = `${h.id}|${d}|med|${m.id}|${tm}`;
           if (tm === hhmm && !sent.has(key)) { sent.add(key); await pushToUsers(usersFor(h.id, [m.memberId]), { title: `💊 ${m.title}`, body: L(asLang(s.language), { nl: `${tm} — tijd voor je medicatie`, tr: `${tm} — ilaç zamanı`, en: `${tm} — time for your medication` }), tag: `med-${m.id}`, url: "/#today" }); }
         }
+        // routines: wie heeft nog ochtend- of avondtaken open? Melding naar het kind (eigen telefoon) of de ouders.
+        for (const [slot, at] of [["ochtend", s.routine_remind_morning], ["avond", s.routine_remind_evening]] as const) {
+          if (!at || at !== hhmm || sent.has(`${h.id}|${d}|routine|${slot}`)) continue;
+          sent.add(`${h.id}|${d}|routine|${slot}`);
+          for (const r of routineReminders(slot, d, h.id)) await pushToUsers(usersFor(h.id, [r.memberId]), { title: r.title, body: r.body, tag: `routine-${r.memberId}`, url: "/#chores" });
+        }
         if (s.briefing_push !== "1") return;
         for (const kind of ["morning", "evening"] as const) {
           const at = kind === "morning" ? s.briefing_morning : s.briefing_evening;
@@ -327,6 +333,21 @@ export function startManagerScheduler() {
     if (sent.size > 2000) sent.clear();
   };
   setInterval(() => tick().catch((e) => console.warn("[manager]", e)), 60_000).unref();
+}
+/** Per gezinslid de openstaande taken van dit moment van de dag (plus "altijd"), als korte melding in de gezinstaal. */
+export function routineReminders(slot: "ochtend" | "avond", date: string, h = hid()): { memberId: string; name: string; open: { icon: string; title: string }[]; title: string; body: string }[] {
+  const lang = asLang(getSettings(h).language);
+  const done = new Set(S.doneBetween(date, date));
+  const out: { memberId: string; name: string; open: { icon: string; title: string }[]; title: string; body: string }[] = [];
+  for (const m of S.listMembers()) {
+    const open = S.choresOn(date).filter((c) => c.memberId === m.id && (c.moment === slot || c.moment === "altijd") && !done.has(`${date}|${c.id}`));
+    if (!open.length) continue;
+    const n = open.length; const list = open.slice(0, 4).map((c) => `${c.icon} ${c.title}`).join(", ") + (n > 4 ? "…" : "");
+    out.push({ memberId: m.id, name: m.name, open: open.map((c) => ({ icon: c.icon, title: c.title })),
+      title: L(lang, { nl: `${m.name}, ${slot === "ochtend" ? "ochtendroutine" : "avondroutine"} ⭐`, tr: `${m.name}, ${slot === "ochtend" ? "sabah rutini" : "akşam rutini"} ⭐`, en: `${m.name}, ${slot === "ochtend" ? "morning routine" : "evening routine"} ⭐` }),
+      body: L(lang, { nl: `Nog ${n} ${n === 1 ? "taak" : "taken"}: ${list}`, tr: `${n} görev kaldı: ${list}`, en: `${n} ${n === 1 ? "task" : "tasks"} left: ${list}` }) });
+  }
+  return out;
 }
 // usersFor wordt elders gebruikt voor meldingen aan ouders van een kind
 export { usersFor };
