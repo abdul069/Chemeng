@@ -171,7 +171,11 @@ Gezinnen verbinden over huizen heen (grootouders, co-ouder, familie in het buite
 | Rit bestellen | persoon | knoppen bij afspraak met adres | Uber-deeplink, Google Maps-route |
 | UiTinVlaanderen | gezin | widget, briefing op vrijdag | UiTdatabank (publiq), API-sleutel nodig |
 
-**Zichtbaar als "Binnenkort"**: De Lijn, MIVB, gezinsinbox, Recycle!, schoolvakanties, Teams-status, Withings, Telegram-bot, webhooks (Siri, IFTTT, n8n).
+| Schoolvakanties | gezin | agendalaag, briefing de dag ervoor | vaste data Vlaanderen, Wallonië-Brussel, Nederland noord/midden/zuid (2026-2028) |
+| Webhooks (Siri, IFTTT, n8n) | gezin, Gezin+ | boodschappen, briefje of afspraak van buitenaf | geheime sleutel per gezin, `POST /api/hooks/<sleutel>` |
+| Folders en deals (partnerfeed) | gezin | promo's in het prijsgeheugen | JSON-feed van een partner (Promojagers, Tiendeo/ShopFully, een keten) |
+
+**Zichtbaar als "Binnenkort"**: De Lijn, MIVB (vragen een API-sleutel), gezinsinbox (vraagt een mailbox), Recycle!, Teams-status, Withings, Telegram-bot.
 
 ### 5.7 Het huis (commits `1fc087f`, `5b0cc81`)
 
@@ -186,7 +190,7 @@ App "Het huis" met vier tabbladen en een widget op het Bord die alleen verschijn
 
 ### 5.8 Prijsgeheugen (ronde Weekbox, stap 1)
 
-Wat kostte wat, waar en wanneer. Bronnen: kassaticket (foto, het kleine AI-model leest winkel, datum, regels en prijzen), prijsetiket in de winkel (foto), handmatig. Elke prijs wordt omgerekend per kg, liter of stuk. Op de boodschappenlijst en in de voorraad staat bij elk item de laatste prijs en waar het goedkoper is; bij "Prijzen" de beste winkel voor de hele lijst (per winkel totaal en dekking, en de besparing bij splitsen), het prijsverloop per product en de uitgaven per maand per winkel uit de tickets. Een ingelezen ticket vinkt gekochte items af op de boodschappenlijst (ze gaan naar de voorraad) en zet de rest in de voorraad. Tabellen `receipts` en `prices`; routes onder `/prices`. Gedeelde, anonieme prijzen over gezinnen heen (opt-in) komen in een latere ronde.
+Wat kostte wat, waar en wanneer. Bronnen: kassaticket (foto, het kleine AI-model leest winkel, datum, regels en prijzen), prijsetiket in de winkel (foto), handmatig. Elke prijs wordt omgerekend per kg, liter of stuk. Op de boodschappenlijst en in de voorraad staat bij elk item de laatste prijs en waar het goedkoper is; bij "Prijzen" de beste winkel voor de hele lijst (per winkel totaal en dekking, en de besparing bij splitsen), het prijsverloop per product en de uitgaven per maand per winkel uit de tickets. Een folderpagina fotograferen zet de promo's met einddatum in het geheugen (bron "deal"); een lopende promo wint in de vergelijking en staat als 🏷️ op de lijst, een verlopen promo telt niet meer mee. Een ingelezen ticket vinkt gekochte items af op de boodschappenlijst (ze gaan naar de voorraad) en zet de rest in de voorraad. Tabellen `receipts` en `prices`; routes onder `/prices`. Gedeelde, anonieme prijzen over gezinnen heen (opt-in) komen in een latere ronde.
 
 ### 5.9 Weekbox (ronde Weekbox, stap 3)
 
@@ -245,7 +249,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
-| 4. Rondes van koppelingen | gepland | gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), folders en deals (aggregator-feed, deals bewaren), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
+| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed); nog: gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
 | 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |

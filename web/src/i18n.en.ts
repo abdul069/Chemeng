@@ -1364,4 +1364,9 @@ export const EN: Record<string, string> = {
   "nu": "now",
   "{a} ingrediënten op {l}": "{a} ingredients on {l}",
   "✨ Weekbox": "✨ Weekbox",
+  "Folder": "Flyer",
+  "Fotografeer een pagina van de folder: de promo's komen met hun einddatum in het prijsgeheugen en tellen mee op de boodschappenlijst en in de Weekbox.": "Photograph a page of the flyer: the deals go into the price memory with their end date and count on the shopping list and in the Weekbox.",
+  "Geldig tot en met": "Valid until",
+  "promo": "deal",
+  "{n} promo's bewaard": "{n} deals saved",
 };

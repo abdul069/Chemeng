@@ -128,10 +128,10 @@ export interface HealthItem { id: string; memberId: string; kind: HealthKind; ti
 export interface HaState { entity_id: string; state: string; attributes: Record<string, unknown>; last_changed: string }
 
 /** Prijsgeheugen */
-export interface Price { id: string; receiptId: string | null; product: string; label: string; store: string; seenOn: string; price: number; qty: number; unit: "kg" | "l" | "st"; unitPrice: number; source: string }
+export interface Price { id: string; receiptId: string | null; product: string; label: string; store: string; seenOn: string; price: number; qty: number; unit: "kg" | "l" | "st"; unitPrice: number; source: string; validUntil: string | null }
 export interface PriceInfo { text: string; latest: Price | null; cheapest: Price | null; byStore: Price[] }
 export interface StoreTotal { store: string; total: number; known: number; items: { text: string; price: number }[] }
-export interface ScanResult { store: string; date: string; total: number | null; items: { label: string; qty: number; unit: "kg" | "g" | "l" | "ml" | "st"; price: number }[] }
+export interface ScanResult { store: string; date: string; total: number | null; validUntil?: string | null; items: { label: string; qty: number; unit: "kg" | "g" | "l" | "ml" | "st"; price: number }[] }
 
 /** Weekbox */
 export interface WeekboxDay { date: string; busy: boolean; recipeId: string | null; title: string; image: string | null; minutes: number | null; why: string; current: string | null }

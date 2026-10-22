@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { z, ZodError } from "zod";
-import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all, tx } from "./db.js";
+import { PHOTO_DIR, getSettings, setSettings, run, get, newId, hid, ctx, all, tx, withCtx } from "./db.js";
 import {
   EventInput, countdowns, createEvent, deleteEvent, endSeriesBefore, eventsBetween, getEvent, skipOccurrence, updateEvent,
 } from "./events.js";
@@ -46,6 +46,25 @@ const p = (req: Request) => req.params.id as string;
 const inviteUrl = (req: Request, token: string) => `${req.protocol}://${req.get("host")}/uitnodiging/${token}`;
 
 api.get("/health", (_req, res) => { res.json({ ok: true }); });
+
+/** Webhook van buitenaf (Siri, IFTTT, n8n): {list}, {note} of {event}. Geen sessie nodig; de sleutel in het adres is de toegang. */
+api.post("/hooks/:token", (req, res) => {
+  const c = C.findWebhook(String(req.params.token ?? ""));
+  if (!c) return void res.status(404).json({ error: "Onbekende sleutel" });
+  const b = z.object({
+    list: z.union([z.string().min(1).max(200), z.array(z.string().min(1).max(200)).max(50)]).optional(),
+    note: z.string().min(1).max(500).optional(),
+    event: z.object({ title: z.string().min(1).max(200), date: day, startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(), location: z.string().max(200).optional() }).optional(),
+  }).parse(req.body ?? {});
+  withCtx({ userId: "", householdId: c.householdId } as never, () => {
+    const did: string[] = [];
+    if (b.list) { const id = S.ensureShoppingList(); for (const x of Array.isArray(b.list) ? b.list : [b.list]) { S.addItem(id, x); did.push(`list:${x}`); } broadcastTo(c.householdId, ["lists"]); }
+    if (b.note) { S.createNote({ text: b.note, color: "geel", memberId: null, pinned: false }); did.push("note"); broadcastTo(c.householdId, ["notes"]); }
+    if (b.event) { createEvent({ title: b.event.title, date: b.event.date, endDate: null, startTime: b.event.startTime ?? null, endTime: b.event.endTime ?? (b.event.startTime ? `${String((Number(b.event.startTime.slice(0, 2)) + 1) % 24).padStart(2, "0")}${b.event.startTime.slice(2)}` : null), allDay: !b.event.startTime, repeat: "none", repeatUntil: null, exdates: [], members: [], location: b.event.location ?? "", notes: "", countdown: false } as never); did.push("event"); broadcastTo(c.householdId, ["events"]); }
+    C.bumpWebhook(c);
+    res.json({ ok: true, did });
+  });
+});
 
 // eenvoudige rem op aanmaken van accounts per adres
 const regHits = new Map<string, { n: number; until: number }>();
@@ -312,7 +331,7 @@ api.get("/prices/spend", (req, res) => { const q = z.object({ months: z.coerce.n
 api.get("/prices/receipts", (_req, res) => { res.json(P.listReceipts()); });
 api.delete("/prices/receipts/:id", (req, res) => { P.deleteReceipt(p(req)); res.json({ ok: true }); broadcast("prices"); });
 api.post("/prices/scan", memUpload.single("image"), async (req, res) => {
-  const kind = req.body?.kind === "label" ? "label" : "ticket";
+  const kind = req.body?.kind === "label" ? "label" : req.body?.kind === "folder" ? "folder" : "ticket";
   if (!req.file) return void res.status(400).json({ error: "Geen foto" });
   if (!P.scanAvailable()) return void res.status(400).json({ error: "De assistent is niet ingesteld; prijzen lezen van een foto vraagt de Claude-sleutel." });
   try { res.json(await P.scanImage({ data: req.file.buffer.toString("base64"), mediaType: req.file.mimetype as "image/jpeg" }, kind)); }

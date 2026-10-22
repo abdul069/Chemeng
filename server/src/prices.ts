@@ -29,10 +29,11 @@ CREATE TABLE IF NOT EXISTS prices (
 );
 CREATE INDEX IF NOT EXISTS prices_household_product ON prices(household_id, product);
 `);
+try { db.exec("ALTER TABLE prices ADD COLUMN valid_until TEXT"); } catch { /* bestaat al */ }
 
 export const STORE_NAMES = ["Colruyt", "Delhaize", "Carrefour", "Lidl", "Aldi", "Albert Heijn", "Jumbo", "Okay", "Spar", "Kruidvat", "Action", "Markt", "Bakker", "Slager", "Turkse winkel"];
 export type Unit = "kg" | "l" | "st";
-export interface Price { id: string; receiptId: string | null; product: string; label: string; store: string; seenOn: string; price: number; qty: number; unit: Unit; unitPrice: number; source: string }
+export interface Price { id: string; receiptId: string | null; product: string; label: string; store: string; seenOn: string; price: number; qty: number; unit: Unit; unitPrice: number; source: string; /** promo: geldig tot en met */ validUntil: string | null }
 export interface Receipt { id: string; store: string; seenOn: string; total: number | null; items: number; createdAt: string }
 
 // ---------- normaliseren ----------
@@ -58,8 +59,8 @@ export function parseQty(text: string): { qty: number; unit: Unit } {
 export const unitLabel = (u: Unit, lang = asLang(getSettings().language)) => (u === "kg" ? "kg" : u === "l" ? "l" : L(lang, { nl: "st", tr: "ad", en: "pc" }));
 
 // ---------- opslag ----------
-type Row = { id: string; receipt_id: string | null; product: string; label: string; store: string; seen_on: string; price: number; qty: number; unit: Unit; unit_price: number; source: string };
-const shape = (r: Row): Price => ({ id: r.id, receiptId: r.receipt_id, product: r.product, label: r.label, store: r.store, seenOn: r.seen_on, price: r.price, qty: r.qty, unit: r.unit, unitPrice: r.unit_price, source: r.source });
+type Row = { id: string; receipt_id: string | null; product: string; label: string; store: string; seen_on: string; price: number; qty: number; unit: Unit; unit_price: number; source: string; valid_until: string | null };
+const shape = (r: Row): Price => ({ id: r.id, receiptId: r.receipt_id, product: r.product, label: r.label, store: r.store, seenOn: r.seen_on, price: r.price, qty: r.qty, unit: r.unit, unitPrice: r.unit_price, source: r.source, validUntil: r.valid_until ?? null });
 
 export const PriceInput = z.object({
   label: z.string().trim().min(1).max(120),
@@ -71,20 +72,23 @@ export const PriceInput = z.object({
   unit: z.enum(["kg", "l", "st"]).optional(),
   seenOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   source: z.enum(["ticket", "label", "manual", "deal"]).default("manual"),
+  /** promo geldig tot en met (alleen bij source deal) */
+  validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 export function addPrice(i: z.infer<typeof PriceInput>, receiptId: string | null = null, h = hid()): Price {
   const q = i.qty && i.unit ? { qty: i.qty, unit: i.unit } : parseQty(i.qtyText || i.label);
   const unitPrice = q.qty > 0 ? i.price / q.qty : i.price;
   const id = newId();
-  run("INSERT INTO prices(id, household_id, receipt_id, product, label, store, seen_on, price, qty, unit, unit_price, source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-    id, h, receiptId, productKey(i.label) || fold(i.label), i.label, i.store.trim(), i.seenOn ?? today(), i.price, q.qty, q.unit, unitPrice, i.source);
+  run("INSERT INTO prices(id, household_id, receipt_id, product, label, store, seen_on, price, qty, unit, unit_price, source, valid_until) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    id, h, receiptId, productKey(i.label) || fold(i.label), i.label, i.store.trim(), i.seenOn ?? today(), i.price, q.qty, q.unit, unitPrice, i.source, i.source === "deal" ? i.validUntil ?? null : null);
   return shape(get<Row>("SELECT * FROM prices WHERE id=?", id)!);
 }
 export const deletePrice = (id: string, h = hid()) => run("DELETE FROM prices WHERE id=? AND household_id=?", id, h);
 export function listPrices(opts: { product?: string; store?: string; days?: number; limit?: number } = {}, h = hid()): Price[] {
   const since = addDays(today(), -(opts.days ?? 365));
-  const rows = all<Row>(`SELECT * FROM prices WHERE household_id=? AND seen_on>=? ${opts.product ? "AND product=?" : ""} ${opts.store ? "AND store=?" : ""} ORDER BY seen_on DESC, created_at DESC LIMIT ?`,
-    h, since, ...(opts.product ? [opts.product] : []), ...(opts.store ? [opts.store] : []), opts.limit ?? 500);
+  // promo's die voorbij zijn tellen niet meer mee
+  const rows = all<Row>(`SELECT * FROM prices WHERE household_id=? AND seen_on>=? AND (valid_until IS NULL OR valid_until>=?) ${opts.product ? "AND product=?" : ""} ${opts.store ? "AND store=?" : ""} ORDER BY seen_on DESC, created_at DESC LIMIT ?`,
+    h, since, today(), ...(opts.product ? [opts.product] : []), ...(opts.store ? [opts.store] : []), opts.limit ?? 500);
   return rows.map(shape);
 }
 export function listReceipts(h = hid(), limit = 50): Receipt[] {
@@ -144,29 +148,33 @@ export function spend(months = 6, h = hid()) {
 }
 
 // ---------- foto van ticket of etiket lezen ----------
-const ScanItem = z.object({ label: z.string().describe("Productnaam zoals op het ticket, zonder prijs"), qty: z.number().describe("Hoeveelheid; 1 als onbekend"), unit: z.enum(["kg", "g", "l", "ml", "st"]).describe("Eenheid van qty; st = stuks"), price: z.number().describe("Betaalde prijs voor deze regel in euro, na korting") });
-const Scan = z.object({ store: z.string().describe("Winkelnaam, leeg als onbekend"), date: z.string().describe("Datum YYYY-MM-DD, leeg als onbekend"), total: z.number().nullable().describe("Totaalbedrag van het ticket, null bij een etiket"), items: z.array(ScanItem) });
+const ScanItem = z.object({ label: z.string().describe("Productnaam zoals op het ticket of in de folder, zonder prijs"), qty: z.number().describe("Hoeveelheid; 1 als onbekend"), unit: z.enum(["kg", "g", "l", "ml", "st"]).describe("Eenheid van qty; st = stuks"), price: z.number().describe("Betaalde of promoprijs voor deze regel in euro, na korting") });
+const Scan = z.object({ store: z.string().describe("Winkelnaam, leeg als onbekend"), date: z.string().describe("Datum YYYY-MM-DD, leeg als onbekend"), total: z.number().nullable().describe("Totaalbedrag van het ticket, null bij een etiket of folder"), validUntil: z.string().nullable().describe("Folder: geldig tot en met, YYYY-MM-DD; anders null"), items: z.array(ScanItem) });
 export type ScanResult = z.infer<typeof Scan>;
 export const scanAvailable = () => aiReady();
-export async function scanImage(image: ImageInput, kind: "ticket" | "label"): Promise<ScanResult> {
+export async function scanImage(image: ImageInput, kind: "ticket" | "label" | "folder"): Promise<ScanResult> {
   const client = getClient(); if (!client) throw new Error("De assistent is niet ingesteld: vul de Claude API-sleutel in bij Instellingen → Assistent.");
   if (!aiAllowed("import")) throw new Error("Het AI-budget van dit gezin is deze maand op.");
   const system = kind === "ticket"
     ? `Je leest een kassaticket van een supermarkt of winkel voor het prijsgeheugen van een gezin. Vandaag is ${today()}.
 Geef de winkelnaam, de datum en elke productregel met de betaalde prijs (na korting; statiegeld en zakken overslaan). Haal de hoeveelheid uit de productnaam of de regel ("1L", "500G", "2 x 250 g", "0,742 kg x 9,99 €/kg"); bij gewichtsartikelen is qty het gewogen gewicht. Onbekende hoeveelheid: qty 1, unit "st". Houd productnamen leesbaar (bv. "Halfvolle melk 1L" in plaats van "HV MELK"). Verzin niets.`
+    : kind === "folder"
+    ? `Je leest een pagina van een reclamefolder van een supermarkt. Geef de winkel, de periode waarin de promo's gelden (validUntil = laatste dag, YYYY-MM-DD; vandaag is ${today()}) en elke aanbieding als item: productnaam, verpakkingshoeveelheid (qty + unit) en de promoprijs per verpakking in euro (bij "2 + 1 gratis" of "-30 %" de effectieve prijs per stuk als die te berekenen is, anders de prijs die erbij staat). Verzin niets; sla producten zonder prijs over.`
     : `Je leest een prijsetiket in een winkel (schapkaartje). Geef één item: productnaam, de verpakkingshoeveelheid, en de prijs. Staat er een winkelnaam of logo, geef die als store. Datum: ${today()}. Verzin niets.`;
-  const content: Anthropic.ContentBlockParam[] = [{ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } }, { type: "text", text: kind === "ticket" ? "Lees het kassaticket." : "Lees het prijsetiket." }];
+  const content: Anthropic.ContentBlockParam[] = [{ type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } }, { type: "text", text: kind === "ticket" ? "Lees het kassaticket." : kind === "folder" ? "Lees de folderpagina." : "Lees het prijsetiket." }];
   const res = await client.messages.parse({ model: MODELS.light, max_tokens: 6000, output_config: { effort: "medium", format: zodOutputFormat(Scan) }, system, messages: [{ role: "user", content }] });
   recordUsage("import", MODELS.light, res.usage);
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error("Ik kon hier geen prijzen uit lezen.");
   const out = res.parsed_output;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(out.date)) out.date = today();
+  if (out.validUntil && !/^\d{4}-\d{2}-\d{2}$/.test(out.validUntil)) out.validUntil = null;
   return out;
 }
 export const CommitInput = z.object({
   store: z.string().trim().min(1).max(60), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), total: z.number().nullable().optional(),
   items: z.array(z.object({ label: z.string().trim().min(1).max(120), qty: z.number().positive(), unit: z.enum(["kg", "g", "l", "ml", "st"]), price: z.number().min(0) })).min(1).max(200),
-  source: z.enum(["ticket", "label"]).default("ticket"),
+  source: z.enum(["ticket", "label", "folder"]).default("ticket"),
+  validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   /** gekochte dingen ook in de voorraad zetten */ toPantry: z.boolean().default(false),
   /** overeenkomende open items op de boodschappenlijst afvinken */ tickList: z.boolean().default(true),
 });
@@ -176,10 +184,10 @@ export function commit(i: z.infer<typeof CommitInput>, h = hid()) {
   const prices: Price[] = [];
   for (const it of i.items) {
     const [f, u] = toBase[it.unit];
-    prices.push(addPrice({ label: it.label, store: i.store, price: it.price, qty: it.qty * f, unit: u, seenOn: i.date, source: i.source }, receiptId, h));
+    prices.push(addPrice({ label: it.label, store: i.store, price: it.price, qty: it.qty * f, unit: u, seenOn: i.date, source: i.source === "folder" ? "deal" : i.source, validUntil: i.source === "folder" ? i.validUntil ?? null : null }, receiptId, h));
   }
   let ticked = 0, stocked = 0;
-  if (i.tickList || i.toPantry) {
+  if (i.source !== "folder" && (i.tickList || i.toPantry)) {
     const shop = S.shoppingList(); const pantry = i.toPantry ? S.ensurePantryList() : null;
     for (const it of i.items) {
       const key = productKey(it.label);

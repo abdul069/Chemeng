@@ -7,6 +7,8 @@ import { today, addDays } from "./dates.js";
 import * as H from "./home.js";
 import type { Item, Proposal } from "./manager.js";
 import { L, asLang, UA as USER_AGENT, type Lang } from "./i18n.js";
+import { REGIONS, breaksBetween, type Region } from "./schoolyear.js";
+import { addPrice, listPrices, productKey } from "./prices.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS connections (
@@ -62,11 +64,12 @@ const EN_TEXT: Record<string, { name: string; description: string }> = {
   mivb: { name: "MIVB/STIB", description: "Real-time metro, tram and bus in Brussels. Coming in a next round." },
   inbox: { name: "Family inbox", description: "An email address for your family: forward school mail, the doctor or the inspection letter and {brand} turns it into events and chores." },
   recycle: { name: "Recycle! (waste app)", description: "Straight from the Recycle! app. Unofficial connection that may break; prefer your waste collector's iCal address." },
-  school_holidays: { name: "School holidays", description: "Flemish or French-community school holidays as a calendar layer." },
+  school_holidays: { name: "School holidays", description: "Flemish, French-community or Dutch school holidays as a calendar layer, with a nudge the day before they start and end." },
   teams_status: { name: "Teams status", description: "“Dad is in a meeting until 3pm” on the board. Coming in a next round." },
   withings: { name: "Withings", description: "Scale and blood pressure monitor in the diet and health section. Coming in a next round." },
   telegram: { name: "Telegram bot", description: "Send a photo of the school letter or a message to the bot. Coming in a next round." },
-  webhooks: { name: "Webhooks (Siri, IFTTT, n8n)", description: "An address to put something on a list or in the calendar from outside. Coming in a next round." },
+  webhooks: { name: "Webhooks (Siri, IFTTT, n8n)", description: "A secret address through which Siri shortcuts, IFTTT, n8n or a smart speaker add something to the shopping list, the noticeboard or the calendar. POST JSON: {\"list\": \"milk\"}, {\"note\": \"…\"} or {\"event\": {\"title\", \"date\", \"startTime\"}}." },
+  deals_feed: { name: "Flyers and deals (partner feed)", description: "A JSON feed with promotions from a partner (Promojagers, Tiendeo/ShopFully, a chain). Deals enter the price memory and count on the shopping list and in the Weekbox." },
 };
 export interface Field { key: string; label: string; type: "text" | "url" | "secret" | "select" | "multiselect" | "number" | "time" | "textarea"; options?: { value: string; label: string }[]; placeholder?: string; required?: boolean; hint?: string }
 export interface Link { label: string; url: string; icon: string }
@@ -235,11 +238,49 @@ export const CONNECTORS: ConnectorDef[] = [
   { id: "mivb", name: "MIVB", description: "Realtime metro, tram en bus in Brussel. Komt in een volgende ronde.", category: "mobiliteit", icon: "🚇", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "inbox", name: "Gezinsinbox", description: "Een e-mailadres voor je gezin: stuur Smartschool, Gimme, de dokter of de keuringsbrief door en Gezinsbord maakt er afspraken en taken van.", category: "school", icon: "📬", scope: "household", plan: "gezin", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "recycle", name: "Recycle! (afvalapp)", description: "Rechtstreeks uit de Recycle!-app. Onofficiële koppeling die kan breken; gebruik liever het iCal-adres van je intercommunale.", category: "huis", icon: "♻️", scope: "household", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
-  { id: "school_holidays", name: "Schoolvakanties", description: "Vlaamse of Franstalige schoolvakanties als laag in de agenda.", category: "school", icon: "🏫", scope: "household", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
+  {
+    id: "school_holidays", name: "Schoolvakanties", description: "Vlaamse, Franstalige of Nederlandse schoolvakanties als laag in de agenda, met een seintje de dag voor ze beginnen en eindigen.", category: "school", icon: "🏫",
+    scope: "household", plan: "gezin", country: ["BE", "NL"], status: "ready", refreshMinutes: 0, provides: ["calendar", "briefing"],
+    fields: [{ key: "region", label: "Regio", type: "select", required: true, options: REGIONS.map((r) => ({ value: r.id, label: r.nl })) }],
+    calendar: (c, from, to) => breaksBetween(str(c.config.region) as Region, from, to, asLang(getSettings(c.householdId).language)).map((b) => ({ id: `school:${c.id}:${b.from}`, title: `${b.icon} ${b.title}`, date: b.from, endDate: b.to, allDay: true })),
+    briefing: (c, ctx) => {
+      const tomorrow = addDays(ctx.date, 1); const focus = ctx.kind === "evening" ? tomorrow : ctx.date;
+      const out: Item[] = [];
+      for (const b of breaksBetween(str(c.config.region) as Region, focus, focus, ctx.lang)) {
+        if (b.from === focus) out.push({ kind: "note", icon: b.icon, text: L(ctx.lang, { nl: `${ctx.kind === "evening" ? "Morgen" : "Vandaag"} begint de ${b.title.toLowerCase()} (tot ${b.to}).`, tr: `${b.title} ${ctx.kind === "evening" ? "yarın" : "bugün"} başlıyor (${b.to} kadar).`, en: `${b.title} starts ${ctx.kind === "evening" ? "tomorrow" : "today"} (until ${b.to}).` }) });
+        if (b.to === focus) out.push({ kind: "note", icon: "🎒", text: L(ctx.lang, { nl: `Laatste dag van de ${b.title.toLowerCase()}; de school herbegint.`, tr: `${b.title} son gün; okul yeniden başlıyor.`, en: `Last day of the ${b.title.toLowerCase()}; school starts again.` }) });
+      }
+      return out;
+    },
+  },
   { id: "teams_status", name: "Teams-status", description: "“Papa zit in vergadering tot 15u” op het bord. Komt in een volgende ronde.", category: "werk", icon: "💼", scope: "member", plan: "plus", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "withings", name: "Withings", description: "Weegschaal en bloeddrukmeter in het dieet- en gezondheidsdeel. Komt in een volgende ronde.", category: "gezondheid", icon: "⚖️", scope: "member", plan: "plus", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "telegram", name: "Telegram-bot", description: "Stuur een foto van de schoolbrief of een boodschap naar de bot. Komt in een volgende ronde.", category: "automatisering", icon: "✈️", scope: "household", plan: "gezin", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
-  { id: "webhooks", name: "Webhooks (Siri, IFTTT, n8n)", description: "Een adres om van buitenaf iets op de lijst of in de agenda te zetten. Komt in een volgende ronde.", category: "automatisering", icon: "🔗", scope: "household", plan: "plus", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
+  {
+    id: "webhooks", name: "Webhooks (Siri, IFTTT, n8n)", description: "Een geheim adres waarmee Siri-opdrachten, IFTTT, n8n of een slimme speaker iets op de boodschappenlijst, het prikbord of in de agenda zetten. Stuur een POST met JSON: {\"list\": \"melk\"}, {\"note\": \"…\"} of {\"event\": {\"title\", \"date\", \"startTime\"}}.", category: "automatisering", icon: "🔗",
+    scope: "household", plan: "plus", country: [], status: "ready", refreshMinutes: 0, provides: ["widget"],
+    fields: [{ key: "token", label: "Geheime sleutel (leeg = automatisch)", type: "text", placeholder: "wordt ingevuld bij het aanzetten", hint: "Het adres is /api/hooks/<sleutel>. Deel het alleen met je eigen automatiseringen." }],
+    widget: (c, lang) => ({ title: L(lang, { nl: "Webhook", tr: "Webhook", en: "Webhook" }), icon: "🔗", lines: [{ icon: "📬", text: `/api/hooks/${str(c.config.token)}`, sub: L(lang, { nl: `${Number(c.state.count ?? 0)} ontvangen`, tr: `${Number(c.state.count ?? 0)} alındı`, en: `${Number(c.state.count ?? 0)} received` }) }] }),
+  },
+  {
+    id: "deals_feed", name: "Folders en deals (partnerfeed)", description: "Een JSON-feed met promoties van een partner (Promojagers, Tiendeo/ShopFully, een keten). De deals komen in het prijsgeheugen en tellen mee in de boodschappenlijst en de Weekbox.", category: "winkelen", icon: "🏷️",
+    scope: "household", plan: "gezin", country: [], status: "ready", refreshMinutes: 6 * 60, provides: [],
+    fields: [{ key: "url", label: "Feed-adres (JSON)", type: "url", required: true, placeholder: "https://…/deals.json", hint: "Formaat: { store, validUntil, items: [{ label, price, qty, unit }] } of een lijst daarvan." }],
+    sync: async (c) => {
+      const raw = JSON.parse(await fetchText(str(c.config.url))) as unknown;
+      const feeds = (Array.isArray(raw) ? raw : [raw]) as { store?: string; validUntil?: string; items?: { label?: string; price?: number; qty?: number; unit?: string }[] }[];
+      const have = new Set(listPrices({ days: 60, limit: 5000 }, c.householdId).filter((p) => p.source === "deal").map((p) => `${p.store}|${p.product}|${p.validUntil}`));
+      let n = 0;
+      for (const f of feeds) for (const it of f.items ?? []) {
+        if (!f.store || !it.label || typeof it.price !== "number") continue;
+        const key = `${f.store}|${productKey(it.label)}|${f.validUntil ?? null}`; if (have.has(key)) continue; have.add(key);
+        const unit = it.unit === "kg" || it.unit === "l" || it.unit === "st" ? it.unit : it.unit === "g" ? "kg" : it.unit === "ml" ? "l" : undefined;
+        const qty = typeof it.qty === "number" ? (it.unit === "g" || it.unit === "ml" ? it.qty / 1000 : it.qty) : undefined;
+        addPrice({ label: it.label, store: f.store, price: it.price, qty, unit, source: "deal", validUntil: f.validUntil && /^\d{4}-\d{2}-\d{2}$/.test(f.validUntil) ? f.validUntil : null }, null, c.householdId); n++;
+      }
+      return { added: n, at: new Date().toISOString() };
+    },
+  },
 ];
 export const connectorById = (id: string) => CONNECTORS.find((c) => c.id === id);
 
@@ -264,6 +305,7 @@ export function createConnection(i: z.infer<typeof ConnectionInput>, h = hid()) 
   const def = connectorById(i.connector); if (!def) throw new Error("Onbekende koppeling.");
   if (def.status === "soon") throw new Error("Deze koppeling komt in een volgende ronde.");
   for (const f of def.fields) if (f.required && !i.config[f.key]) throw new Error(`Vul "${f.label}" in.`);
+  if (def.id === "webhooks" && !i.config.token) i.config = { ...i.config, token: crypto.randomBytes(18).toString("base64url") };
   const id = newId();
   run("INSERT INTO connections(id, household_id, member_id, connector, config, enabled, on_board) VALUES (?,?,?,?,?,?,?)", id, h, def.scope === "member" ? i.memberId ?? null : null, i.connector, encrypt(i.config), i.enabled ? 1 : 0, i.onBoard ? 1 : 0);
   return id;
@@ -277,6 +319,13 @@ export function updateConnection(id: string, patch: Partial<z.infer<typeof Conne
   return true;
 }
 export const deleteConnection = (id: string, h = hid()) => run("DELETE FROM connections WHERE id=? AND household_id=?", id, h);
+/** Webhook opzoeken op sleutel (over alle gezinnen; alleen voor de publieke route). */
+export function findWebhook(token: string): Conn | null {
+  if (!token || token.length < 12) return null;
+  for (const r of all<Row>("SELECT * FROM connections WHERE connector='webhooks' AND enabled=1")) { const c = shape(r); if (c.config.token === token) return c; }
+  return null;
+}
+export const bumpWebhook = (c: Conn) => run("UPDATE connections SET state=?, last_sync=datetime('now'), status='ok' WHERE id=?", JSON.stringify({ ...c.state, count: Number(c.state.count ?? 0) + 1, last: new Date().toISOString() }), c.id);
 
 /** Eén koppeling verversen; fouten komen netjes in de status. */
 export async function syncConnection(c: Conn): Promise<Conn> {

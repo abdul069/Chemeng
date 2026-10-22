@@ -24,10 +24,11 @@ export function PriceTag({ info }: { info?: PriceInfo }) {
   if (!info?.latest) return null;
   const l = info.latest; const c = info.cheapest;
   const cheaper = c && c.store !== l.store && c.unitPrice < l.unitPrice * 0.97;
+  const deal = c?.validUntil ? c : l.validUntil ? l : null;
   return (
     <small className="pricetag">
-      <span>{euro(l.price)} · {perUnit(l)} · {l.store}</span>
-      {cheaper && <span className="cheaper">↓ {c.store} {perUnit(c)}</span>}
+      {l.validUntil ? <span className="deal">🏷️ {t("promo")} {euro(l.price)} · {l.store} · {t("tot {d}", { d: shortDate(l.validUntil) })}</span> : <span>{euro(l.price)} · {perUnit(l)} · {l.store}</span>}
+      {cheaper && <span className={c.validUntil ? "deal" : "cheaper"}>↓ {c.validUntil ? "🏷️ " : ""}{c.store} {perUnit(c)}{c.validUntil && deal === c ? ` · ${t("tot {d}", { d: shortDate(c.validUntil) })}` : ""}</span>}
     </small>
   );
 }
@@ -35,7 +36,7 @@ export function PriceTag({ info }: { info?: PriceInfo }) {
 function readFile(f: File): Promise<string> { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); }); }
 
 /** Kassaticket of prijsetiket fotograferen → lezen → nakijken → inboeken. */
-export function ReceiptScan({ kind, onClose }: { kind: "ticket" | "label"; onClose: () => void }) {
+export function ReceiptScan({ kind, onClose }: { kind: "ticket" | "label" | "folder"; onClose: () => void }) {
   const { data, toast } = useData();
   const act = useAction();
   const [stores] = useRemote<string[]>("/prices/stores", ["prices"], []);
@@ -65,14 +66,14 @@ export function ReceiptScan({ kind, onClose }: { kind: "ticket" | "label"; onClo
     const items = draft.items.filter((x) => x.label.trim() && Number(x.qty) > 0);
     if (!draft.store.trim()) { setErr(t("Vul de winkel in.")); return; }
     if (!items.length) { setErr(t("Geen regels om te bewaren.")); return; }
-    const r = await act(() => api.post<{ prices: number; ticked: number; stocked: number }>("/prices/commit", { store: draft.store.trim(), date: draft.date || todayIso(), total: draft.total, items: items.map((x) => ({ ...x, qty: Number(x.qty), price: Number(x.price) })), source: kind, toPantry, tickList }));
-    if (r) { toast(t("{n} prijzen bewaard · {a} afgevinkt · {s} in voorraad", { n: r.prices, a: r.ticked, s: r.stocked })); onClose(); }
+    const r = await act(() => api.post<{ prices: number; ticked: number; stocked: number }>("/prices/commit", { store: draft.store.trim(), date: draft.date || todayIso(), total: draft.total, validUntil: kind === "folder" ? draft.validUntil || null : null, items: items.map((x) => ({ ...x, qty: Number(x.qty), price: Number(x.price) })), source: kind, toPantry, tickList }));
+    if (r) { toast(kind === "folder" ? t("{n} promo's bewaard", { n: r.prices }) : t("{n} prijzen bewaard · {a} afgevinkt · {s} in voorraad", { n: r.prices, a: r.ticked, s: r.stocked })); onClose(); }
   };
   return (
-    <Modal title={kind === "ticket" ? `🧾 ${t("Kassaticket")}` : `🏷️ ${t("Prijsetiket")}`} onClose={onClose} wide>
+    <Modal title={kind === "ticket" ? `🧾 ${t("Kassaticket")}` : kind === "folder" ? `📰 ${t("Folder")}` : `🏷️ ${t("Prijsetiket")}`} onClose={onClose} wide>
       {!draft && (
         <>
-          <p className="hint">{kind === "ticket" ? t("Fotografeer het kassaticket: elke regel wordt een prijs in het geheugen, gekochte boodschappen worden afgevinkt en komen in de voorraad.") : t("Fotografeer het schapkaartje in de winkel; de prijs per kg, liter of stuk wordt bewaard om te vergelijken.")}</p>
+          <p className="hint">{kind === "ticket" ? t("Fotografeer het kassaticket: elke regel wordt een prijs in het geheugen, gekochte boodschappen worden afgevinkt en komen in de voorraad.") : kind === "folder" ? t("Fotografeer een pagina van de folder: de promo's komen met hun einddatum in het prijsgeheugen en tellen mee op de boodschappenlijst en in de Weekbox.") : t("Fotografeer het schapkaartje in de winkel; de prijs per kg, liter of stuk wordt bewaard om te vergelijken.")}</p>
           {!data?.assistant.available && <p className="error">{t("Prijzen lezen van een foto vraagt de Claude-sleutel (Instellingen → Assistent). Handmatig invoeren kan altijd.")}</p>}
           <div className="actions" style={{ justifyContent: "flex-start" }}>
             <button className="btn" disabled={busy || !data?.assistant.available} onClick={() => camera.current?.click()}>📷 {t("Foto nemen")}</button>
@@ -90,7 +91,7 @@ export function ReceiptScan({ kind, onClose }: { kind: "ticket" | "label"; onClo
         <>
           <div className="grid2">
             <label className="field"><span>{t("Winkel")}</span><input list="gb-stores" value={draft.store} onChange={(e) => setDraft({ ...draft, store: e.target.value })} placeholder="Colruyt" /><datalist id="gb-stores">{stores.map((s) => <option key={s} value={s} />)}</datalist></label>
-            <label className="field"><span>{t("Datum")}</span><input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} /></label>
+            <label className="field"><span>{kind === "folder" ? t("Geldig tot en met") : t("Datum")}</span><input type="date" value={kind === "folder" ? draft.validUntil ?? "" : draft.date} onChange={(e) => setDraft(kind === "folder" ? { ...draft, validUntil: e.target.value } : { ...draft, date: e.target.value })} /></label>
           </div>
           <div className="scan-rows">
             <div className="scan-row head"><span>{t("Product")}</span><span>{t("Aantal")}</span><span>{t("Eenheid")}</span><span>{t("Prijs")}</span><span /></div>
@@ -169,12 +170,13 @@ export function PricesPanel({ list, onClose }: { list: List | undefined; onClose
 
 /** Knoppenrij voor de lijstkop: ticket, etiket, prijzen. */
 export function PriceButtons({ list }: { list: List | undefined }) {
-  const [scan, setScan] = useState<"ticket" | "label" | null>(null);
+  const [scan, setScan] = useState<"ticket" | "label" | "folder" | null>(null);
   const [panel, setPanel] = useState(false);
   return (
     <>
       <button className="btn small ghost" onClick={() => setScan("ticket")}>🧾 {t("Kassaticket")}</button>
       <button className="btn small ghost" onClick={() => setScan("label")}>🏷️ {t("Etiket")}</button>
+      <button className="btn small ghost" onClick={() => setScan("folder")}>📰 {t("Folder")}</button>
       <button className="btn small ghost" onClick={() => setPanel(true)}>💶 {t("Prijzen")}</button>
       {scan && <ReceiptScan kind={scan} onClose={() => setScan(null)} />}
       {panel && <PricesPanel list={list} onClose={() => setPanel(false)} />}

@@ -1371,4 +1371,9 @@ export const TR: Record<string, string> = {
   "nu": "şimdi",
   "{a} ingrediënten op {l}": "{a} malzeme {l} listesinde",
   "✨ Weekbox": "✨ Haftalık kutu",
+  "Folder": "Broşür",
+  "Fotografeer een pagina van de folder: de promo's komen met hun einddatum in het prijsgeheugen en tellen mee op de boodschappenlijst en in de Weekbox.": "Broşürün bir sayfasını çek: promosyonlar bitiş tarihleriyle fiyat hafızasına girer; alışveriş listesinde ve Haftalık kutuda sayılır.",
+  "Geldig tot en met": "Son geçerlilik tarihi",
+  "promo": "promosyon",
+  "{n} promo's bewaard": "{n} promosyon kaydedildi",
 };
