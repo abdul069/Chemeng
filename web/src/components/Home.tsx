@@ -295,7 +295,7 @@ function SmartTab() {
   return (
     <div className="home-tab">
       <div className="section-title"><h2>{t("Slim huis")}</h2>{admin && <button className="btn small ghost" onClick={() => setSetup(true)}>⚙️ {configured ? t("Instellen") : t("Koppelen met Home Assistant")}</button>}</div>
-      {!configured && <div className="empty-card"><p className="empty">{t("{brand} stuurt je huis via Home Assistant: dat praat met Philips Hue, IKEA, Shelly, Tado, Nest, Sonos, Somfy en honderden andere merken. Draai Home Assistant op een Raspberry Pi of mini-pc, maak een token aan, en kies hier wat je op het bord wilt.")}</p>{admin && <button className="btn" onClick={() => setSetup(true)}>{t("Koppelen met Home Assistant")}</button>}</div>}
+      {!configured && <div className="empty-card"><p className="empty">{t("{brand} stuurt je huis via Home Assistant: dat praat met Philips Hue, IKEA, Shelly, Tado, Nest, Sonos, Somfy en honderden andere merken. Draai Home Assistant op een Raspberry Pi of mini-pc, maak een token aan, en kies hier wat je op het bord wilt. Lampen en stekkers van de Action, Lidl of een ander merk dat met de Smart Life-app werkt? Koppel die zonder Home Assistant via Instellingen → Koppelingen → Tuya / Smart Life.")}</p>{admin && <button className="btn" onClick={() => setSetup(true)}>{t("Koppelen met Home Assistant")}</button>}</div>}
       {configured && (
         <>
           <div className="picks">{MOMENTS.filter((m) => scenes[m.id]).map((m) => <button type="button" key={m.id} className="pick" onClick={() => act(() => api.post("/ha/moment", { moment: m.id }), t("{m} gestart", { m: t(m.label) }))}>{m.icon} {t(m.label)}</button>)}</div>

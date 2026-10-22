@@ -40,6 +40,7 @@ import * as R from "./routines.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
+import * as Tuya from "./tuya.js";
 import { buildBriefing, applyProposal, ProposalInput, listMemory, remember, forget, MemoryInput } from "./manager.js";
 import { saveApiKey, saveWorkspace, checkAi, clearApiKey, keySource, operatorHousehold, workspaceId } from "./ai.js";
 
@@ -262,7 +263,7 @@ api.use(requireHousehold);
 
 function publicSettings() {
   const { settings_pin, ha_token, ...rest } = getSettings();
-  return { ...rest, has_pin: settings_pin.length > 0, ha_configured: !!(rest.ha_url && ha_token) };
+  return { ...rest, has_pin: settings_pin.length > 0, ha_configured: !!(rest.ha_url && ha_token) || !!Tuya.connectionFor(hid()) };
 }
 
 /** Aftellen: ook de eerstvolgende feestdagen (volgens de instelling), tot 6 in totaal. */
@@ -464,12 +465,23 @@ api.delete("/care/:id", (req, res) => { H.deleteHealth(p(req)); res.json({ ok: t
 
 api.get("/ha/states", async (req, res) => {
   const q = z.object({ all: z.string().optional() }).parse(req.query);
-  try { res.json(await HA.haStates(q.all !== "1")); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Home Assistant niet bereikbaar" }); }
+  // Home Assistant en Tuya naast elkaar; als één van de twee ontbreekt of hapert, tonen we de andere
+  const h = hid(); const hasHa = !!HA.haConfig(h); const hasTuya = !!Tuya.connectionFor(h);
+  if (!hasHa && !hasTuya) return void res.status(502).json({ error: "Home Assistant of Tuya is nog niet gekoppeld." });
+  const [ha, tuya] = await Promise.allSettled([hasHa ? HA.haStates(q.all !== "1") : Promise.resolve([]), hasTuya ? Tuya.statesFor(h) : Promise.resolve([])]);
+  const states = [...(ha.status === "fulfilled" ? ha.value : []), ...(tuya.status === "fulfilled" ? tuya.value : [])];
+  const errors = [ha, tuya].filter((r): r is PromiseRejectedResult => r.status === "rejected").map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
+  if (!states.length && errors.length) return void res.status(502).json({ error: errors.join(" · ") });
+  res.json(states);
 });
 api.post("/ha/test", async (_req, res) => { try { const r = await HA.haTest(); res.json({ ok: true, message: r.message }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Niet bereikbaar" }); } });
 api.post("/ha/call", async (req, res) => {
   const b = z.object({ domain: z.string().regex(/^[a-z_]+$/), service: z.string().regex(/^[a-z_]+$/), data: z.record(z.string(), z.unknown()).default({}) }).parse(req.body);
-  try { await HA.haCall(b.domain, b.service, b.data); res.json({ ok: true }); } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Mislukt" }); }
+  try {
+    const ent = typeof b.data.entity_id === "string" ? b.data.entity_id : "";
+    if (ent && Tuya.isTuyaEntity(ent)) { await Tuya.callFor(hid(), ent, b.service, b.data); } else await HA.haCall(b.domain, b.service, b.data);
+    res.json({ ok: true });
+  } catch (e) { res.status(502).json({ error: e instanceof Error ? e.message : "Mislukt" }); }
 });
 api.post("/ha/moment", async (req, res) => { const b = z.object({ moment: z.enum(["sleep", "morning", "ezan", "away", "home"]) }).parse(req.body); res.json({ ok: await HA.runMoment(b.moment) }); });
 

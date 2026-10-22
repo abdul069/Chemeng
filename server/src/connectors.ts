@@ -11,6 +11,7 @@ import { REGIONS, breaksBetween, type Region } from "./schoolyear.js";
 import { addPrice, listPrices, productKey } from "./prices.js";
 import * as Inbox from "./inbox.js";
 import * as TG from "./telegram.js";
+import * as Tuya from "./tuya.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS connections (
@@ -69,6 +70,7 @@ const EN_TEXT: Record<string, { name: string; description: string }> = {
   school_holidays: { name: "School holidays", description: "Flemish, French-community or Dutch school holidays as a calendar layer, with a nudge the day before they start and end." },
   teams_status: { name: "Teams status", description: "“Dad is in a meeting until 3pm” on the board. Coming in a next round." },
   withings: { name: "Withings", description: "Scale and blood pressure monitor in the diet and health section. Coming in a next round." },
+  tuya: { name: "Tuya / Smart Life", description: "Lights, plugs, thermostats and sensors from Action (LSC), Lidl (Silvercrest), Nedis, Calex and many other brands that use the Smart Life app. They show up under The house → Smart home next to Home Assistant and take part in scenes and the manager's suggestions." },
   telegram: { name: "Telegram bot", description: "Your family's own bot: send a photo of the school letter or the receipt, or type \"milk, bread, nappies\". Everything lands in the family inbox and the bot confirms." },
   webhooks: { name: "Webhooks (Siri, IFTTT, n8n)", description: "A secret address through which Siri shortcuts, IFTTT, n8n or a smart speaker add something to the shopping list, the noticeboard or the calendar. POST JSON: {\"list\": \"milk\"}, {\"note\": \"…\"} or {\"event\": {\"title\", \"date\", \"startTime\"}}." },
   deals_feed: { name: "Flyers and deals (partner feed)", description: "A JSON feed with promotions from a partner (Promojagers, Tiendeo/ShopFully, a chain). Deals enter the price memory and count on the shopping list and in the Weekbox." },
@@ -322,6 +324,21 @@ export const CONNECTORS: ConnectorDef[] = [
     },
     briefing: (c, ctx) => { const n = Inbox.newCount(c.householdId); return n ? [{ kind: "note", icon: "📬", text: L(ctx.lang, { nl: `${n} ${n === 1 ? "nieuw bericht" : "nieuwe berichten"} in de gezinsinbox om na te kijken.`, tr: `Aile gelen kutusunda incelenecek ${n} yeni mesaj.`, en: `${n} new ${n === 1 ? "message" : "messages"} in the family inbox to review.` }) }] : []; },
     widget: (c, lang) => { const n = Inbox.newCount(c.householdId); const addr = str(c.state.address); return n || addr ? { title: L(lang, { nl: "Gezinsinbox", tr: "Aile gelen kutusu", en: "Family inbox" }), icon: "📬", lines: [{ icon: n ? "🔔" : "📭", text: n ? L(lang, { nl: `${n} na te kijken`, tr: `${n} incelenecek`, en: `${n} to review` }) : L(lang, { nl: "Niets nieuws", tr: "Yeni bir şey yok", en: "Nothing new" }), sub: addr }] } : null; },
+  },
+  {
+    id: "tuya", name: "Tuya / Smart Life", description: "De lampen, stekkers, thermostaten en sensoren van Action (LSC), Lidl (Silvercrest), Nedis, Calex en veel andere merken die met de Smart Life-app werken. Ze verschijnen bij Het huis → Slim huis, naast Home Assistant, en doen mee met de scènes en voorstellen van de manager.", category: "huis", icon: "💡",
+    scope: "household", plan: "plus", country: [], status: "ready", refreshMinutes: 10, provides: ["widget"],
+    fields: [
+      { key: "accessId", label: "Access ID (Client ID)", type: "text", required: true, placeholder: "a1b2c3…", hint: "Maak gratis een account op iot.tuya.com → Cloud → Create Cloud Project (regio Central Europe, Smart Home). Koppel je Smart Life-account onder Devices → Link App Account door de QR-code met Smart Life te scannen. Voeg bij Service API 'IoT Core' en 'Authorization' toe." },
+      { key: "accessSecret", label: "Access Secret", type: "secret", required: true },
+      { key: "region", label: "Regio van het project", type: "select", options: [{ value: "eu", label: "Central Europe" }, { value: "eu-w", label: "Western Europe" }, { value: "us", label: "Western America" }, { value: "us-e", label: "Eastern America" }, { value: "in", label: "India" }, { value: "cn", label: "China" }] },
+    ],
+    sync: async (c) => {
+      const client = Tuya.clientFor(c); const devices = await client.devices(); Tuya.invalidate(c.householdId);
+      const states = Tuya.toStates(devices);
+      return { ...c.state, devices: devices.length, online: devices.filter((d) => d.online).length, lightsOn: states.filter((s) => s.entity_id.startsWith("light.") && s.state === "on").length, at: new Date().toISOString() };
+    },
+    widget: (c, lang) => { const n = Number(c.state.devices ?? 0); if (!n) return null; const on = Number(c.state.lightsOn ?? 0); return { title: L(lang, { nl: "Smart Life", tr: "Smart Life", en: "Smart Life" }), icon: "💡", lines: [{ icon: on ? "💡" : "🌑", text: on ? L(lang, { nl: `${on} ${on === 1 ? "lamp" : "lampen"} aan`, tr: `${on} lamba açık`, en: `${on} ${on === 1 ? "light" : "lights"} on` }) : L(lang, { nl: "Alle lampen uit", tr: "Tüm lambalar kapalı", en: "All lights off" }), sub: L(lang, { nl: `${Number(c.state.online ?? 0)} van ${n} apparaten online`, tr: `${n} cihazdan ${Number(c.state.online ?? 0)} çevrimiçi`, en: `${Number(c.state.online ?? 0)} of ${n} devices online` }) }] }; },
   },
   { id: "recycle", name: "Recycle! (afvalapp)", description: "Rechtstreeks uit de Recycle!-app. Onofficiële koppeling die kan breken; gebruik liever het iCal-adres van je intercommunale.", category: "huis", icon: "♻️", scope: "household", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   {
