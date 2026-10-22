@@ -36,6 +36,7 @@ import * as C from "./connectors.js";
 import * as P from "./prices.js";
 import * as W from "./weekbox.js";
 import * as Inbox from "./inbox.js";
+import * as R from "./routines.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
@@ -638,6 +639,9 @@ api.post("/events/quick", async (req, res) => {
 });
 
 // ---------- taken & beloningen ----------
+/** Routinepakketten: catalogus in de taal van het gezin, en toepassen per gezinslid. */
+api.get("/chores/routines", (_req, res) => { res.json(R.catalog(asLang(getSettings().language))); });
+api.post("/chores/routines", (req, res) => { const b = z.object({ memberId: z.string(), keys: z.array(z.string()).min(1).max(50) }).parse(req.body); res.json(R.apply(b.memberId, b.keys, asLang(getSettings().language))); broadcast("chores"); });
 api.post("/chores", (req, res) => { res.json(S.createChore(S.ChoreInput.parse(req.body))); broadcast("chores"); });
 api.put("/chores/:id", (req, res) => { S.updateChore(p(req), S.ChoreInput.parse(req.body)); res.json({ ok: true }); broadcast("chores"); });
 api.delete("/chores/:id", (req, res) => { S.deleteChore(p(req)); res.json({ ok: true }); broadcast("chores", "rewards"); });

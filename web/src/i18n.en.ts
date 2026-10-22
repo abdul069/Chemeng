@@ -1437,4 +1437,13 @@ export const EN: Record<string, string> = {
   "🇫🇷 Franse feestdagen": "🇫🇷 French public holidays",
   "🇹🇷 Turkse nationale feestdagen": "🇹🇷 Turkish national holidays",
   "🇲🇦 Marokkaanse nationale feestdagen": "🇲🇦 Moroccan national holidays",
+  "Routine": "Routine",
+  "Kant-en-klare dagelijkse routine kiezen": "Pick a ready-made daily routine",
+  "Routine voor {n}": "Routine for {n}",
+  "🧒 Kleuter (3-6)": "🧒 Preschool (3-6)",
+  "🎒 Lagere school (6-12)": "🎒 Primary school (6-12)",
+  "🎧 Tiener (12+)": "🎧 Teen (12+)",
+  "Een voorstel per leeftijd; vink aan wat bij jullie past. Tanden poetsen, bed maken, kamer opruimen en huiswerk komen als dagelijkse taken met sterren in de ochtend-, middag- of avondroutine.": "A suggestion per age; tick what fits your family. Brushing teeth, making the bed, tidying the room and homework become daily tasks with stars in the morning, afternoon or evening routine.",
+  "staat er al": "already there",
+  "schooldagen": "school days",
 };

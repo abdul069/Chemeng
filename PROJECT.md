@@ -203,7 +203,11 @@ Wat kostte wat, waar en wanneer. Bronnen: kassaticket (foto, het kleine AI-model
 
 Maaltijden → "✨ Weekbox": kies de avonden (standaard vanaf vandaag), de manager stelt per avond een gerecht voor: snel (≤ 35 min) op avonden met een afspraak tussen 16u30 en 19u30, met wat binnen vier dagen vervalt in de voorraad, zonder wat iemand vermijdt, niet wat de voorbije twee weken op tafel stond, elk recept één keer, lievelingen licht bevoordeeld; geen ontbijt, dessert, drank of saus als avondeten. "Andere" geeft een ander voorstel, ✕ slaat een avond over, "Plannen" zet alles in het weekmenu. Daarna het mandje: alle ingrediënten gebundeld (twee recepten met ui = één regel), geschaald van de porties van het recept naar het aantal gezinsleden, wat in de voorraad staat grijs, per item de goedkoopste bekende prijs en winkel, een schatting van het totaal, "Zoek bij …" en "Op de boodschappenlijst" zonder dubbels. De zondagavondbriefing wijst op een lege week. Server `weekbox.ts`, routes `/meals/weekbox/*`.
 
-### 5.10 Kalenders en tradities (opt-in, aanwezig)
+### 5.10 Routinepakketten (Taken)
+
+Per gezinslid een knop "Routine": kant-en-klare dagelijkse taken (aankleden, tanden poetsen ochtend en avond, bed opmaken, boekentas, huiswerk op schooldagen, 10 minuten lezen, kamer opruimen, pyjama, schermen uit, tafel, vaatwasser, huisdier, planten, vuilnis, eigen was) in vier groepen, met een voorstel per leeftijd (kleuter, lagere school, tiener) dat uit de verjaardag geraden wordt. `server/src/routines.ts`, routes `GET/POST /chores/routines`; titels in NL/TR/EN; wat al bestaat wordt overgeslagen. Afvinken, sterren, reeksen en het feestje als alles af is bestonden al in Taken.
+
+### 5.11 Kalenders en tradities (opt-in, aanwezig)
 
 Pakketten bij Instellingen → Feestdagen, vrij te combineren: 🇧🇪 Belgische feestdagen, 🇳🇱 Nederlandse feestdagen (Koningsdag verschuift naar zaterdag als 27 april een zondag is), 🎁 Sinterklaas, advent en Kerst (adventsaftelling op het Bord), 🌙 Ramadan, Suiker- en Offerfeest (tijdens de ramadan een widget met dag x van 30, iftar met aftelling, sahur en de datum van het Suikerfeest). Alles komt in de agenda als alleen-lezen laag en in het aftellen, in de taal van het gezin. Route `/traditions/today`. **Bayram-modus**: een week vóór en tijdens Suiker- en Offerfeest een widget op het Bord met aftelling of dag x, hoeveel familiebezoeken in de agenda staan (Plannen), feestboodschappen met één tik op de lijst (`POST /traditions/bayram-list`, NL/TR/EN) en een sprong naar het weekmenu.
 
@@ -283,7 +287,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 ```bash
 # server
 cd server && npm install
-rm -rf /tmp/gezinsbord-test && npm test          # 47 tests
+rm -rf /tmp/gezinsbord-test && npm test          # 48 tests
 npx tsc --noEmit -p .                            # typecheck
 DATA_DIR=/tmp/gb PORT=8100 LIBRARY_AUTOCRAWL=0 npx tsx src/index.ts
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
 import type { Chore, Member } from "../types";
@@ -21,6 +21,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
   const [done, reload] = useRemote<string[]>(`/chores/done?from=${date}&to=${date}`, ["chores"], []);
   const [edit, setEdit] = useState<{ chore?: Chore; memberId: string } | null>(null);
   const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [routineFor, setRoutineFor] = useState<Member | null>(null);
   const [profile, setProfile] = useState<Member | null>(null);
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const phone = useIsPhone();
@@ -102,6 +103,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                 <footer className="rfoot">
                   <span>⭐ {t("{n} sterren vandaag verdiend", { n: earned })}</span>
                   <span className="muted">{n}/{today.length}</span>
+                  <button className="btn ghost small" onClick={() => setRoutineFor(m)} title={t("Kant-en-klare dagelijkse routine kiezen")}>📋 {t("Routine")}</button>
                   <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus />{" "}{t("Taak")}</button>
                 </footer>
                 {all.length > today.length && <p className="hint">{t("{n} andere taak/taken op andere dagen.", { n: all.length - today.length })}</p>}
@@ -116,6 +118,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
       {celebrate !== null && <Celebration name={celebrate} onDone={() => setCelebrate(null)} />}
       {edit && <ChoreEditor chore={edit.chore} memberId={edit.memberId} onClose={() => setEdit(null)} />}
       {rewardsOpen && <Rewards onClose={() => setRewardsOpen(false)} />}
+      {routineFor && <RoutinePicker member={routineFor} onClose={() => setRoutineFor(null)} />}
     </>
   );
 }
@@ -193,4 +196,55 @@ function Rewards({ onClose }: { onClose: () => void }) {
       </div>
     </Modal>
   );
+}
+
+interface RoutineCatalog { items: { key: string; icon: string; title: string; moment: string; days: number[]; points: number; group: string }[]; groups: { id: string; label: string }[]; ageSets: Record<string, string[]> }
+const AGE_LABEL: Record<string, string> = { kleuter: "🧒 Kleuter (3-6)", lagere: "🎒 Lagere school (6-12)", tiener: "🎧 Tiener (12+)" };
+/** Kant-en-klare routine per kind: leeftijdsvoorstel kiezen, taken aan- of afvinken, één tik en ze staan in de dagplanning. */
+function RoutinePicker({ member, onClose }: { member: Member; onClose: () => void }) {
+  const { data } = useData();
+  const act = useAction();
+  const [cat, setCat] = useState<RoutineCatalog | null>(null);
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [age, setAge] = useState<string>("");
+  useEffect(() => { api.get<RoutineCatalog>("/chores/routines").then((c) => { setCat(c); const guess = ageFor(member.birthday); setAge(guess); setSel(new Set(c.ageSets[guess] ?? [])); }).catch(() => {}); }, [member]);
+  const have = new Set((data?.chores ?? []).filter((c) => c.memberId === member.id).map((c) => `${c.title.toLowerCase()}|${c.moment}`));
+  const toggle = (k: string) => { const n = new Set(sel); if (n.has(k)) n.delete(k); else n.add(k); setSel(n); };
+  const save = async () => {
+    const r = await act(() => api.post<{ added: string[]; skipped: string[] }>("/chores/routines", { memberId: member.id, keys: [...sel] }));
+    if (r) { onClose(); }
+  };
+  const dayLabel = (d: number[]) => d.length === 7 ? t("elke dag") : d.length === 5 && !d.includes(0) && !d.includes(6) ? t("schooldagen") : d.map((x) => DSHORT[x]).join(" ");
+  return (
+    <Modal title={`📋 ${t("Routine voor {n}", { n: member.name })}`} onClose={onClose}>
+      {!cat ? <p className="hint">…</p> : (
+        <>
+          <div className="picks">{Object.keys(cat.ageSets).map((k) => <button type="button" key={k} className="pick" aria-pressed={age === k} onClick={() => { setAge(k); setSel(new Set(cat.ageSets[k])); }}>{t(AGE_LABEL[k] ?? k)}</button>)}</div>
+          <p className="hint">{t("Een voorstel per leeftijd; vink aan wat bij jullie past. Tanden poetsen, bed maken, kamer opruimen en huiswerk komen als dagelijkse taken met sterren in de ochtend-, middag- of avondroutine.")}</p>
+          {cat.groups.map((g) => (
+            <div className="field" key={g.id}><span>{g.label}</span>
+              <div className="rtn-list">
+                {cat.items.filter((i) => i.group === g.id).map((i) => { const exists = have.has(`${i.title.toLowerCase()}|${i.moment}`); return (
+                  <label key={i.key} className={`rtn-item${exists ? " has" : ""}`}>
+                    <input type="checkbox" checked={exists || sel.has(i.key)} disabled={exists} onChange={() => toggle(i.key)} />
+                    <span className="rtn-ic" aria-hidden>{i.icon}</span>
+                    <span className="rtn-txt"><b>{i.title}</b><small className="muted">{exists ? t("staat er al") : `${t(i.moment)} · ${dayLabel(i.days)} · ${i.points}⭐`}</small></span>
+                  </label>
+                ); })}
+              </div>
+            </div>
+          ))}
+          <div className="actions">
+            <button className="btn ghost" onClick={onClose}>{t("Annuleren")}</button>
+            <button className="btn" disabled={![...sel].some((k) => { const i = cat.items.find((x) => x.key === k); return i && !have.has(`${i.title.toLowerCase()}|${i.moment}`); })} onClick={save}>{t("Toevoegen")}</button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+function ageFor(birthday: string | null | undefined): string {
+  if (!birthday) return "lagere";
+  const y = (Date.now() - Date.parse(birthday)) / (365.25 * 864e5);
+  return y < 6 ? "kleuter" : y < 12 ? "lagere" : "tiener";
 }
