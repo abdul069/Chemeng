@@ -202,6 +202,11 @@ export async function buildBriefing(kind: BriefingKind, date: string, memberId: 
       if (open.length && kind === "evening") items.push({ kind: "home", icon: "🔓", text: `${L(lang, { nl: "Niet op slot", tr: "Kilitli değil", en: "Not locked" })}: ${open.map((x) => x.attributes.friendly_name ?? x.entity_id).join(", ")}` });
     } catch { /* HA niet bereikbaar */ }
   }
+  // weekbox: zondagavond (of zaterdag) en de komende week is nog niet gepland
+  if ((!me || me.role === "ouder") && kind === "evening" && weekday(date) === 0) {
+    const planned = S.mealsBetween(addDays(date, 1), addDays(date, 7)).filter((m) => m.slot === "diner" && m.title).length;
+    if (planned < 3) items.push({ kind: "meal", icon: "✨", text: L(lang, { nl: `De komende week is nog ${planned ? "bijna " : ""}niet gepland: open Maaltijden → Weekbox en ik stel het avondeten voor.`, tr: `Gelecek hafta henüz planlanmadı: Yemekler → Haftalık kutu'yu aç, akşam yemeklerini önereyim.`, en: `The coming week is ${planned ? "mostly " : ""}unplanned: open Meals → Weekbox and I will suggest the dinners.` }) });
+  }
   // koppelingen: elk hoogstens twee regels en één voorstel
   try { const { connectorBriefing } = await import("./connectors.js"); const cb = connectorBriefing({ kind, date, memberId: me?.id ?? null, lang }); items.push(...cb.items); proposals.push(...cb.proposals); } catch { /* */ }
   // conflicten

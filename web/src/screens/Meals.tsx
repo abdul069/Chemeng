@@ -9,6 +9,7 @@ import { LibraryBrowser } from "../components/LibraryBrowser";
 import { useNavParam } from "../nav";
 import { CATS, catName } from "../categories";
 import { PhotoPicker } from "../components/PhotoPicker";
+import { WeekboxWizard } from "../components/Weekbox";
 import { DSHORT, MSHORT, addDays, startOfWeek, todayIso, weekday } from "../dates";
 import { t as tr } from "../i18n";
 
@@ -46,6 +47,7 @@ function WeekMenu() {
   const t = todayIso();
   const phone = useIsPhone();
   const [dayPick, setDayPick] = useState<string | null>(null);
+  const [weekbox, setWeekbox] = useState(false);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const shownDay = weekDays.includes(dayPick ?? "") ? dayPick! : weekDays.includes(t) ? t : weekDays[0];
   const recipe = (id: string | null) => (id ? data?.recipes.find((r) => r.id === id) : undefined);
@@ -56,6 +58,7 @@ function WeekMenu() {
         <button className="iconbtn" onClick={() => setStart(addDays(start, -7))} aria-label={tr("Vorige week")}><Icon.left /></button>
         <span className="range">{Number(start.slice(8))} {MSHORT[Number(start.slice(5, 7)) - 1]} – {Number(end.slice(8))} {MSHORT[Number(end.slice(5, 7)) - 1]}</span>
         <button className="iconbtn" onClick={() => setStart(addDays(start, 7))} aria-label={tr("Volgende week")}><Icon.right /></button>
+        <button className="pill accent" title={tr("De manager stelt het avondeten van de week voor, op maat van agenda, dieet en voorraad")} onClick={() => setWeekbox(true)}>{tr("✨ Weekbox")}</button>
         <button className="pill" title={tr("Lege avonden krijgen een recept uit je bibliotheek")} onClick={async () => {
           const r = await act(() => api.post<{ planned: { date: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
           if (r) toast(r.planned.length ? `${tr("{n} avondmalen ingepland", { n: r.planned.length })}${r.left ? ` · ${tr("{n} nog leeg: voeg recepten toe aan je bibliotheek", { n: r.left })}` : ""}` : r.left ? tr("Geen recepten in je bibliotheek om in te plannen") : tr("Alle avonden waren al ingevuld"));
@@ -98,6 +101,7 @@ function WeekMenu() {
         </div>
       </div>
       <p className="hint">{tr("Tik op een gerecht met recept om het te openen. Lang indrukken om het te wijzigen.")}</p>
+      {weekbox && <WeekboxWizard start={start} onClose={() => setWeekbox(false)} />}
       {slot && <SlotEditor {...slot} current={meals.find((m) => m.date === slot.date && m.slot === slot.slot)} onClose={() => setSlot(null)} />}
     </div>
   );

@@ -1728,3 +1728,18 @@ a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transpare
 .hist-row { display: grid; grid-template-columns: 70px 1fr 90px auto 32px; gap: 8px; align-items: center; font-size: 14px; }
 .hist-bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
 @media (max-width: 640px) { .scan-row { grid-template-columns: 1fr 56px 60px 70px 32px; } .hist-row { grid-template-columns: 60px 1fr 80px 28px; } .hist-row > small:last-of-type { display: none; } }
+
+/* ---- Weekbox ---- */
+.pill.accent { background: var(--accent); color: #05302c; border-color: transparent; }
+.wb-days { display: flex; flex-direction: column; gap: 8px; }
+.wb-day { display: grid; grid-template-columns: 96px 56px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 14px; background: var(--surface); box-shadow: var(--ring); }
+.wb-day.busy { background: #fff8e6; }
+.wb-date { display: flex; flex-direction: column; } .wb-date small { font-size: 12px; }
+.wb-txt { display: flex; flex-direction: column; min-width: 0; } .wb-txt b { font-size: 15px; } .wb-txt small { font-size: 12.5px; }
+.wb-btns { display: flex; gap: 4px; align-items: center; }
+.wb-basket { display: flex; flex-direction: column; gap: 4px; max-height: 46vh; overflow: auto; }
+.wb-item { display: grid; grid-template-columns: 24px 1fr auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.wb-item.have { opacity: .55; } .wb-item.skip .wb-name { text-decoration: line-through; color: var(--muted); }
+.wb-item input { width: 20px; height: 20px; }
+.wb-name { min-width: 0; } .wb-price { font-size: 13px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 640px) { .wb-day { grid-template-columns: 56px 1fr; } .wb-date { grid-column: 1 / -1; flex-direction: row; gap: 8px; align-items: baseline; } .wb-btns { grid-column: 1 / -1; } }

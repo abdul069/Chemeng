@@ -33,6 +33,7 @@ import * as F from "./family.js";
 import * as B from "./billing.js";
 import * as C from "./connectors.js";
 import * as P from "./prices.js";
+import * as W from "./weekbox.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
@@ -740,6 +741,12 @@ api.post("/recipes/:id/to-list", (req, res) => {
 });
 
 /** Boodschappen voor de hele week: alle ingrediënten van de ingeplande recepten, zonder wat al open op de lijst staat. */
+
+// ---------- weekbox ----------
+api.post("/meals/weekbox/propose", (req, res) => { res.json(W.propose(W.ProposeInput.parse(req.body ?? {}))); });
+api.post("/meals/weekbox/apply", (req, res) => { const n = W.apply(W.ApplyInput.parse(req.body)); res.json({ planned: n }); broadcast("meals"); autoPhotos(); });
+api.get("/meals/weekbox/basket", (req, res) => { const q = z.object({ from: day, to: day }).parse(req.query); res.json(W.basket(q.from, q.to)); });
+api.post("/meals/weekbox/to-list", (req, res) => { const b = z.object({ from: day, to: day, skip: z.array(z.string()).default([]) }).parse(req.body); res.json(W.basketToList(b.from, b.to, b.skip)); broadcast("lists"); });
 api.post("/meals/week-to-list", (req, res) => {
   const b = z.object({ from: day, to: day, listId: z.string().optional() }).parse(req.body);
   const shop = b.listId ? S.listLists().find((l) => l.id === b.listId) : S.shoppingList();

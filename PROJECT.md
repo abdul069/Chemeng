@@ -188,7 +188,11 @@ App "Het huis" met vier tabbladen en een widget op het Bord die alleen verschijn
 
 Wat kostte wat, waar en wanneer. Bronnen: kassaticket (foto, het kleine AI-model leest winkel, datum, regels en prijzen), prijsetiket in de winkel (foto), handmatig. Elke prijs wordt omgerekend per kg, liter of stuk. Op de boodschappenlijst en in de voorraad staat bij elk item de laatste prijs en waar het goedkoper is; bij "Prijzen" de beste winkel voor de hele lijst (per winkel totaal en dekking, en de besparing bij splitsen), het prijsverloop per product en de uitgaven per maand per winkel uit de tickets. Een ingelezen ticket vinkt gekochte items af op de boodschappenlijst (ze gaan naar de voorraad) en zet de rest in de voorraad. Tabellen `receipts` en `prices`; routes onder `/prices`. Gedeelde, anonieme prijzen over gezinnen heen (opt-in) komen in een latere ronde.
 
-### 5.9 Kalenders en tradities (opt-in, aanwezig)
+### 5.9 Weekbox (ronde Weekbox, stap 3)
+
+Maaltijden → "✨ Weekbox": kies de avonden (standaard vanaf vandaag), de manager stelt per avond een gerecht voor: snel (≤ 35 min) op avonden met een afspraak tussen 16u30 en 19u30, met wat binnen vier dagen vervalt in de voorraad, zonder wat iemand vermijdt, niet wat de voorbije twee weken op tafel stond, elk recept één keer, lievelingen licht bevoordeeld; geen ontbijt, dessert, drank of saus als avondeten. "Andere" geeft een ander voorstel, ✕ slaat een avond over, "Plannen" zet alles in het weekmenu. Daarna het mandje: alle ingrediënten gebundeld (twee recepten met ui = één regel), geschaald van de porties van het recept naar het aantal gezinsleden, wat in de voorraad staat grijs, per item de goedkoopste bekende prijs en winkel, een schatting van het totaal, "Zoek bij …" en "Op de boodschappenlijst" zonder dubbels. De zondagavondbriefing wijst op een lege week. Server `weekbox.ts`, routes `/meals/weekbox/*`.
+
+### 5.10 Kalenders en tradities (opt-in, aanwezig)
 
 Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per gebed), ezan op elk scherm met eigen geluiden, Koran (114 soera's, vertalingen NL/TR/EN/FR, audio per vers, achtergrondspeler), islamitische feestdagen tot 2028, Belgische feestdagen, islam-leerspelletjes voor kinderen. Alles staat standaard uit.
 
@@ -240,7 +244,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 2. Koppelingen-kader | ✅ klaar | kader, catalogus, versleuteling, acht werkende koppelingen |
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
-| **Weekbox** | 🔜 bezig | stap 1 prijsgeheugen ✅; stap 2 beste winkel en prijsverloop ✅; stap 3 Weekbox-wizard (menu per avond op maat van agenda, dieet, voorraad en deals; gebundelde ingrediëntenlijst met prijsschatting); stap 4 productkoppeling per keten; stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
+| **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
 | 4. Rondes van koppelingen | gepland | gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), folders en deals (aggregator-feed, deals bewaren), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
