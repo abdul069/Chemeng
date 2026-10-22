@@ -10,7 +10,10 @@ export function easter(year: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export interface Holiday { date: string; endDate?: string; title: string; icon: string; kind: "be" | "islam" }
+export type HolidayKind = "be" | "nl" | "islam" | "sinterklaas";
+export const HOLIDAY_KINDS: HolidayKind[] = ["be", "nl", "islam", "sinterklaas"];
+export const isHolidayKind = (k: string): k is HolidayKind => (HOLIDAY_KINDS as string[]).includes(k);
+export interface Holiday { date: string; endDate?: string; title: string; icon: string; kind: HolidayKind }
 
 export function belgianHolidays(year: number): Holiday[] {
   const p = easter(year); const y = String(year);
@@ -29,6 +32,31 @@ export function belgianHolidays(year: number): Holiday[] {
   ];
 }
 
+export function dutchHolidays(year: number): Holiday[] {
+  const p = easter(year); const y = String(year);
+  const kd = `${y}-04-27`; const koningsdag = new Date(kd + "T12:00:00").getDay() === 0 ? `${y}-04-26` : kd; // op zondag: de zaterdag ervoor
+  return [
+    { date: `${y}-01-01`, title: "Nieuwjaarsdag", icon: "🎆", kind: "nl" },
+    { date: addDays(p, -2), title: "Goede Vrijdag", icon: "✝️", kind: "nl" },
+    { date: p, endDate: addDays(p, 1), title: "Pasen", icon: "🐣", kind: "nl" },
+    { date: koningsdag, title: "Koningsdag", icon: "🧡", kind: "nl" },
+    { date: `${y}-05-05`, title: "Bevrijdingsdag", icon: "🕊️", kind: "nl" },
+    { date: addDays(p, 39), title: "Hemelvaartsdag", icon: "⛪", kind: "nl" },
+    { date: addDays(p, 49), endDate: addDays(p, 50), title: "Pinksteren", icon: "🕊️", kind: "nl" },
+    { date: `${y}-12-25`, endDate: `${y}-12-26`, title: "Kerstmis", icon: "🎄", kind: "nl" },
+  ];
+}
+/** Tradities van het eindejaar, voor wie dat viert: Sinterklaas, advent, Kerst en oudejaar. */
+export function sinterklaasKerst(year: number, country: string): Holiday[] {
+  const y = String(year);
+  return [
+    { date: country === "NL" ? `${y}-12-05` : `${y}-12-06`, title: country === "NL" ? "Pakjesavond (Sinterklaas)" : "Sinterklaas", icon: "🎁", kind: "sinterklaas" },
+    { date: `${y}-12-01`, endDate: `${y}-12-24`, title: "Advent", icon: "🕯️", kind: "sinterklaas" },
+    { date: `${y}-12-24`, title: "Kerstavond", icon: "🌟", kind: "sinterklaas" },
+    { date: `${y}-12-25`, title: "Kerstmis", icon: "🎄", kind: "sinterklaas" },
+    { date: `${y}-12-31`, title: "Oudejaarsavond", icon: "🎇", kind: "sinterklaas" },
+  ];
+}
 /** Islamitische feestdagen (Diyanet-kalender). Het eerste jaar is zeker; latere jaren kunnen één dag verschuiven. */
 const ISLAMIC: Holiday[] = [
   { date: "2026-02-18", title: "Begin van de Ramadan", icon: "🌙", kind: "islam" },
@@ -43,6 +71,8 @@ const ISLAMIC: Holiday[] = [
 ];
 
 const TR_TITLES: Record<string, string> = {
+  "Nieuwjaarsdag": "Yılbaşı", "Goede Vrijdag": "Kutsal Cuma", "Pasen": "Paskalya", "Koningsdag": "Kral Günü", "Bevrijdingsdag": "Kurtuluş Günü", "Hemelvaartsdag": "İsa'nın Göğe Yükselişi", "Pinksteren": "Pentekost",
+  "Sinterklaas": "Sinterklaas", "Pakjesavond (Sinterklaas)": "Hediye akşamı (Sinterklaas)", "Advent": "Advent", "Kerstavond": "Noel arifesi", "Oudejaarsavond": "Yılbaşı gecesi",
   "Nieuwjaar": "Yılbaşı", "Paasmaandag": "Paskalya Pazartesisi", "Dag van de Arbeid": "İşçi Bayramı", "O.L.H. Hemelvaart": "İsa'nın Göğe Yükselişi", "Pinkstermaandag": "Pentekost Pazartesisi",
   "Feest van de Vlaamse Gemeenschap": "Flaman Topluluğu Bayramı", "Nationale feestdag": "Belçika Ulusal Bayramı", "O.L.V. Hemelvaart": "Meryem Ana Günü", "Allerheiligen": "Azizler Günü", "Wapenstilstand": "Ateşkes Günü", "Kerstmis": "Noel",
   "Begin van de Ramadan": "Ramazan başlangıcı", "Begin van de Ramadan (±1 dag)": "Ramazan başlangıcı (±1 gün)",
@@ -55,18 +85,30 @@ const EN_TITLES: Record<string, string> = {
   "Feest van de Vlaamse Gemeenschap": "Flemish Community Day", "Nationale feestdag": "Belgian National Day", "O.L.V. Hemelvaart": "Assumption Day", "Allerheiligen": "All Saints' Day", "Wapenstilstand": "Armistice Day", "Kerstmis": "Christmas",
   "Begin van de Ramadan": "Start of Ramadan", "Begin van de Ramadan (±1 dag)": "Start of Ramadan (±1 day)",
   "Ramazan Bayramı (Suikerfeest)": "Eid al-Fitr", "Kurban Bayramı (Offerfeest)": "Eid al-Adha", "Ramazan Bayramı (Suikerfeest, ±1 dag)": "Eid al-Fitr (±1 day)", "Kurban Bayramı (Offerfeest, ±1 dag)": "Eid al-Adha (±1 day)",
+  "Nieuwjaarsdag": "New Year's Day", "Goede Vrijdag": "Good Friday", "Pasen": "Easter", "Koningsdag": "King's Day", "Bevrijdingsdag": "Liberation Day", "Hemelvaartsdag": "Ascension Day", "Pinksteren": "Whitsun",
+  "Sinterklaas": "Saint Nicholas", "Pakjesavond (Sinterklaas)": "Saint Nicholas' Eve", "Advent": "Advent", "Kerstavond": "Christmas Eve", "Oudejaarsavond": "New Year's Eve",
 };
 export const localizeHoliday = (h: Holiday, lang: string): Holiday => (lang === "tr" ? { ...h, title: TR_TITLES[h.title] ?? h.title } : lang === "en" ? { ...h, title: EN_TITLES[h.title] ?? h.title } : h);
-export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"]): Holiday[] {
+/** In welke ramadan zitten we (dag x van 30), met de datum van het Suikerfeest? */
+export function ramadan(date: string): { day: number; total: number; start: string; end: string; eid: string } | null {
+  for (let i = 0; i < ISLAMIC.length; i++) {
+    const h = ISLAMIC[i]; if (!h.title.startsWith("Begin van de Ramadan")) continue;
+    const eid = ISLAMIC.slice(i + 1).find((x) => x.title.startsWith("Ramazan Bayramı")); if (!eid) continue;
+    const end = addDays(eid.date, -1);
+    if (date >= h.date && date <= end) { const day = Math.round((Date.parse(date) - Date.parse(h.date)) / 864e5) + 1; const total = Math.round((Date.parse(end) - Date.parse(h.date)) / 864e5) + 1; return { day, total, start: h.date, end, eid: eid.date }; }
+  }
+  return null;
+}
+export function holidaysBetween(from: string, to: string, kinds: Holiday["kind"][] = ["be", "islam"], country = "BE"): Holiday[] {
   const years: number[] = [];
   for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y++) years.push(y);
-  const all = [...years.flatMap(belgianHolidays), ...ISLAMIC].filter((h) => kinds.includes(h.kind));
+  const all = [...years.flatMap(belgianHolidays), ...years.flatMap(dutchHolidays), ...years.flatMap((y) => sinterklaasKerst(y, country)), ...ISLAMIC].filter((h) => kinds.includes(h.kind));
   return all.filter((h) => (h.endDate ?? h.date) >= from && h.date <= to).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Als kalenderafspraken (alleen-lezen, voor het hele gezin). */
-export function holidayOccurrences(from: string, to: string, kinds?: Holiday["kind"][]): Occurrence[] {
-  return holidaysBetween(from, to, kinds).flatMap((h) => {
+export function holidayOccurrences(from: string, to: string, kinds?: Holiday["kind"][], country = "BE"): Occurrence[] {
+  return holidaysBetween(from, to, kinds, country).flatMap((h) => {
     const end = h.endDate ?? h.date;
     const days: Occurrence[] = [];
     for (let d = h.date; d <= end; d = addDays(d, 1)) {

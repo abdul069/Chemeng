@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useData, useRemote } from "../store";
 import type { Meal, Occurrence, Weather } from "../types";
 import { DayView } from "../components/CalendarViews";
@@ -14,6 +14,8 @@ import { BriefingCard, BriefingModal } from "../components/Briefing";
 import { FamilyWidget } from "../components/Family";
 import { ConnectorWidgets } from "../components/Connectors";
 import { HomeWidget } from "../components/Home";
+import { TraditionsWidget } from "../components/Traditions";
+import { parseWidgets } from "./Settings";
 import { t as tr } from "../i18n";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
@@ -60,6 +62,68 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const mealOrder: ("ontbijt" | "lunch" | "diner")[] = hour < 10 ? ["ontbijt", "lunch", "diner"] : hour < 14 ? ["lunch", "diner", "ontbijt"] : ["diner", "lunch", "ontbijt"];
   const mealTitle = hour < 10 ? tr("Vandaag eten") : hour < 14 ? tr("Straks eten") : tr("Vanavond eten");
   const [briefOpen, setBriefOpen] = useState(false);
+  const widgets: Record<string, React.ReactNode> = {
+    briefing: (
+        <BriefingCard memberId={null} compact onOpen={() => setBriefOpen(true)} />
+    ),
+    meals: (
+        <section className="glass widget-sm">
+          <div className="widget-h"><h2>{mealTitle}</h2><button className="linkbtn" onClick={() => goto("meals")}>{tr("Plannen")}</button></div>
+          <div className="mealstrip">
+            {mealOrder.map((slot, i) => {
+              const m = meals.find((x) => x.slot === slot);
+              const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
+              const open = () => (r ? openRecipe(r.id) : goto("meals"));
+              return (
+                <button className={`mealtile${i === 0 ? tr(" main") : ""}${m ? "" : tr(" empty")}`} key={slot} onClick={open}>
+                  {m?.image || r ? <RecipeThumb r={{ image: m!.image, title: m!.title }} size={i === 0 ? 64 : 48} /> : <span className="mealtile-ic" aria-hidden>{SLOT_ICON[slot]}</span>}
+                  <span className="mealtile-txt"><small>{tr(SLOT_LABEL[slot])}</small><b>{(r ? recipeTitle(r) : m?.title) ?? tr("Nog niets")}</b></span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+    ),
+    chores: (
+        <section className="glass widget-sm">
+          <div className="widget-h"><h2>{tr("Taken vandaag")}</h2><button className="linkbtn" onClick={() => goto("chores")}>{tr("Alles")}</button></div>
+          <ChoreTracker date={t} grouped={false} compact />
+        </section>
+    ),
+    notes: (
+        <PrikbordWidget max={3} />
+    ),
+    home: (
+        <HomeWidget onOpen={() => { try { sessionStorage.setItem("gb.app", "home"); } catch { /* */ } goto("apps"); }} />
+    ),
+    family: (
+        <FamilyWidget />
+    ),
+    traditions: <TraditionsWidget />,
+    connectors: (
+        <ConnectorWidgets board />
+    ),
+    countdown: (
+      <>
+        {!!data?.countdowns.length && (
+          <section className="glass widget-sm">
+            <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>
+            <div className="cdstrip">
+              {data.countdowns.slice(0, 4).map((c) => {
+                const m = c.memberId ? data.members.find((x) => x.id === c.memberId) : null;
+                return (
+                  <div className="cd-sm" key={c.kind + c.title + c.date} style={{ "--c": m?.color ?? "var(--accent)" } as React.CSSProperties}>
+                    <span className="cd-ic" aria-hidden>{c.icon}</span>
+                    <span><b className="num">{c.days === 0 ? tr("Vandaag!") : c.days === 1 ? tr("Morgen") : `${c.days} ${tr("dagen")}`}</b><small>{c.title}</small></span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </>
+    ),
+  };
 
   return (
     <div className="bord">
@@ -86,47 +150,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           onSlot={(date, startTime, m) => openEditor({ defaults: { date, startTime, members: m ? [m] : [] } })} />
       </section>
       <div className="bord-widgets">
-        <BriefingCard memberId={null} compact onOpen={() => setBriefOpen(true)} />
-        <section className="glass widget-sm">
-          <div className="widget-h"><h2>{mealTitle}</h2><button className="linkbtn" onClick={() => goto("meals")}>{tr("Plannen")}</button></div>
-          <div className="mealstrip">
-            {mealOrder.map((slot, i) => {
-              const m = meals.find((x) => x.slot === slot);
-              const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
-              const open = () => (r ? openRecipe(r.id) : goto("meals"));
-              return (
-                <button className={`mealtile${i === 0 ? tr(" main") : ""}${m ? "" : tr(" empty")}`} key={slot} onClick={open}>
-                  {m?.image || r ? <RecipeThumb r={{ image: m!.image, title: m!.title }} size={i === 0 ? 64 : 48} /> : <span className="mealtile-ic" aria-hidden>{SLOT_ICON[slot]}</span>}
-                  <span className="mealtile-txt"><small>{tr(SLOT_LABEL[slot])}</small><b>{(r ? recipeTitle(r) : m?.title) ?? tr("Nog niets")}</b></span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-        <section className="glass widget-sm">
-          <div className="widget-h"><h2>{tr("Taken vandaag")}</h2><button className="linkbtn" onClick={() => goto("chores")}>{tr("Alles")}</button></div>
-          <ChoreTracker date={t} grouped={false} compact />
-        </section>
-        <PrikbordWidget max={3} />
-        <HomeWidget onOpen={() => { try { sessionStorage.setItem("gb.app", "home"); } catch { /* */ } goto("apps"); }} />
-        <FamilyWidget />
-        <ConnectorWidgets board />
-        {!!data?.countdowns.length && (
-          <section className="glass widget-sm">
-            <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>
-            <div className="cdstrip">
-              {data.countdowns.slice(0, 4).map((c) => {
-                const m = c.memberId ? data.members.find((x) => x.id === c.memberId) : null;
-                return (
-                  <div className="cd-sm" key={c.kind + c.title + c.date} style={{ "--c": m?.color ?? "var(--accent)" } as React.CSSProperties}>
-                    <span className="cd-ic" aria-hidden>{c.icon}</span>
-                    <span><b className="num">{c.days === 0 ? tr("Vandaag!") : c.days === 1 ? tr("Morgen") : `${c.days} ${tr("dagen")}`}</b><small>{c.title}</small></span>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        {parseWidgets(data?.settings.board_widgets ?? "").filter((w) => w.on).map((w) => <Fragment key={w.id}>{widgets[w.id]}</Fragment>)}
       </div>
       {briefOpen && <BriefingModal onClose={() => setBriefOpen(false)} />}
     </div>

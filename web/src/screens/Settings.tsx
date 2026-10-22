@@ -274,6 +274,11 @@ function Place() {
   return (
     <Section title={t("Weer en woonplaats")}>
       <p className="hint">{t("Huidige woonplaats:")}{" "}<b>{data!.settings.city}</b>{t(". Het weer komt van Open-Meteo.")}</p>
+      <label className="field" style={{ maxWidth: 320 }}><span>{t("Land")}</span>
+        <select value={data!.settings.country || "BE"} onChange={(e) => save({ country: e.target.value })}>
+          <option value="BE">🇧🇪 België</option><option value="NL">🇳🇱 Nederland</option>
+        </select>
+      </label>
       <input id="city" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Zoek je gemeente…")} aria-label={t("Gemeente zoeken")} />
       <div className="picks">
         {results.map((r) => (
@@ -435,7 +440,35 @@ function Assistant() {
       {check?.ok && <p className="hint">{t("✅ Verbinding met Claude gecontroleerd: alles werkt.")}</p>}
       {data!.assistant.keySource === "env" && <p className="hint">De sleutel staat in de omgeving van de server (ANTHROPIC_API_KEY{data!.assistant.canEditKey ? "; een workspace-ID kan hierboven of als ANTHROPIC_WORKSPACE_ID" : ""}).</p>}
       {!data!.assistant.canEditKey && !data!.assistant.available && <p className="hint">{t("Alleen de beheerder van het eerste gezin op deze server kan de sleutel invullen.")}</p>}
+      <BoardWidgets />
     </Section>
+  );
+}
+
+const WIDGET_IDS = ["briefing", "meals", "chores", "notes", "home", "family", "traditions", "connectors", "countdown"] as const;
+const WIDGET_LABEL: Record<string, string> = { briefing: "De manager", meals: "Eten", chores: "Taken vandaag", notes: "Prikbord", home: "Het huis", family: "Familie", traditions: "Tradities (ramadan, advent)", connectors: "Koppelingen", countdown: "Aftellen" };
+/** Volgorde en zichtbaarheid van de widgets op het Bord: "id,id,-id" (min = verborgen). */
+export function parseWidgets(v: string): { id: string; on: boolean }[] {
+  const seen = new Set<string>(); const out: { id: string; on: boolean }[] = [];
+  for (const raw of v.split(",").map((x) => x.trim()).filter(Boolean)) { const on = !raw.startsWith("-"); const id = raw.replace(/^-/, ""); if ((WIDGET_IDS as readonly string[]).includes(id) && !seen.has(id)) { seen.add(id); out.push({ id, on }); } }
+  for (const id of WIDGET_IDS) if (!seen.has(id)) out.push({ id, on: true });
+  return out;
+}
+function BoardWidgets() {
+  const { data } = useData();
+  const save = useSetting();
+  const list = parseWidgets(data!.settings.board_widgets ?? "");
+  const write = (l: { id: string; on: boolean }[]) => save({ board_widgets: l.map((w) => (w.on ? w.id : `-${w.id}`)).join(",") });
+  const move = (i: number, d: -1 | 1) => { const l = [...list]; const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; write(l); };
+  return (
+    <div className="field"><span>{t("Widgets op het Bord (volgorde en zichtbaar)")}</span>
+      <div className="wlist">{list.map((w, i) => (
+        <div className="wrow" key={w.id}>
+          <label className="check-row"><input type="checkbox" checked={w.on} onChange={() => write(list.map((x) => (x.id === w.id ? { ...x, on: !x.on } : x)))} /> {t(WIDGET_LABEL[w.id])}</label>
+          <span><button className="iconbtn" aria-label={t("Omhoog")} disabled={i === 0} onClick={() => move(i, -1)}>↑</button><button className="iconbtn" aria-label={t("Omlaag")} disabled={i === list.length - 1} onClick={() => move(i, 1)}>↓</button></span>
+        </div>
+      ))}</div>
+    </div>
   );
 }
 
@@ -449,8 +482,11 @@ function HolidayToggles() {
     <div className="field"><span>{t("Feestdagen automatisch in de kalender")}</span>
       <div className="picks">
         <button type="button" className="pick" aria-pressed={on.has("be")} onClick={() => toggle("be")}>{t("🇧🇪 Belgische feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("nl")} onClick={() => toggle("nl")}>{t("🇳🇱 Nederlandse feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("sinterklaas")} onClick={() => toggle("sinterklaas")}>{t("🎁 Sinterklaas, advent en Kerst")}</button>
         <button type="button" className="pick" aria-pressed={on.has("islam")} onClick={() => toggle("islam")}>{t("🌙 Ramadan, Suiker- en Offerfeest")}</button>
       </div>
+      <p className="hint">{t("Pakketten staan naast elkaar en zijn vrij te kiezen. Ramadan zet tijdens de vastenmaand iftar en sahur op het Bord; Sinterklaas en Kerst geven een adventsaftelling.")}</p>
     </div>
   );
 }

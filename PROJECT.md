@@ -198,6 +198,8 @@ Maaltijden → "✨ Weekbox": kies de avonden (standaard vanaf vandaag), de mana
 
 ### 5.10 Kalenders en tradities (opt-in, aanwezig)
 
+Pakketten bij Instellingen → Feestdagen, vrij te combineren: 🇧🇪 Belgische feestdagen, 🇳🇱 Nederlandse feestdagen (Koningsdag verschuift naar zaterdag als 27 april een zondag is), 🎁 Sinterklaas, advent en Kerst (adventsaftelling op het Bord), 🌙 Ramadan, Suiker- en Offerfeest (tijdens de ramadan een widget met dag x van 30, iftar met aftelling, sahur en de datum van het Suikerfeest). Alles komt in de agenda als alleen-lezen laag en in het aftellen, in de taal van het gezin. Route `/traditions/today`.
+
 Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per gebed), ezan op elk scherm met eigen geluiden, Koran (114 soera's, vertalingen NL/TR/EN/FR, audio per vers, achtergrondspeler), islamitische feestdagen tot 2028, Belgische feestdagen, islam-leerspelletjes voor kinderen. Alles staat standaard uit.
 
 ---
@@ -250,7 +252,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
 | 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed); nog: gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
-| 5. Hub als apparaat | gepland | kiosk-opstart op Android, dimmen op tijd en licht, tik op gezinslid om als die persoon af te vinken, widgets herschikken, iOS-build, Play Store met ondertekende APK |
+| 5. Hub als apparaat | deels ✅ | ✅ widgets op het Bord herschikken en verbergen (Instellingen → Scherm), ✅ volledig scherm zonder statusbalk op de hub (Android), wake lock en nachtrust bestonden al; nog: dimmen op omgevingslicht, iOS-build, Play Store met ondertekende APK (keystore nodig) |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
 | 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |
 

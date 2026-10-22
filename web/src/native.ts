@@ -19,6 +19,8 @@ export const platform = () => Capacitor.getPlatform();
 export async function setupNative() {
   if (!isNative()) return;
   try { await StatusBar.setStyle({ style: Style.Light }); await StatusBar.setBackgroundColor({ color: "#e8f6f3" }); await StatusBar.setOverlaysWebView({ overlay: false }); } catch { /* */ }
+  // de hub (wandscherm of tafelmodel) draait als kiosk: zonder statusbalk, altijd aan (wake lock zit in App)
+  try { if (JSON.parse(localStorage.getItem("gb.device") || "{}").role === "hub") await StatusBar.hide(); } catch { /* */ }
   try { await LocalNotifications.createChannel({ id: "ezan", name: "Ezan", description: "Oproep tot gebed", importance: 5, visibility: 1, sound: "ezan.wav", vibration: true }); } catch { /* */ }
 }
 

@@ -24,7 +24,7 @@ import * as L from "./library.js";
 import { extractEvents, parseQuickAdd, importAvailable, Proposal } from "./importer.js";
 import { VAPID_PUBLIC, subscribe, unsubscribe, subscriptionsOf, notifyHousehold, pushToUsers } from "./push.js";
 import { isDate, today, addDays } from "./dates.js";
-import { holidayOccurrences, holidaysBetween, localizeHoliday, type Holiday } from "./holidays.js";
+import { holidayOccurrences, holidaysBetween, localizeHoliday, isHolidayKind, ramadan } from "./holidays.js";
 import { METHODS, PRAYERS, prayerTimes, type Prayer } from "./prayer.js";
 import { quranSurahs, quranSurah, RECITERS, TRANSLATIONS } from "./quran.js";
 import { searchEzan } from "./ezan.js";
@@ -264,10 +264,10 @@ function publicSettings() {
 
 /** Aftellen: ook de eerstvolgende feestdagen (volgens de instelling), tot 6 in totaal. */
 function withHolidayCountdowns(list: ReturnType<typeof countdowns>) {
-  const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
+  const kinds = getSettings().holidays.split(",").filter(isHolidayKind);
   if (!kinds.length) return list;
   const t = today();
-  const hol = holidaysBetween(t, addDays(t, 120), kinds).slice(0, 2).map((h) => localizeHoliday(h, getSettings().language)).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
+  const hol = holidaysBetween(t, addDays(t, 120), kinds, getSettings().country || "BE").filter((h) => h.title !== "Advent").slice(0, 3).map((h) => localizeHoliday(h, getSettings().language)).map((h) => ({ title: h.title, date: h.date, days: Math.round((Date.parse(h.date) - Date.parse(t)) / 864e5), icon: h.icon, memberId: null, kind: "holiday" as const }));
   return [...list, ...hol].sort((a, b) => a.days - b.days).slice(0, 6);
 }
 /** Claude API-sleutel invullen in de app (beheerder). De sleutel wordt eerst gecontroleerd. */
@@ -555,9 +555,9 @@ api.get("/events", (req, res) => {
   if (!isDate(from) || !isDate(to)) return void res.status(400).json({ error: "Geef from en to op als YYYY-MM-DD." });
   const members = typeof req.query.members === "string" && req.query.members ? req.query.members.split(",") : undefined;
   const { userId, householdId } = ctx();
-  const kinds = getSettings().holidays.split(",").filter((k): k is Holiday["kind"] => k === "be" || k === "islam");
+  const kinds = getSettings().holidays.split(",").filter(isHolidayKind);
   const connItems = C.connectorCalendar(from, to).map((e) => ({ id: `conn:${e.id}`, title: e.title, notes: e.url ?? "", location: e.location ?? "", date: e.date, endDate: e.endDate ?? null, startTime: e.startTime ?? null, endTime: e.endTime ?? null, allDay: e.allDay, repeat: "none" as const, repeatUntil: null, exdates: [], members: [], source: "koppeling", readOnly: true, countdown: false, on: e.date, until: e.endDate ?? e.date, key: `conn:${e.id}@${e.date}` }));
-  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...connItems, ...(kinds.length ? holidayOccurrences(from, to, kinds).map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
+  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...connItems, ...(kinds.length ? holidayOccurrences(from, to, kinds, getSettings().country || "BE").map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
   res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });
@@ -1039,6 +1039,17 @@ function prayerDay(date: string) {
   const times = prayerTimes({ date, latitude: Number(s.latitude), longitude: Number(s.longitude), method: s.ezan_method, asr: s.ezan_asr === "hanafi" ? "hanafi" : "standard", adjust });
   return { date, times: Object.fromEntries(PRAYERS.map((p) => [p, new Date(times[p]).toISOString()])) as Record<Prayer, string> };
 }
+/** Tradities van vandaag: ramadan (dag, iftar, sahur) en advent (dag). Leeg als er niets speelt. */
+api.get("/traditions/today", (_req, res) => {
+  const s = getSettings(); const t = today(); const kinds = s.holidays.split(",").filter(isHolidayKind);
+  const out: { ramadan?: { day: number; total: number; eid: string; iftar: string; imsak: string; imsakTomorrow: string }; advent?: { day: number } } = {};
+  if (kinds.includes("islam")) {
+    const r = ramadan(t);
+    if (r) { const pd = prayerDay(t); const pt = prayerDay(addDays(t, 1)); out.ramadan = { day: r.day, total: r.total, eid: r.eid, iftar: pd.times.maghrib, imsak: pd.times.fajr, imsakTomorrow: pt.times.fajr }; }
+  }
+  if (kinds.includes("sinterklaas") && t.slice(5) >= "12-01" && t.slice(5) <= "12-24") out.advent = { day: Number(t.slice(8)) };
+  res.json(out);
+});
 api.get("/prayer", (req, res) => {
   const q = z.object({ date: z.string().optional() }).parse(req.query);
   const date = q.date && isDate(q.date) ? q.date : today();
