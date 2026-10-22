@@ -22,6 +22,8 @@ export const parseKidApps = (s: string | undefined): KidApp[] => { try { const a
 type View = "home" | "day" | "learn" | "quran" | "photos" | "meals";
 const hm = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 const inWindow = (from: string, until: string, now = hm()) => !!from && !!until && (from < until ? now >= from && now < until : now >= from || now < until);
+/** Voorlezen voor kinderen die nog niet lezen: tik op het plaatje van een taak. */
+export function sayAloud(text: string) { try { if (typeof speechSynthesis === "undefined") return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[\p{Extended_Pictographic}\u{FE0F}]/gu, "").trim()); u.lang = document.documentElement.lang === "tr" ? "tr-TR" : document.documentElement.lang === "en" ? "en-GB" : "nl-NL"; u.rate = 0.9; u.pitch = 1.1; speechSynthesis.speak(u); } catch { /* */ } }
 const usedKey = (d: string) => `gb.kid.used.${d}`;
 const readUsed = (d: string) => { try { return Number(localStorage.getItem(usedKey(d)) || 0); } catch { return 0; } };
 
@@ -139,11 +141,12 @@ function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member |
             <b>{moment === "ochtend" ? t("Goeiemorgen! Dit doe je nu:") : moment === "middag" ? t("Goeiemiddag! Dit staat nog te doen:") : t("Bijna bedtijd! Nog even dit:")}</b>
             <small>{chores.length ? t("{n} van {m} taken gedaan", { n, m: chores.length }) : t("Nog geen taken, vraag mama of papa om je routine aan te zetten")}</small>
           </div>
+          <button className="iconbtn kid-say" aria-label={t("Lees voor")} onClick={() => sayAloud([moment === "ochtend" ? t("Goeiemorgen! Dit doe je nu:") : moment === "middag" ? t("Goeiemiddag! Dit staat nog te doen:") : t("Bijna bedtijd! Nog even dit:"), ...now.map((c) => c.title)].join(". "))}>🔊</button>
           <span className="kid-stars">⭐ {pts?.balance ?? 0}{pts?.today ? <small> +{pts.today}</small> : null}</span>
         </div>
         <div className="kid-bar"><i style={{ width: `${chores.length ? (n / chores.length) * 100 : 0}%` }} /></div>
         <div className="kid-now-tasks">
-          {now.map((c) => <button key={c.id} className="kid-task" onClick={() => toggle(c)}><span className="kid-task-ic">{c.icon}</span><b>{c.title}</b><span className="kid-task-check" /></button>)}
+          {now.map((c) => <button key={c.id} className="kid-task" onClick={() => toggle(c)}><span className="kid-task-ic" onClick={(e) => { e.stopPropagation(); sayAloud(c.title); }}>{c.icon}</span><b>{c.title}</b><span className="kid-task-check" /></button>)}
           {!now.length && chores.length > 0 && <p className="kid-done-msg">🎉 {n === chores.length ? t("Alles gedaan! Jij bent een kampioen.") : t("Niets meer voor nu. Straks komt er meer!")}</p>}
         </div>
       </section>
@@ -190,7 +193,7 @@ function KidDay({ me, onBack }: { me: Member | null; onBack: () => void }) {
           <div className="kid-tasks">
             {list.map((c) => { const ok = set.has(`${d}|${c.id}`); return (
               <button key={c.id} className={`kid-task${ok ? " done" : ""}`} onClick={() => toggle(c)} aria-pressed={ok}>
-                <span className="kid-task-ic">{c.icon}</span><b>{c.title}</b><span className="kid-task-check">{ok ? "✓" : ""}</span>
+                <span className="kid-task-ic" onClick={(e) => { e.stopPropagation(); sayAloud(c.title); }}>{c.icon}</span><b>{c.title}</b><span className="kid-task-check">{ok ? "✓" : ""}</span>
               </button>
             ); })}
           </div>

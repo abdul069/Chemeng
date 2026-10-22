@@ -1817,3 +1817,6 @@ body.gb-kid .mascot-float, body.gb-kid .fab { display: none; }
 .learn-options.words { grid-template-columns: repeat(2, 1fr); } .learn-opt.word { font-size: 20px; font-weight: 700; text-align: center; padding: 16px; border-radius: 18px; background: #fff; border: 3px solid var(--c, #e6e8ec); color: #1e2632; }
 .learn-opt.word.dim { opacity: .45; } .learn-opt.word.right { background: #e3f6ee; border-color: #22a86d; }
 .kid-clock-face { width: min(60vw, 240px); height: auto; display: block; margin: 6px auto; }
+.kid-say { width: 44px; height: 44px; font-size: 20px; flex: none; }
+.learn-opt.pic .opt-txt { font-size: 14px; color: var(--muted); }
+.learn-opt.pic.right .opt-txt { color: #1e2632; }

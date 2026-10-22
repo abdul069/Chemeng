@@ -535,7 +535,7 @@ function ChoiceGame({ set, onDone, onClose }: { set: ChoiceSet; onDone: (stars: 
   const [solved, setSolved] = useState(false);
   const [score, setScore] = useState(0);
   const q = qs[i];
-  useEffect(() => { if (q?.speak) speak(bi(q.prompt)); }, [q]);
+  useEffect(() => { if (q?.speak) speak(bi(q.prompt), true); }, [q]);
   if (!q) return <GameShell title={bi(set.title)} onClose={onClose}><Result stars={score} max={qs.length} onDone={() => onDone(score)} /></GameShell>;
   const answer = (k: number) => {
     if (solved || tried.includes(k)) return;
@@ -551,11 +551,11 @@ function ChoiceGame({ set, onDone, onClose }: { set: ChoiceSet; onDone: (stars: 
       <div className="learn-q kid-card">
         {solved && <Burst />}
         <small>{tr("Vraag {i} van {n}", { i: i + 1, n: qs.length })}</small>
-        <div className="kid-question">{q.promptIcon && (manyIcons ? <div className="kid-count" aria-hidden>{q.promptIcon}</div> : <Illu e={q.promptIcon} className={`kid-q-ic bob${q.big ? " huge" : ""}`} />)}<h2>{bi(q.prompt)}</h2></div>
+        <div className="kid-question">{q.promptIcon && (manyIcons ? <div className="kid-count" aria-hidden>{q.promptIcon}</div> : <Illu e={q.promptIcon} className={`kid-q-ic bob${q.big ? " huge" : ""}`} />)}<h2>{bi(q.prompt)}</h2><button className="iconbtn kid-say" aria-label={tr("Lees voor")} onClick={() => speak(bi(q.prompt), true)}>🔊</button></div>
         <div className={`learn-options${q.optionIcons ? " pics" : " words"}`}>
           {q.options.map((o, k) => {
             const state = solved ? (k === q.answer ? " right" : " dim") : tried.includes(k) ? " wrong dim" : tried.length && k === tried[tried.length - 1] ? " shake" : "";
-            return <button key={k} className={`learn-opt${q.optionIcons ? " pic" : " word"}${state}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0"][k % 4] } as React.CSSProperties} onClick={() => answer(k)} disabled={solved || tried.includes(k)}>{q.optionIcons?.[k] && <Illu e={q.optionIcons[k]} className="learn-opt-ic" />}<span>{bi(o)}</span></button>;
+            return <button key={k} className={`learn-opt${q.optionIcons ? " pic" : " word"}${state}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0"][k % 4] } as React.CSSProperties} onClick={() => answer(k)} disabled={solved || tried.includes(k)}>{q.optionIcons?.[k] && <Illu e={q.optionIcons[k]} className="opt-ic" />}{q.optionIcons?.[k] !== bi(o) && <span className={q.optionIcons ? "opt-txt" : undefined}>{bi(o)}</span>}</button>;
           })}
         </div>
         {solved && <button className="btn kid-next" onClick={next}>{i + 1 >= qs.length ? tr("Klaar") + " 🎉" : tr("Volgende vraag") + " ➜"}</button>}
