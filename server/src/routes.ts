@@ -34,6 +34,7 @@ import * as B from "./billing.js";
 import * as C from "./connectors.js";
 import * as P from "./prices.js";
 import * as W from "./weekbox.js";
+import * as Inbox from "./inbox.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
@@ -760,6 +761,34 @@ api.post("/recipes/:id/to-list", (req, res) => {
 });
 
 /** Boodschappen voor de hele week: alle ingrediënten van de ingeplande recepten, zonder wat al open op de lijst staat. */
+
+
+// ---------- gezinsinbox ----------
+api.get("/inbox", (req, res) => { const q = z.object({ status: z.enum(["new", "done", "dismissed"]).optional() }).parse(req.query); res.json({ items: Inbox.listItems(hid(), q.status), address: Inbox.plusAddress(hid()), shared: !!Inbox.shared() }); });
+api.post("/inbox/sync", async (_req, res) => {
+  const c = C.listConnections().find((x) => x.connector === "inbox" && x.enabled);
+  if (!c) return void res.status(400).json({ error: "Zet eerst de koppeling Gezinsinbox aan (Instellingen → Koppelingen)." });
+  const r = await C.syncConnection(c); res.json(C.publicConn(r)); broadcast("inbox", "connections");
+});
+/** Voorstellen uit een bericht toepassen: afspraken in de agenda, boodschappen op de lijst, een ticket in het prijsgeheugen en de voorraad. */
+api.post("/inbox/:id/apply", (req, res) => {
+  const it = Inbox.getItem(p(req)); if (!it) return void res.status(404).json({ error: "Niet gevonden" });
+  const b = Inbox.ApplyInput.parse(req.body ?? {});
+  const members = S.listMembers(); let events = 0, items = 0, prices = 0;
+  if (b.events) for (const e of it.data.events ?? []) { createEvent({ title: e.title, date: e.date, endDate: e.endDate, startTime: e.startTime, endTime: e.endTime, allDay: !e.startTime, location: e.location, notes: e.notes, repeat: e.repeat, repeatUntil: e.repeatUntil, countdown: false, members: e.members.map((n) => members.find((m) => m.name.toLocaleLowerCase("nl") === n.toLocaleLowerCase("nl"))?.id).filter((x): x is string => !!x) } as never); events++; }
+  if (b.listItems && it.data.listItems?.length) { const id = S.ensureShoppingList(); for (const x of it.data.listItems) { S.addItem(id, x); items++; } }
+  if (it.data.scan && it.data.scan.items.length) { const r = P.commit({ store: it.data.scan.store || "?", date: it.data.scan.date, total: it.data.scan.total, items: it.data.scan.items, source: "ticket", toPantry: b.toPantry, tickList: true }); prices = r.prices; }
+  Inbox.setStatus(it.id, "done");
+  res.json({ ok: true, events, items, prices }); broadcast("events", "lists", "prices", "inbox");
+});
+api.post("/inbox/:id/dismiss", (req, res) => { Inbox.setStatus(p(req), "dismissed"); res.json({ ok: true }); broadcast("inbox"); });
+api.delete("/inbox/:id", (req, res) => { Inbox.deleteItem(p(req)); res.json({ ok: true }); broadcast("inbox"); });
+/** Een bericht met de hand aanleveren (test, of een mailserver die naar deze route doorstuurt). */
+api.post("/inbox/raw", express.text({ type: "*/*", limit: "15mb" }), async (req, res) => {
+  const mail = await Inbox.parseRaw(typeof req.body === "string" ? req.body : "");
+  const item = await Inbox.processMail(mail, hid());
+  res.json(item ?? { skipped: true }); if (item) broadcast("inbox");
+});
 
 // ---------- weekbox ----------
 api.post("/meals/weekbox/propose", (req, res) => { res.json(W.propose(W.ProposeInput.parse(req.body ?? {}))); });

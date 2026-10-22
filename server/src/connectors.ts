@@ -9,6 +9,7 @@ import type { Item, Proposal } from "./manager.js";
 import { L, asLang, UA as USER_AGENT, type Lang } from "./i18n.js";
 import { REGIONS, breaksBetween, type Region } from "./schoolyear.js";
 import { addPrice, listPrices, productKey } from "./prices.js";
+import * as Inbox from "./inbox.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS connections (
@@ -62,7 +63,7 @@ const EN_TEXT: Record<string, { name: string; description: string }> = {
   uit: { name: "UiTinVlaanderen", description: "Family activities near you this weekend, from publiq's open database; the manager suggests them on Friday." },
   delijn: { name: "De Lijn", description: "Real-time departures from your stop. Needs a free API key from De Lijn Open Data; coming in a next round." },
   mivb: { name: "MIVB/STIB", description: "Real-time metro, tram and bus in Brussels. Coming in a next round." },
-  inbox: { name: "Family inbox", description: "An email address for your family: forward school mail, the doctor or the inspection letter and {brand} turns it into events and chores." },
+  inbox: { name: "Family inbox", description: "An email address for your family: forward the school letter, the doctor, the inspection letter or a receipt and {brand} turns it into events, groceries and prices. You review, one tap and it is in." },
   recycle: { name: "Recycle! (waste app)", description: "Straight from the Recycle! app. Unofficial connection that may break; prefer your waste collector's iCal address." },
   school_holidays: { name: "School holidays", description: "Flemish, French-community or Dutch school holidays as a calendar layer, with a nudge the day before they start and end." },
   teams_status: { name: "Teams status", description: "“Dad is in a meeting until 3pm” on the board. Coming in a next round." },
@@ -236,7 +237,28 @@ export const CONNECTORS: ConnectorDef[] = [
   },
   { id: "delijn", name: "De Lijn", description: "Realtime vertrektijden van je halte. Vraagt een gratis API-sleutel bij De Lijn Open Data; komt in een volgende ronde.", category: "mobiliteit", icon: "🚌", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   { id: "mivb", name: "MIVB", description: "Realtime metro, tram en bus in Brussel. Komt in een volgende ronde.", category: "mobiliteit", icon: "🚇", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
-  { id: "inbox", name: "Gezinsinbox", description: "Een e-mailadres voor je gezin: stuur Smartschool, Gimme, de dokter of de keuringsbrief door en Gezinsbord maakt er afspraken en taken van.", category: "school", icon: "📬", scope: "household", plan: "gezin", country: [], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
+
+  {
+    id: "inbox", name: "Gezinsinbox", description: "Een e-mailadres voor je gezin: stuur de schoolbrief, Smartschool of Gimme, de dokter, de keuringsbrief of een kassaticket door en {brand} maakt er afspraken, boodschappen en prijzen van. Jij kijkt na, één tik en het staat erin.", category: "school", icon: "📬",
+    scope: "household", plan: "gezin", country: [], status: "ready", refreshMinutes: 5, provides: ["briefing", "widget"],
+    fields: [
+      { key: "host", label: "IMAP-server (leeg = de gedeelde inbox van de server)", type: "text", placeholder: "imap.gmail.com", hint: "Alleen nodig met een eigen mailbox. Gmail: app-wachtwoord; Outlook: imap-mail.outlook.com." },
+      { key: "port", label: "Poort", type: "number", placeholder: "993" },
+      { key: "user", label: "Gebruikersnaam (e-mailadres)", type: "text", placeholder: "gezin@gmail.com" },
+      { key: "pass", label: "Wachtwoord", type: "secret" },
+      { key: "folder", label: "Map", type: "text", placeholder: "INBOX" },
+    ],
+    sync: async (c) => {
+      const own = str(c.config.host) && str(c.config.user) && str(c.config.pass);
+      const sh = Inbox.shared();
+      if (!own && !sh) throw new Error("Vul de IMAP-gegevens in, of laat de beheerder een gedeelde inbox instellen (INBOX_IMAP_*).");
+      const cfg = own ? { host: str(c.config.host), port: Number(c.config.port) || 993, user: str(c.config.user), pass: str(c.config.pass), folder: str(c.config.folder) || "INBOX" } : { host: sh!.host, port: sh!.port, user: sh!.user, pass: sh!.pass, folder: "INBOX", tag: Inbox.plusAddress(c.householdId) ?? undefined };
+      const r = await Inbox.fetchNew(cfg, c.householdId);
+      return { ...c.state, address: own ? str(c.config.user) : Inbox.plusAddress(c.householdId), fetched: Number(c.state.fetched ?? 0) + r.fetched, items: Number(c.state.items ?? 0) + r.items, at: new Date().toISOString() };
+    },
+    briefing: (c, ctx) => { const n = Inbox.newCount(c.householdId); return n ? [{ kind: "note", icon: "📬", text: L(ctx.lang, { nl: `${n} ${n === 1 ? "nieuw bericht" : "nieuwe berichten"} in de gezinsinbox om na te kijken.`, tr: `Aile gelen kutusunda incelenecek ${n} yeni mesaj.`, en: `${n} new ${n === 1 ? "message" : "messages"} in the family inbox to review.` }) }] : []; },
+    widget: (c, lang) => { const n = Inbox.newCount(c.householdId); const addr = str(c.state.address); return n || addr ? { title: L(lang, { nl: "Gezinsinbox", tr: "Aile gelen kutusu", en: "Family inbox" }), icon: "📬", lines: [{ icon: n ? "🔔" : "📭", text: n ? L(lang, { nl: `${n} na te kijken`, tr: `${n} incelenecek`, en: `${n} to review` }) : L(lang, { nl: "Niets nieuws", tr: "Yeni bir şey yok", en: "Nothing new" }), sub: addr }] } : null; },
+  },
   { id: "recycle", name: "Recycle! (afvalapp)", description: "Rechtstreeks uit de Recycle!-app. Onofficiële koppeling die kan breken; gebruik liever het iCal-adres van je intercommunale.", category: "huis", icon: "♻️", scope: "household", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
   {
     id: "school_holidays", name: "Schoolvakanties", description: "Vlaamse, Franstalige of Nederlandse schoolvakanties als laag in de agenda, met een seintje de dag voor ze beginnen en eindigen.", category: "school", icon: "🏫",

@@ -100,7 +100,7 @@ export interface Partner { id: string; name: string; slug: string; plan: Plan; f
 export interface Device { id: string; name: string; role: "hub" | "phone"; variant: string; platform: string; memberId: string | null; userId: string | null; lastSeen: string; online: boolean }
 export interface Note { id: string; text: string; color: string; memberId: string | null; pinned: boolean; createdAt: string }
 export interface Cast { to: string | null; kind: "recipe" | "screen" | "message" | "note"; value: string; from: string | null }
-export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections" | "prices";
+export type Topic = "members" | "events" | "chores" | "meals" | "recipes" | "lists" | "photos" | "calendars" | "settings" | "rewards" | "access" | "sharing" | "memos" | "ezan" | "diet" | "devices" | "notes" | "family" | "home" | "connections" | "prices" | "inbox";
 export type Change =
   | { kind: "event_added"; event: CalEvent }
   | { kind: "event_removed"; title: string }
@@ -136,3 +136,7 @@ export interface ScanResult { store: string; date: string; total: number | null;
 /** Weekbox */
 export interface WeekboxDay { date: string; busy: boolean; recipeId: string | null; title: string; image: string | null; minutes: number | null; why: string; current: string | null }
 export interface WeekboxBasket { people: number; recipes: string[]; items: { name: string; amount: string; recipes: string[]; inHouse: boolean; price: { store: string; price: number; unitPrice: number; unit: string } | null }[]; estimate: { total: number; known: number; toBuy: number; stores: string[] } }
+
+/** Gezinsinbox */
+export interface InboxEvent { title: string; date: string; endDate: string | null; startTime: string | null; endTime: string | null; location: string; notes: string; members: string[]; repeat: string; repeatUntil: string | null }
+export interface InboxItem { id: string; msgId: string; sender: string; subject: string; receivedAt: string; kind: "school" | "receipt" | "other"; summary: string; body: string; data: { events?: InboxEvent[]; listItems?: string[]; scan?: ScanResult; images?: number }; status: "new" | "done" | "dismissed"; createdAt: string }

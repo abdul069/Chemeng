@@ -175,7 +175,9 @@ Gezinnen verbinden over huizen heen (grootouders, co-ouder, familie in het buite
 | Webhooks (Siri, IFTTT, n8n) | gezin, Gezin+ | boodschappen, briefje of afspraak van buitenaf | geheime sleutel per gezin, `POST /api/hooks/<sleutel>` |
 | Folders en deals (partnerfeed) | gezin | promo's in het prijsgeheugen | JSON-feed van een partner (Promojagers, Tiendeo/ShopFully, een keten) |
 
-**Zichtbaar als "Binnenkort"**: De Lijn, MIVB (vragen een API-sleutel), gezinsinbox (vraagt een mailbox), Recycle!, Teams-status, Withings, Telegram-bot.
+| Gezinsinbox | gezin | briefing, widget, scherm "Gezinsinbox" | IMAP: eigen mailbox van het gezin, of de gedeelde mailbox van de operator (`INBOX_IMAP_HOST/USER/PASS`, `INBOX_ADDRESS`) met een plus-adres per gezin (`inbox+code@domein`). Elke 5 minuten; het kleine AI-model maakt van een mail afspraken en boodschappen (importer) of van een ticketfoto prijzen (prijsgeheugen). Nakijken en met één tik toepassen. Zonder AI-sleutel blijft de tekst leesbaar. Route `/inbox/raw` voor een mailserver die rechtstreeks doorstuurt. |
+
+**Zichtbaar als "Binnenkort"**: De Lijn, MIVB (vragen een API-sleutel), Recycle!, Teams-status, Withings, Telegram-bot.
 
 ### 5.7 Het huis (commits `1fc087f`, `5b0cc81`)
 
@@ -251,7 +253,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 | 3. Het huis | ✅ klaar | vier tabbladen en widget |
 | **Merk en taal** | ✅ klaar | merknaam als instelling (`BRAND_NAME`), Engels als derde taal op web en server (1.340 teksten, briefings, koppelingen, feestdagen, meldingen), taalkeuze EN/NL/TR |
 | **Weekbox** | ✅ stap 1–3 | prijsgeheugen ✅; beste winkel en prijsverloop ✅; Weekbox-wizard ✅ (avonden kiezen, voorstel per avond op maat van agenda, dieet, voorraad en variatie, "Andere", plannen, gebundeld mandje geschaald naar het gezin met voorraad eraf en prijsschatting, op de boodschappenlijst); nog: stap 4 productkoppeling per keten, stap 5 mandje vullen via partner-API (Colruyt Group, Ahold Delhaize, Jumbo, Picnic) |
-| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed); nog: gezinsinbox (IMAP, plus-adres per gezin, extractie via AI), De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
+| 4. Rondes van koppelingen | bezig | ✅ schoolvakanties, webhooks, folders en deals (foto en partnerfeed), gezinsinbox (IMAP, plus-adres per gezin, extractie via AI); nog: De Lijn, MIVB, barcode en NEVO, Teams-status, Apple Health en Withings, Twizzit, schoolvakanties, Telegram, webhooks, rechtstreekse merkkoppelingen; PSD2 als laatste |
 | 5. Hub als apparaat | deels ✅ | ✅ widgets op het Bord herschikken en verbergen (Instellingen → Scherm), ✅ volledig scherm zonder statusbalk op de hub (Android), wake lock en nachtrust bestonden al; nog: dimmen op omgevingslicht, iOS-build, Play Store met ondertekende APK (keystore nodig) |
 | 6. Kalenders en tradities | gepland | pakketten per land en cultuur, Ramadan- en Bayram-modus vóór de volgende ramadan, Sinterklaas en Kerst met adventsaftelling |
 | 7. Zakelijk, parallel | lopend | merkonderzoek, Gezinsbond, een mutualiteit, Promojagers, Tiendeo/ShopFully, Colruyt Group, affiliate-aanmeldingen, leasing- en fulfilmentpartner, Test-Aankoop later |
@@ -264,7 +266,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 2. **Deploy geblokkeerd.** Railway kan de GitHub-repo niet meer lezen sinds 21 oktober ("User does not have access to the repo"). De laatste live versie is commit `185c0de`; alles vanaf 2.0 staat op de tak maar niet live. Oplossing: in Railway bij Settings → Source de GitHub-koppeling opnieuw leggen, of eenmalig op Deploy drukken.
 3. **Engelse sleutels in de code.** Engels, Nederlands en Turks werken volledig; de vertaalsleutels in de code zijn nog Nederlands. Het omdraaien (Engelse sleutels, NL en TR als woordenboeken) is een scriptmatige stap zodra de naam vastligt. Valuta en maten per land volgen met de landenpakketten.
 4. **UiTinVlaanderen** vraagt een gratis API-sleutel van publiq (`UIT_API_KEY`), anders moet elk gezin er zelf een invullen.
-5. **Gezinsinbox** vraagt een mailbox met IMAP en een eigen domein voor plus-adressen (bv. `gezin-xyz@inbox.<merk>.be`).
+5. **Gezinsinbox**: gebouwd; om de gedeelde inbox aan te zetten zijn een mailbox met IMAP en een domein nodig (`INBOX_IMAP_*` in Railway), anders vult elk gezin zijn eigen mailbox in.
 6. **Betalen in de app** ontbreekt nog (Stripe). Tot dan zet de operator de formule of gebruikt het gezin een ledencode.
 7. **Juridisch**: GDPR-documentatie, verwerkersovereenkomsten met partners, gezondheidsgegevens (bijzondere categorie) alleen per gezin en versleuteld in rust op de hosting.
 8. **Distributie** is het grootste risico: zonder partners (Gezinsbond, mutualiteit, retailer) is de hardware moeilijk te verkopen.
