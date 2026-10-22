@@ -1,0 +1,32 @@
+name: Docker-image
+# Bouwt de container op GitHub en zet hem in de GitHub Container Registry (ghcr.io).
+# Railway (of elke andere host) start dan een kant-en-klare image en hoeft zelf niets te bouwen.
+on:
+  push:
+    branches: ["**"]
+    paths-ignore: ["*.md", "docs/**", ".github/workflows/android.yml", ".github/workflows/ios.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image bouwen en publiceren
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/kinday:latest
+            ghcr.io/${{ github.repository_owner }}/kinday:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
