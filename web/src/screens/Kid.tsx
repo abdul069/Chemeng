@@ -4,7 +4,7 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
-import type { Chore, Member, Occurrence } from "../types";
+import type { Chore, Member, Occurrence, Weather } from "../types";
 import { Avatar, cvar } from "../components/ui";
 import { addDays, cap, clock, greeting, longDate, todayIso, weekday } from "../dates";
 import { setDevice, useDevice } from "../device";
@@ -47,6 +47,16 @@ export function KidShell({ onParent }: { onParent: () => void }) {
     }, 15_000);
     return () => clearInterval(i);
   }, [bedtime]);
+  // nog geen enkele taak voor dit kind? Dan zetten we het leeftijdspakket (tanden poetsen, bed opmaken, …) klaar; ouders passen het aan bij Taken
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!data || !me || seeded.current) return;
+    if (data.chores.some((c) => c.memberId === me.id)) return;
+    seeded.current = true;
+    const y = me.birthday ? (Date.now() - Date.parse(me.birthday)) / (365.25 * 864e5) : 8;
+    const age = y < 6 ? "kleuter" : y < 12 ? "lagere" : "tiener";
+    api.get<{ ageSets: Record<string, string[]> }>("/chores/routines").then((c) => api.post("/chores/routines", { memberId: me.id, keys: c.ageSets[age] ?? [] })).catch(() => {});
+  }, [data, me]);
   // kiosk-modus op Android zodra dit een kindertablet is
   useEffect(() => { void kiosk("start"); return () => { void kiosk("stop"); }; }, []);
   const over = limit > 0 && used >= limit + extra;
@@ -90,24 +100,58 @@ export function KidShell({ onParent }: { onParent: () => void }) {
   );
 }
 
+const MOMENT_NOW = (): "ochtend" | "middag" | "avond" => { const h = new Date().getHours(); return h < 12 ? "ochtend" : h < 17 ? "middag" : "avond"; };
+const STICKERS = ["🦁", "🐼", "🦄", "🐬", "🦊", "🐨", "🦋", "🐙"];
 function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member | null; apps: KidApp[]; islam: boolean; limit: number; used: number; extra: number; onView: (v: View) => void }) {
   const { data } = useData();
+  const act = useAction();
   const d = todayIso(); const wd = weekday(d);
-  const [done] = useRemote<string[]>(`/chores/done?from=${d}&to=${d}`, ["chores"], []);
+  const [done, reload] = useRemote<string[]>(`/chores/done?from=${d}&to=${d}`, ["chores"], []);
+  const [weather] = useRemote<Weather | null>("/weather", ["settings"], null);
+  const [party, setParty] = useState(false);
+  const set = new Set(done);
   const chores = (data?.chores ?? []).filter((c) => me && c.memberId === me.id && c.days.includes(wd));
-  const n = chores.filter((c) => done.includes(`${d}|${c.id}`)).length;
+  const n = chores.filter((c) => set.has(`${d}|${c.id}`)).length;
+  const moment = MOMENT_NOW();
+  const now = chores.filter((c) => (c.moment === moment || c.moment === "altijd") && !set.has(`${d}|${c.id}`)).slice(0, 4);
   const pts = me ? data?.points[me.id] : undefined;
   const left = limit > 0 ? Math.max(0, Math.round(limit + extra - used)) : null;
+  const sticker = STICKERS[(new Date().getDate() + (me?.name.length ?? 0)) % STICKERS.length];
+  const cd = (data?.countdowns ?? []).filter((c) => c.days >= 0).slice(0, 2);
+  const toggle = async (c: Chore) => {
+    await act(() => api.put(`/chores/${c.id}/done`, { date: d, done: true }), `+${c.points} ⭐`); reload();
+    const fresh = new Set(await api.get<string[]>(`/chores/done?from=${d}&to=${d}`).catch(() => [])); if (chores.length && chores.every((x) => fresh.has(`${d}|${x.id}`))) setParty(true);
+  };
   const tiles: { id: View | `app:${number}`; icon: string; label: string; sub?: string; color: string }[] = [
-    { id: "day", icon: "☀️", label: t("Mijn dag"), sub: chores.length ? `${n}/${chores.length} ${t("taken")}` : undefined, color: "#fff3d6" },
-    { id: "learn", icon: "🎒", label: t("Leren & spelen"), sub: pts ? `⭐ ${pts.balance}` : undefined, color: "#e6f4ff" },
-    ...(islam ? [{ id: "quran" as View, icon: "📖", label: t("Koran"), color: "#efe9d6" }] : []),
-    { id: "photos", icon: "🖼️", label: t("Foto's"), color: "#e9f6f4" },
-    { id: "meals", icon: "🍽️", label: t("Wat eten we?"), color: "#ffe9e3" },
-    ...apps.map((a, i) => ({ id: `app:${i}` as const, icon: a.icon || "📱", label: a.label, color: "#f1f0f6" })),
+    { id: "day", icon: "☀️", label: t("Mijn dag"), sub: chores.length ? `${n}/${chores.length} ${t("taken")}` : undefined, color: "linear-gradient(135deg,#ffe9a8,#ffd6a5)" },
+    { id: "learn", icon: "🎒", label: t("Leren & spelen"), sub: pts ? `⭐ ${pts.balance}` : undefined, color: "linear-gradient(135deg,#cfe9ff,#dcd6ff)" },
+    ...(islam ? [{ id: "quran" as View, icon: "📖", label: t("Koran"), color: "linear-gradient(135deg,#efe6c8,#f7f1dd)" }] : []),
+    { id: "photos", icon: "🖼️", label: t("Foto's"), color: "linear-gradient(135deg,#d6f3ec,#e7f6ff)" },
+    { id: "meals", icon: "🍽️", label: t("Wat eten we?"), color: "linear-gradient(135deg,#ffd9d0,#ffe8dc)" },
+    ...apps.map((a, i) => ({ id: `app:${i}` as const, icon: a.icon || "📱", label: a.label, color: "linear-gradient(135deg,#ece9ff,#f6f0ff)" })),
   ];
   return (
     <div className="kid-home">
+      <section className="kid-now">
+        <div className="kid-now-h">
+          <span className="kid-sticker" aria-hidden>{sticker}</span>
+          <div className="kid-now-t">
+            <b>{moment === "ochtend" ? t("Goeiemorgen! Dit doe je nu:") : moment === "middag" ? t("Goeiemiddag! Dit staat nog te doen:") : t("Bijna bedtijd! Nog even dit:")}</b>
+            <small>{chores.length ? t("{n} van {m} taken gedaan", { n, m: chores.length }) : t("Nog geen taken, vraag mama of papa om je routine aan te zetten")}</small>
+          </div>
+          <span className="kid-stars">⭐ {pts?.balance ?? 0}{pts?.today ? <small> +{pts.today}</small> : null}</span>
+        </div>
+        <div className="kid-bar"><i style={{ width: `${chores.length ? (n / chores.length) * 100 : 0}%` }} /></div>
+        <div className="kid-now-tasks">
+          {now.map((c) => <button key={c.id} className="kid-task" onClick={() => toggle(c)}><span className="kid-task-ic">{c.icon}</span><b>{c.title}</b><span className="kid-task-check" /></button>)}
+          {!now.length && chores.length > 0 && <p className="kid-done-msg">🎉 {n === chores.length ? t("Alles gedaan! Jij bent een kampioen.") : t("Niets meer voor nu. Straks komt er meer!")}</p>}
+        </div>
+      </section>
+      <div className="kid-strip">
+        {weather && <span className="kid-chip">{weather.current.icon} {weather.current.temp}°</span>}
+        {cd.map((c) => <span className="kid-chip" key={c.title}>{c.icon} {c.days === 0 ? t("vandaag!") : t("nog {n} nachtjes", { n: c.days })} · {c.title}</span>)}
+        {left !== null && <span className="kid-chip">⏳ {t("nog {n} minuten vandaag", { n: left })}</span>}
+      </div>
       <div className="kid-tiles">
         {tiles.map((x) => (
           <button key={x.id} className="kid-tile" style={{ background: x.color }} onClick={() => { if (x.id.startsWith("app:")) { const a = apps[Number(x.id.slice(4))]; void launchApp(a.package, a.url); } else onView(x.id as View); }}>
@@ -115,7 +159,7 @@ function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member |
           </button>
         ))}
       </div>
-      {left !== null && <p className="kid-left muted">⏳ {t("nog {n} minuten vandaag", { n: left })}</p>}
+      {party && <Celebration name={me?.name ?? ""} onDone={() => setParty(false)} />}
     </div>
   );
 }

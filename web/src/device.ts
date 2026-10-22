@@ -23,18 +23,19 @@ function defaultName() {
 }
 let state: DeviceState = (() => { try { const raw = localStorage.getItem(KEY); if (raw) return { ...fresh(), ...JSON.parse(raw) } as DeviceState; } catch { /* */ } return fresh(); })();
 
+const narrowKid = () => state.role === "kid" && Math.min(screen.width, screen.height) < 700;
 export const getDevice = () => state;
 export function setDevice(patch: Partial<DeviceState>) {
   state = { ...state, ...patch };
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* */ }
   document.body.classList.toggle("gb-hub", state.role === "hub");
-  document.body.classList.toggle("gb-phone", state.role === "phone");
+  document.body.classList.toggle("gb-phone", state.role === "phone" || narrowKid());
   document.body.classList.toggle("gb-kid", state.role === "kid");
   document.body.classList.toggle("gb-big", !!state.big);
   listeners.forEach((l) => l());
 }
 document.body.classList.toggle("gb-hub", state.role === "hub");
-document.body.classList.toggle("gb-phone", state.role === "phone");
+document.body.classList.toggle("gb-phone", state.role === "phone" || narrowKid());
 document.body.classList.toggle("gb-kid", state.role === "kid");
 document.body.classList.toggle("gb-big", !!state.big);
 

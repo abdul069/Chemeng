@@ -1771,7 +1771,16 @@ a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transpare
 
 /* ---------- kindertablet ---------- */
 .kid-shell { display: block; }
-.kid { min-height: 100dvh; display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 24px; background: linear-gradient(160deg, #fff7e6 0%, #e8f6f3 55%, #eef0ff 100%); }
+.kid { min-height: 100dvh; display: flex; flex-direction: column; gap: 14px; padding: calc(14px + env(safe-area-inset-top, 0px)) 18px calc(20px + env(safe-area-inset-bottom, 0px)); overflow-x: hidden; max-width: 100vw; box-sizing: border-box; background: radial-gradient(circle at 10% 10%, #fff2c2 0, transparent 28%), radial-gradient(circle at 90% 15%, #d8f0ff 0, transparent 30%), radial-gradient(circle at 80% 90%, #ffe0ea 0, transparent 30%), radial-gradient(circle at 15% 85%, #dff7ec 0, transparent 30%), #fbfaf5; }
+.kid-view { overflow-x: hidden; } .kid-view > * { min-width: 0; max-width: 100%; }
+.kid-now { background: var(--surface); border-radius: 26px; padding: 16px; box-shadow: 0 8px 26px rgba(30, 38, 50, .08); display: flex; flex-direction: column; gap: 10px; }
+.kid-now-h { display: flex; align-items: center; gap: 12px; } .kid-now-t { flex: 1; min-width: 0; display: flex; flex-direction: column; } .kid-now-t b { font-size: 19px; } .kid-now-t small { color: var(--muted); font-size: 14px; }
+.kid-sticker { font-size: 44px; line-height: 1; } .kid-stars { font-weight: 800; font-size: 20px; white-space: nowrap; } .kid-stars small { color: var(--accent); font-size: 14px; }
+.kid-bar { height: 12px; border-radius: 8px; background: #eef0f3; overflow: hidden; } .kid-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffc93c, #2bb3a8); border-radius: 8px; transition: width .4s; }
+.kid-now-tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.kid-done-msg { margin: 4px 0 0; font-size: 17px; font-weight: 700; }
+.kid-strip { display: flex; gap: 8px; flex-wrap: wrap; } .kid-chip { background: var(--surface); border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: 14px; box-shadow: 0 3px 10px rgba(30, 38, 50, .06); }
+@media (max-width: 640px) { .kid-hello b { font-size: 22px; } .kid-clock b { font-size: 24px; } .kid-tiles { grid-template-columns: repeat(2, 1fr); gap: 10px; } .kid-tile { min-height: 120px; padding: 12px; } .kid-tile-ic { font-size: 40px; } .kid-tile b { font-size: 16px; } .kid-now-tasks { grid-template-columns: 1fr; } .kid-task b { font-size: 16px; } }
 .kid-top { display: flex; align-items: center; gap: 14px; user-select: none; -webkit-user-select: none; }
 .kid-hello { display: flex; flex-direction: column; line-height: 1.1; flex: 1; min-width: 0; } .kid-hello small { color: var(--muted); font-size: 15px; } .kid-hello b { font-size: 30px; font-family: var(--f-display); font-weight: 400; }
 .kid-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; } .kid-clock b { font-size: 34px; } .kid-clock small { color: var(--muted); font-size: 13px; }
@@ -1797,3 +1806,7 @@ a.connw-line:hover { background: color-mix(in srgb, var(--accent) 12%, transpare
 body.gb-kid .mascot-float, body.gb-kid .fab { display: none; }
 .chips .chip { width: auto; background: var(--surface-2); color: var(--fg); font-weight: 600; }
 .chips button.chip { cursor: pointer; }
+
+.kid .topbar .right { flex-wrap: wrap; row-gap: 8px; }
+.kid .topbar { max-width: 100%; }
+.kid .weeknav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding-bottom: 4px; } .kid .weeknav::-webkit-scrollbar { display: none; } .kid .weeknav > * { flex: none; }
