@@ -7,6 +7,7 @@ import { Icon } from "./Icons";
 import { Celebration } from "./Profile";
 import { ayahAudioUrl } from "../islam";
 import { getLang, t as tr } from "../i18n";
+import { say } from "../speech";
 import { ORDERS, PAIRS, QUIZ, SURAHS, TOPICS, type Bi } from "../learn-content";
 import { SETS, GROUP_LABEL, groupFor, clockQuestions, type AgeGroup, type ChoiceSet } from "../learn-age";
 
@@ -26,15 +27,7 @@ function Illu({ e, className = "", still = PHONE }: { e: string; className?: str
 }
 /** Leest tekst voor met de stem van het toestel (kinderen kunnen nog niet alles lezen). */
 let voiceOn = (() => { try { return localStorage.getItem("gb.learn.voice") !== "0"; } catch { return true; } })();
-function speak(text: string, force = false) {
-  if ((!voiceOn && !force) || typeof speechSynthesis === "undefined") return;
-  try {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}]/gu, "").replace(/\s+/g, " ").trim());
-    u.lang = getLang() === "tr" ? "tr-TR" : "nl-NL"; u.rate = 0.92; u.pitch = 1.1;
-    speechSynthesis.speak(u);
-  } catch { /* geen stem */ }
-}
+function speak(text: string, force = false) { if (!voiceOn && !force) return; void say(text, 0.92); }
 /** Korte kindertekst: zonder haakjes-uitleg. */
 const kidText = (s: string) => s.replace(/\s*\([^)]*\)/g, "").trim() || s;
 type Mood = "idle" | "ask" | "happy" | "oops" | "party";

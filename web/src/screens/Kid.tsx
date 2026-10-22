@@ -11,6 +11,7 @@ import { setDevice, useDevice } from "../device";
 import { Celebration } from "../components/Profile";
 import { kiosk, launchApp } from "../native";
 import { t } from "../i18n";
+import { say } from "../speech";
 
 const LearnApp = lazy(() => import("../components/Learn").then((m) => ({ default: m.LearnApp })));
 const QuranApp = lazy(() => import("../components/Quran").then((m) => ({ default: m.QuranApp })));
@@ -22,8 +23,7 @@ export const parseKidApps = (s: string | undefined): KidApp[] => { try { const a
 type View = "home" | "day" | "learn" | "quran" | "photos" | "meals";
 const hm = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 const inWindow = (from: string, until: string, now = hm()) => !!from && !!until && (from < until ? now >= from && now < until : now >= from || now < until);
-/** Voorlezen voor kinderen die nog niet lezen: tik op het plaatje van een taak. */
-export function sayAloud(text: string) { try { if (typeof speechSynthesis === "undefined") return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/[\p{Extended_Pictographic}\u{FE0F}]/gu, "").trim()); u.lang = document.documentElement.lang === "tr" ? "tr-TR" : document.documentElement.lang === "en" ? "en-GB" : "nl-NL"; u.rate = 0.9; u.pitch = 1.1; speechSynthesis.speak(u); } catch { /* */ } }
+export const sayAloud = (text: string) => void say(text);
 const usedKey = (d: string) => `gb.kid.used.${d}`;
 const readUsed = (d: string) => { try { return Number(localStorage.getItem(usedKey(d)) || 0); } catch { return 0; } };
 
