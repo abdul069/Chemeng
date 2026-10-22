@@ -1439,4 +1439,9 @@ export const TR: Record<string, string> = {
   "Betaling mislukt, werk je kaart bij.": "Ödeme başarısız oldu, kartını güncelle.",
   "volgende afrekening {d}": "sonraki ödeme {d}",
   "Veilig betalen via Stripe met kaart, Bancontact of iDEAL. Een ledencode kun je op de betaalpagina invullen als kortingscode.": "Stripe ile kart, Bancontact veya iDEAL kullanarak güvenli ödeme. Üye kodunu ödeme sayfasında indirim kodu olarak girebilirsin.",
+  "🇬🇧 Britse feestdagen": "🇬🇧 İngiltere resmî tatilleri",
+  "🇩🇪 Duitse feestdagen": "🇩🇪 Almanya resmî tatilleri",
+  "🇫🇷 Franse feestdagen": "🇫🇷 Fransa resmî tatilleri",
+  "🇹🇷 Turkse nationale feestdagen": "🇹🇷 Türkiye millî bayramları",
+  "🇲🇦 Marokkaanse nationale feestdagen": "🇲🇦 Fas millî bayramları",
 };

@@ -276,7 +276,7 @@ function Place() {
       <p className="hint">{t("Huidige woonplaats:")}{" "}<b>{data!.settings.city}</b>{t(". Het weer komt van Open-Meteo.")}</p>
       <label className="field" style={{ maxWidth: 320 }}><span>{t("Land")}</span>
         <select value={data!.settings.country || "BE"} onChange={(e) => save({ country: e.target.value })}>
-          <option value="BE">🇧🇪 België</option><option value="NL">🇳🇱 Nederland</option>
+          <option value="BE">🇧🇪 België</option><option value="NL">🇳🇱 Nederland</option><option value="UK">🇬🇧 United Kingdom</option><option value="DE">🇩🇪 Deutschland</option><option value="FR">🇫🇷 France</option><option value="TR">🇹🇷 Türkiye</option><option value="MA">🇲🇦 Maroc</option>
         </select>
       </label>
       <input id="city" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Zoek je gemeente…")} aria-label={t("Gemeente zoeken")} />
@@ -483,6 +483,11 @@ function HolidayToggles() {
       <div className="picks">
         <button type="button" className="pick" aria-pressed={on.has("be")} onClick={() => toggle("be")}>{t("🇧🇪 Belgische feestdagen")}</button>
         <button type="button" className="pick" aria-pressed={on.has("nl")} onClick={() => toggle("nl")}>{t("🇳🇱 Nederlandse feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("uk")} onClick={() => toggle("uk")}>{t("🇬🇧 Britse feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("de")} onClick={() => toggle("de")}>{t("🇩🇪 Duitse feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("fr")} onClick={() => toggle("fr")}>{t("🇫🇷 Franse feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("tr")} onClick={() => toggle("tr")}>{t("🇹🇷 Turkse nationale feestdagen")}</button>
+        <button type="button" className="pick" aria-pressed={on.has("ma")} onClick={() => toggle("ma")}>{t("🇲🇦 Marokkaanse nationale feestdagen")}</button>
         <button type="button" className="pick" aria-pressed={on.has("sinterklaas")} onClick={() => toggle("sinterklaas")}>{t("🎁 Sinterklaas, advent en Kerst")}</button>
         <button type="button" className="pick" aria-pressed={on.has("islam")} onClick={() => toggle("islam")}>{t("🌙 Ramadan, Suiker- en Offerfeest")}</button>
       </div>

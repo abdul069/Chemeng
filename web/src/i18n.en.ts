@@ -1432,4 +1432,9 @@ export const EN: Record<string, string> = {
   "Betaling mislukt, werk je kaart bij.": "Payment failed, please update your card.",
   "volgende afrekening {d}": "next billing {d}",
   "Veilig betalen via Stripe met kaart, Bancontact of iDEAL. Een ledencode kun je op de betaalpagina invullen als kortingscode.": "Secure payment through Stripe with card, Bancontact or iDEAL. A member code can be entered on the payment page as a promo code.",
+  "🇬🇧 Britse feestdagen": "🇬🇧 UK bank holidays",
+  "🇩🇪 Duitse feestdagen": "🇩🇪 German public holidays",
+  "🇫🇷 Franse feestdagen": "🇫🇷 French public holidays",
+  "🇹🇷 Turkse nationale feestdagen": "🇹🇷 Turkish national holidays",
+  "🇲🇦 Marokkaanse nationale feestdagen": "🇲🇦 Moroccan national holidays",
 };
