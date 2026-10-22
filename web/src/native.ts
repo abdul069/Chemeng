@@ -81,7 +81,10 @@ export async function kiosk(action: "start" | "stop" | "launcher", packages: str
   } catch { /* geen plugin (oude APK) of geen rechten */ }
 }
 /** Een toegelaten app openen: op Android via de pakketnaam, in de browser via de link. */
-export async function launchApp(pkg: string, url?: string): Promise<void> {
-  if (isNative() && pkg) { try { const r = await Kiosk.launch({ package: pkg }); if (r.ok) return; } catch { /* */ } }
-  if (url) window.open(url, "_blank", "noopener");
+export async function launchApp(pkg: string, url?: string): Promise<"opened" | "store" | "web" | "none"> {
+  if (isNative() && pkg) { try { const r = await Kiosk.launch({ package: pkg }); if (r.ok) return "opened"; } catch { /* */ } }
+  // niet geïnstalleerd (of in de browser): het webadres, anders de Play Store-pagina van de app
+  if (url) { window.open(url, "_blank", "noopener"); return "web"; }
+  if (pkg) { window.open(`https://play.google.com/store/apps/details?id=${encodeURIComponent(pkg)}`, "_blank", "noopener"); return "store"; }
+  return "none";
 }

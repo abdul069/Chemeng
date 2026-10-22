@@ -8,8 +8,9 @@ import { Celebration } from "./Profile";
 import { ayahAudioUrl } from "../islam";
 import { getLang, t as tr } from "../i18n";
 import { ORDERS, PAIRS, QUIZ, SURAHS, TOPICS, type Bi } from "../learn-content";
+import { SETS, GROUP_LABEL, groupFor, clockQuestions, type AgeGroup, type ChoiceSet } from "../learn-age";
 
-type Game = "quiz" | "match" | "order" | "surah" | "sums" | "tables" | "speed";
+type Game = "quiz" | "match" | "order" | "surah" | "sums" | "tables" | "speed" | "clock" | `set:${string}`;
 
 /** Echte, kleurrijke tekening van het web voor een emoji: Google Noto-emoji, bewegend waar dat bestaat,
  *  anders de stilstaande tekening, en als het web niet meewerkt het emoji zelf. */
@@ -59,7 +60,7 @@ function Photo({ q, className = "" }: { q: string; className?: string }) {
   if (!p) return null;
   return <img className={`learn-photo ${className}`} src={p.url} alt={p.title} loading="lazy" referrerPolicy="no-referrer" />;
 }
-type Subject = "islam" | "rekenen";
+type Subject = "islam" | "rekenen" | "spelen" | "taal" | "wereld";
 const bi = (b: Bi) => (getLang() === "tr" ? b.tr : b.nl);
 /** Vrolijke geluidjes zonder bestanden (WebAudio). */
 function beep(kind: "good" | "bad" | "win") {
@@ -101,7 +102,27 @@ export function LearnApp() {
   const [who, setWho] = useState<string>(() => { try { return localStorage.getItem("gb.learn.who") ?? ""; } catch { return ""; } });
   const me = members.find((m) => m.id === who) ?? members.find((m) => m.role === "kind") ?? members[0];
   const [game, setGame] = useState<Game | null>(null);
-  const [subject, setSubject] = useState<Subject>(() => { try { return (localStorage.getItem("gb.learn.subject") as Subject) || "islam"; } catch { return "islam"; } });
+  const islamOn = (data?.settings.holidays ?? "").split(",").includes("islam") || data?.settings.ezan_on === "1";
+  const [groupOverride, setGroupOverride] = useState<Record<string, AgeGroup>>(() => { try { return JSON.parse(localStorage.getItem("gb.learn.group") || "{}"); } catch { return {}; } });
+  const group: AgeGroup = (me && groupOverride[me.id]) || groupFor(me?.birthday);
+  const setGroup = (g: AgeGroup) => { if (!me) return; const n = { ...groupOverride, [me.id]: g }; setGroupOverride(n); try { localStorage.setItem("gb.learn.group", JSON.stringify(n)); } catch { /* */ } };
+  // onderwerpen per leeftijd: kleuters spelen met kleuren en dieren, lagere school leest en rekent, tieners talen en wetenschap; islam alleen als het pakket aanstaat
+  const subjects: { id: Subject; icon: string; label: string }[] = [
+    ...(group === "kleuter" ? [{ id: "spelen" as Subject, icon: "🧸", label: tr("Spelen") }] : []),
+    ...(group !== "kleuter" ? [{ id: "rekenen" as Subject, icon: "🔢", label: tr("Rekenen") }] : []),
+    ...(group !== "kleuter" ? [{ id: "taal" as Subject, icon: "📖", label: group === "tiener" ? tr("Talen") : tr("Lezen en Engels") }] : []),
+    ...(group !== "kleuter" ? [{ id: "wereld" as Subject, icon: "🌍", label: tr("Wereld") }] : []),
+    ...(islamOn ? [{ id: "islam" as Subject, icon: "🕌", label: tr("Islam") }] : []),
+  ];
+  const [subjectRaw, setSubject] = useState<Subject>(() => { try { return (localStorage.getItem("gb.learn.subject") as Subject) || "spelen"; } catch { return "spelen"; } });
+  const subject: Subject = subjects.some((x) => x.id === subjectRaw) ? subjectRaw : subjects[0]?.id ?? "rekenen";
+  const sets = SETS.filter((x) => x.group === group);
+  const ageGames: { id: Game; subject: Subject; icon: string; color: string; title: Bi; sub: Bi }[] = [
+    ...sets.map((x) => ({ id: `set:${x.id}` as Game, subject: (group === "kleuter" ? "spelen" : ["words", "spell", "english", "french", "english2"].includes(x.id) ? "taal" : "wereld") as Subject, icon: x.icon, color: x.color, title: x.title, sub: x.sub })),
+    ...(group !== "kleuter" ? [{ id: "clock" as Game, subject: "rekenen" as Subject, icon: "🕒", color: "#6fb7ff", title: { nl: "Klok lezen", tr: "Saat okuma" }, sub: { nl: "Hoe laat is het?", tr: "Saat kaç?" } }] : []),
+  ];
+  const allGames = [...GAMES, ...ageGames];
+  const currentSet: ChoiceSet | undefined = typeof game === "string" && game.startsWith("set:") ? SETS.find((x) => `set:${x.id}` === game) : undefined;
   const pickSubject = (x: Subject) => { setSubject(x); try { localStorage.setItem("gb.learn.subject", x); } catch { /* */ } };
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const [earned, setEarned] = useState<{ given: number; today: number; dailyMax: number } | null>(null);
@@ -125,6 +146,8 @@ export function LearnApp() {
   if (game === "sums") return <SumsGame onDone={(s) => finish("sums", s, me.name)} onClose={() => setGame(null)} />;
   if (game === "tables") return <TablesGame onDone={(s) => finish("tables", s, me.name)} onClose={() => setGame(null)} />;
   if (game === "speed") return <SpeedGame onDone={(s) => finish("speed", s, me.name)} onClose={() => setGame(null)} />;
+  if (game === "clock") return <ClockGame onDone={(s) => finish("clock", s, me.name)} onClose={() => setGame(null)} />;
+  if (currentSet) return <ChoiceGame key={currentSet.id} set={currentSet} onDone={(s) => finish(currentSet.id.replace(/[^a-z-]/g, "") as Game, s, me.name)} onClose={() => setGame(null)} />;
 
   return (
     <div className="page-scroll learn kids" style={{ flex: 1, minHeight: 0 }}>
@@ -143,12 +166,14 @@ export function LearnApp() {
       </section>
       <Mascot mood="idle" say={tr("Hoi {name}! Waar heb je zin in?", { name: me.name })} />
       {earned && <p className="hint learn-earned">{earned.given > 0 ? tr("+{n} sterren voor {name}! 🎉", { n: earned.given, name: me.name }) : tr("Goed gespeeld! Het dagmaximum voor dit spel is bereikt; morgen weer sterren.")}</p>}
+      <div className="learn-age picks">
+        {(Object.keys(GROUP_LABEL) as AgeGroup[]).map((g) => <button key={g} type="button" className="pick" aria-pressed={group === g} onClick={() => setGroup(g)}>{GROUP_LABEL[g].icon} {bi(GROUP_LABEL[g])}</button>)}
+      </div>
       <div className="learn-subjects kid-tabs" role="group" aria-label={tr("Onderwerp")}>
-        <button className={subject === "islam" ? "on" : ""} aria-pressed={subject === "islam"} onClick={() => pickSubject("islam")}><span aria-hidden>🕌</span> {tr("Islam")}</button>
-        <button className={subject === "rekenen" ? "on" : ""} aria-pressed={subject === "rekenen"} onClick={() => pickSubject("rekenen")}><span aria-hidden>🔢</span> {tr("Rekenen")}</button>
+        {subjects.map((x) => <button key={x.id} className={subject === x.id ? "on" : ""} aria-pressed={subject === x.id} onClick={() => pickSubject(x.id)}><span aria-hidden>{x.icon}</span> {x.label}</button>)}
       </div>
       <div className="learn-grid">
-        {GAMES.filter((g) => g.subject === subject).map((g) => (
+        {allGames.filter((g) => g.subject === subject).map((g) => (
           <button key={g.id} className="learn-tile kid" style={{ "--c": g.color } as React.CSSProperties} onClick={() => { setEarned(null); setGame(g.id); }}>
             <Illu e={g.icon} className="learn-ic big wiggle" />
             <b>{bi(g.title)}</b>
@@ -498,6 +523,85 @@ function SpeedGame({ onDone, onClose }: { onDone: (stars: number) => void; onClo
     <GameShell title={tr("Snelheidsronde")} onClose={onClose} progress={1 - left / 60}>
       <small className="hint num">⏱️ {left}s · ⭐ {score}</small>
       <SumRow sum={sum} onAnswer={(ok) => { if (ok) setScore((s) => s + 1); setTries((n) => n + 1); setSum(makeSum(20, ["+", "−"])); }} />
+    </GameShell>
+  );
+}
+
+/* ---------- Keuzespel per leeftijd: kleuren, dieren, tellen, vormen, lezen, spelling, Engels, Frans, wereld, wetenschap ---------- */
+function ChoiceGame({ set, onDone, onClose }: { set: ChoiceSet; onDone: (stars: number) => void; onClose: () => void }) {
+  const qs = useMemo(() => set.make(), [set]);
+  const [i, setI] = useState(0);
+  const [tried, setTried] = useState<number[]>([]);
+  const [solved, setSolved] = useState(false);
+  const [score, setScore] = useState(0);
+  const q = qs[i];
+  useEffect(() => { if (q?.speak) speak(bi(q.prompt)); }, [q]);
+  if (!q) return <GameShell title={bi(set.title)} onClose={onClose}><Result stars={score} max={qs.length} onDone={() => onDone(score)} /></GameShell>;
+  const answer = (k: number) => {
+    if (solved || tried.includes(k)) return;
+    if (k === q.answer) { setSolved(true); if (tried.length === 0) setScore((s) => s + 1); beep("good"); speak(bi(q.options[k])); }
+    else { setTried([...tried, k]); beep("bad"); }
+  };
+  const next = () => { setI(i + 1); setTried([]); setSolved(false); };
+  const say = solved ? (tried.length === 0 ? tr("Juist! Een ster voor jou!") : tr("Ja, dat is het! Goed gevonden.")) : tried.length ? tr("Oeps, bijna! Probeer nog eens.") : bi(q.prompt);
+  const manyIcons = (q.promptIcon?.length ?? 0) > 4;
+  return (
+    <GameShell title={bi(set.title)} icon={set.icon} onClose={onClose} progress={i / qs.length}>
+      <Mascot mood={solved ? "happy" : tried.length ? "oops" : "ask"} say={say} />
+      <div className="learn-q kid-card">
+        {solved && <Burst />}
+        <small>{tr("Vraag {i} van {n}", { i: i + 1, n: qs.length })}</small>
+        <div className="kid-question">{q.promptIcon && (manyIcons ? <div className="kid-count" aria-hidden>{q.promptIcon}</div> : <Illu e={q.promptIcon} className={`kid-q-ic bob${q.big ? " huge" : ""}`} />)}<h2>{bi(q.prompt)}</h2></div>
+        <div className={`learn-options${q.optionIcons ? " pics" : " words"}`}>
+          {q.options.map((o, k) => {
+            const state = solved ? (k === q.answer ? " right" : " dim") : tried.includes(k) ? " wrong dim" : tried.length && k === tried[tried.length - 1] ? " shake" : "";
+            return <button key={k} className={`learn-opt${q.optionIcons ? " pic" : " word"}${state}`} style={{ "--c": ["#ffd34d", "#48d1c4", "#ff8a4c", "#b58cf0"][k % 4] } as React.CSSProperties} onClick={() => answer(k)} disabled={solved || tried.includes(k)}>{q.optionIcons?.[k] && <Illu e={q.optionIcons[k]} className="learn-opt-ic" />}<span>{bi(o)}</span></button>;
+          })}
+        </div>
+        {solved && <button className="btn kid-next" onClick={next}>{i + 1 >= qs.length ? tr("Klaar") + " 🎉" : tr("Volgende vraag") + " ➜"}</button>}
+      </div>
+    </GameShell>
+  );
+}
+
+/* ---------- Klok lezen ---------- */
+function ClockFace({ h, m }: { h: number; m: number }) {
+  const ha = ((h % 12) + m / 60) * 30, ma = m * 6;
+  const hand = (deg: number, len: number, w: number) => <line x1="50" y1="50" x2={50 + len * Math.sin((deg * Math.PI) / 180)} y2={50 - len * Math.cos((deg * Math.PI) / 180)} stroke="#1e2632" strokeWidth={w} strokeLinecap="round" />;
+  return (
+    <svg viewBox="0 0 100 100" className="kid-clock-face" aria-hidden>
+      <circle cx="50" cy="50" r="46" fill="#fff" stroke="#ffd34d" strokeWidth="5" />
+      {Array.from({ length: 12 }, (_, i) => { const a = (i * 30 * Math.PI) / 180; return <text key={i} x={50 + 37 * Math.sin(a)} y={50 - 37 * Math.cos(a) + 3.5} textAnchor="middle" fontSize="9" fontWeight="700" fill="#1e2632">{i === 0 ? 12 : i}</text>; })}
+      {hand(ha, 22, 5)}{hand(ma, 32, 3)}<circle cx="50" cy="50" r="3" fill="#ff8a4c" />
+    </svg>
+  );
+}
+function ClockGame({ onDone, onClose }: { onDone: (stars: number) => void; onClose: () => void }) {
+  const [level, setLevel] = useState<1 | 2 | 3 | null>(null);
+  const [qs, setQs] = useState<ReturnType<typeof clockQuestions>>([]);
+  const [i, setI] = useState(0); const [score, setScore] = useState(0); const [tried, setTried] = useState<number[]>([]); const [solved, setSolved] = useState(false);
+  const start = (l: 1 | 2 | 3) => { setLevel(l); setQs(clockQuestions(l)); setI(0); setScore(0); setTried([]); setSolved(false); };
+  if (!level) return (
+    <GameShell title={tr("Klok lezen")} icon="🕒" onClose={onClose}>
+      <p className="hint">{tr("Hoe laat is het op de klok? Kies hoe moeilijk.")}</p>
+      <div className="learn-grid">{([[1, "Hele uren", "Tam saatler", "🐣"], [2, "Halve uren", "Buçuklar", "🐤"], [3, "Kwartieren", "Çeyrekler", "🦆"]] as const).map(([l, nl, trr, ic], k) => <button key={l} className="learn-tile kid" style={{ "--c": ["#8ed081", "#48d1c4", "#6fb7ff"][k] } as React.CSSProperties} onClick={() => start(l)}><Illu e={ic} className="learn-ic big wiggle" /><b>{bi({ nl, tr: trr })}</b></button>)}</div>
+    </GameShell>
+  );
+  const q = qs[i];
+  if (!q) return <GameShell title={tr("Klok lezen")} onClose={onClose}><Result stars={score} max={qs.length} onDone={() => onDone(score)} /></GameShell>;
+  const answer = (k: number) => { if (solved || tried.includes(k)) return; if (k === q.answer) { setSolved(true); if (!tried.length) setScore((s) => s + 1); beep("good"); } else { setTried([...tried, k]); beep("bad"); } };
+  return (
+    <GameShell title={tr("Klok lezen")} icon="🕒" onClose={() => setLevel(null)} progress={i / qs.length}>
+      <Mascot mood={solved ? "happy" : tried.length ? "oops" : "ask"} say={solved ? tr("Juist! Een ster voor jou!") : tried.length ? tr("Oeps, bijna! Probeer nog eens.") : tr("Hoe laat is het?")} />
+      <div className="learn-q kid-card">
+        {solved && <Burst />}
+        <small>{tr("Vraag {i} van {n}", { i: i + 1, n: qs.length })}</small>
+        <ClockFace h={q.h} m={q.m} />
+        <div className="learn-options words">
+          {q.options.map((o, k) => { const state = solved ? (k === q.answer ? " right" : " dim") : tried.includes(k) ? " wrong dim" : ""; return <button key={k} className={`learn-opt word num${state}`} onClick={() => answer(k)} disabled={solved || tried.includes(k)}>{o.replace(":00", " uur").replace(":30", " uur 30").replace(":15", " uur 15").replace(":45", " uur 45")}</button>; })}
+        </div>
+        {solved && <button className="btn kid-next" onClick={() => { setI(i + 1); setTried([]); setSolved(false); }}>{i + 1 >= qs.length ? tr("Klaar") + " 🎉" : tr("Volgende vraag") + " ➜"}</button>}
+      </div>
     </GameShell>
   );
 }

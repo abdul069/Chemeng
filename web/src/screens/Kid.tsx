@@ -103,7 +103,7 @@ export function KidShell({ onParent }: { onParent: () => void }) {
 const MOMENT_NOW = (): "ochtend" | "middag" | "avond" => { const h = new Date().getHours(); return h < 12 ? "ochtend" : h < 17 ? "middag" : "avond"; };
 const STICKERS = ["🦁", "🐼", "🦄", "🐬", "🦊", "🐨", "🦋", "🐙"];
 function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member | null; apps: KidApp[]; islam: boolean; limit: number; used: number; extra: number; onView: (v: View) => void }) {
-  const { data } = useData();
+  const { data, toast } = useData();
   const act = useAction();
   const d = todayIso(); const wd = weekday(d);
   const [done, reload] = useRemote<string[]>(`/chores/done?from=${d}&to=${d}`, ["chores"], []);
@@ -154,7 +154,7 @@ function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member |
       </div>
       <div className="kid-tiles">
         {tiles.map((x) => (
-          <button key={x.id} className="kid-tile" style={{ background: x.color }} onClick={() => { if (x.id.startsWith("app:")) { const a = apps[Number(x.id.slice(4))]; void launchApp(a.package, a.url); } else onView(x.id as View); }}>
+          <button key={x.id} className="kid-tile" style={{ background: x.color }} onClick={() => { if (x.id.startsWith("app:")) { const a = apps[Number(x.id.slice(4))]; launchApp(a.package, a.url).then((r) => { if (r === "store") toast(t("{a} staat nog niet op deze tablet. Een ouder installeert ze via de Play Store.", { a: a.label })); }); } else onView(x.id as View); }}>
             <span className="kid-tile-ic" aria-hidden>{x.icon}</span><b>{x.label}</b>{x.sub && <small>{x.sub}</small>}
           </button>
         ))}
