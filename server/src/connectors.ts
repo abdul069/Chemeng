@@ -62,8 +62,8 @@ const EN_TEXT: Record<string, { name: string; description: string }> = {
   food_delivery: { name: "Order food", description: "Takeaway, Uber Eats or Deliveroo as a way out when dinner is not planned: one tap to your favourite restaurant." },
   rides: { name: "Order a ride", description: "For an event with an address: one tap opens Uber or the route in Maps with the destination filled in." },
   uit: { name: "UiTinVlaanderen", description: "Family activities near you this weekend, from publiq's open database; the manager suggests them on Friday." },
-  delijn: { name: "De Lijn", description: "Real-time departures from your stop. Needs a free API key from De Lijn Open Data; coming in a next round." },
-  mivb: { name: "MIVB/STIB", description: "Real-time metro, tram and bus in Brussels. Coming in a next round." },
+  delijn: { name: "De Lijn", description: "The next buses and trams at your stop, real time, in the morning briefing and on the board. Needs a free key from De Lijn Open Data, or the admin sets one for everyone." },
+  mivb: { name: "MIVB/STIB", description: "Metro, tram and bus in Brussels: the next departures at your stop, real time. Needs a free key from STIB Open Data, or the admin sets one for everyone." },
   inbox: { name: "Family inbox", description: "An email address for your family: forward the school letter, the doctor, the inspection letter or a receipt and {brand} turns it into events, groceries and prices. You review, one tap and it is in." },
   recycle: { name: "Recycle! (waste app)", description: "Straight from the Recycle! app. Unofficial connection that may break; prefer your waste collector's iCal address." },
   school_holidays: { name: "School holidays", description: "Flemish, French-community or Dutch school holidays as a calendar layer, with a nudge the day before they start and end." },
@@ -236,8 +236,71 @@ export const CONNECTORS: ConnectorDef[] = [
     widget: (c, lang) => { const items = (c.state.items as { title: string; date: string | null; place: string; url: string }[] | undefined) ?? []; return items.length ? { title: L(lang, { nl: "Uit in de buurt", tr: "Yakınında etkinlikler", en: "Things to do nearby" }), icon: "🎪", lines: items.slice(0, 4).map((i) => ({ icon: "🎪", text: i.title, sub: [i.date, i.place].filter(Boolean).join(" · "), url: i.url })) } : null; },
     briefing: (c, ctx) => { const wd = new Date(ctx.date + "T12:00:00").getDay(); if (wd !== 5 || ctx.kind !== "evening") return []; const items = (c.state.items as { title: string }[] | undefined) ?? []; return items.length ? [{ kind: "note", icon: "🎪", text: `${L(ctx.lang, { nl: "Dit weekend in de buurt", tr: "Bu hafta sonu yakınında", en: "This weekend nearby" })}: ${items.slice(0, 2).map((i) => i.title).join(", ")}.` }] : []; },
   },
-  { id: "delijn", name: "De Lijn", description: "Realtime vertrektijden van je halte. Vraagt een gratis API-sleutel bij De Lijn Open Data; komt in een volgende ronde.", category: "mobiliteit", icon: "🚌", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
-  { id: "mivb", name: "MIVB", description: "Realtime metro, tram en bus in Brussel. Komt in een volgende ronde.", category: "mobiliteit", icon: "🚇", scope: "member", plan: "gezin", country: ["BE"], status: "soon", refreshMinutes: 0, provides: [], fields: [] },
+  {
+    id: "delijn", name: "De Lijn", description: "De volgende bussen en trams aan je halte, realtime, in de ochtendbriefing en op het bord. Vraagt een gratis sleutel bij De Lijn Open Data (data.delijn.be), of de beheerder zet er één voor iedereen.", category: "mobiliteit", icon: "🚌",
+    scope: "member", plan: "gezin", country: ["BE"], status: "ready", refreshMinutes: 2, provides: ["briefing", "widget"],
+    fields: [
+      { key: "stop", label: "Halte", type: "text", required: true, placeholder: "Hasselt Station perron 1", hint: "Naam van de halte zoals op het haltebord; het eerste zoekresultaat wordt gebruikt. Of het haltenummer (bv. 403219)." },
+      { key: "line", label: "Alleen lijn (optioneel)", type: "text", placeholder: "45" },
+      { key: "key", label: "API-sleutel (leeg = sleutel van de server)", type: "secret", hint: "Gratis via data.delijn.be → product 'Open Data Free Subscription'." },
+    ],
+    sync: async (c) => {
+      const key = str(c.config.key) || process.env.DELIJN_API_KEY || ""; if (!key) throw new Error("Vul een API-sleutel van De Lijn in, of laat de beheerder DELIJN_API_KEY zetten.");
+      const H = { "Ocp-Apim-Subscription-Key": key };
+      const q = str(c.config.stop).trim(); if (!q) throw new Error("Vul een halte in.");
+      let ent = str(c.state.ent), nr = str(c.state.nr), name = str(c.state.stopName);
+      if (!ent || !nr || str(c.state.q) !== q) {
+        if (/^\d{5,7}$/.test(q)) { const j = JSON.parse(await fetchText(`https://api.delijn.be/DLKernOpenData/api/v1/haltes/zoek/${enc(q)}`, H)) as { haltes?: { entiteitnummer: string; haltenummer: string; omschrijving: string }[] }; const h0 = (j.haltes ?? []).find((h) => h.haltenummer === q) ?? j.haltes?.[0]; if (!h0) throw new Error(`Halte ${q} niet gevonden.`); ent = h0.entiteitnummer; nr = h0.haltenummer; name = h0.omschrijving; }
+        else { const j = JSON.parse(await fetchText(`https://api.delijn.be/DLKernOpenData/api/v1/haltes/zoek/${enc(q)}`, H)) as { haltes?: { entiteitnummer: string; haltenummer: string; omschrijving: string }[] }; const h0 = j.haltes?.[0]; if (!h0) throw new Error(`Geen halte gevonden voor "${q}".`); ent = h0.entiteitnummer; nr = h0.haltenummer; name = h0.omschrijving; }
+      }
+      const j = JSON.parse(await fetchText(`https://api.delijn.be/DLKernOpenData/api/v1/haltes/${ent}/${nr}/real-time?maxAantalDoorkomsten=8`, H)) as { halteDoorkomsten?: { doorkomsten?: { lijnnummer: number | string; bestemming: string; dienstregelingTijdstip: string; "real-timeTijdstip"?: string; predictionStatussen?: string[] }[] }[] };
+      const line = str(c.config.line).trim();
+      const list = (j.halteDoorkomsten?.[0]?.doorkomsten ?? []).filter((d) => !line || String(d.lijnnummer) === line).slice(0, 6).map((d) => ({ line: String(d.lijnnummer), to: d.bestemming, planned: d.dienstregelingTijdstip, rt: d["real-timeTijdstip"] ?? null, canceled: (d.predictionStatussen ?? []).includes("GESCHRAPT") }));
+      return { q, ent, nr, stopName: name, list, at: new Date().toISOString() };
+    },
+    briefing: (c, ctx) => {
+      if (ctx.kind !== "morning") return [];
+      const list = (c.state.list as { line: string; to: string; planned: string; rt: string | null; canceled: boolean }[] | undefined) ?? []; const first = list.find((x) => !x.canceled); if (!first) return [];
+      const d = first.rt ?? first.planned; const mins = Math.max(0, Math.round((Date.parse(d) - Date.now()) / 60_000));
+      return [{ kind: "note", icon: "🚌", text: L(ctx.lang, { nl: `Lijn ${first.line} naar ${first.to} aan ${str(c.state.stopName)} over ${mins} min.`, tr: `${first.line} hattı ${first.to} yönüne, ${str(c.state.stopName)} durağından ${mins} dk sonra.`, en: `Line ${first.line} to ${first.to} at ${str(c.state.stopName)} in ${mins} min.` }) }];
+    },
+    widget: (c, lang) => {
+      const list = (c.state.list as { line: string; to: string; planned: string; rt: string | null; canceled: boolean }[] | undefined) ?? []; if (!list.length) return null;
+      const hm = (iso: string) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+      return { title: `🚌 ${str(c.state.stopName)}`, icon: "🚌", lines: list.slice(0, 4).map((x) => { const d = x.rt ?? x.planned; const mins = Math.round((Date.parse(d) - Date.now()) / 60_000); const late = x.rt ? Math.round((Date.parse(x.rt) - Date.parse(x.planned)) / 60_000) : 0; return { icon: x.canceled ? "❌" : late > 2 ? "⚠️" : "🚌", text: `${x.line} → ${x.to}`, sub: x.canceled ? L(lang, { nl: "geschrapt", tr: "iptal", en: "cancelled" }) : `${hm(d)} · ${mins <= 0 ? L(lang, { nl: "nu", tr: "şimdi", en: "now" }) : `${mins} min`}${late > 2 ? ` · +${late}` : ""}` }; }) };
+    },
+  },
+  {
+    id: "mivb", name: "MIVB/STIB", description: "Metro, tram en bus in Brussel: de volgende doorkomsten aan je halte, realtime. Vraagt een gratis sleutel bij MIVB Open Data (opendata.stib-mivb.be), of de beheerder zet er één voor iedereen.", category: "mobiliteit", icon: "🚇",
+    scope: "member", plan: "gezin", country: ["BE"], status: "ready", refreshMinutes: 2, provides: ["briefing", "widget"],
+    fields: [
+      { key: "stop", label: "Haltenummer (pointid)", type: "text", required: true, placeholder: "8012", hint: "Het nummer van de halte staat op het haltebord en in de MIVB-app bij de halte-info." },
+      { key: "name", label: "Naam van de halte (voor op het bord)", type: "text", placeholder: "Schuman" },
+      { key: "key", label: "API-sleutel (leeg = sleutel van de server)", type: "secret", hint: "Gratis via opendata.stib-mivb.be → 'Access the API'." },
+    ],
+    sync: async (c) => {
+      const key = str(c.config.key) || process.env.MIVB_API_KEY || ""; if (!key) throw new Error("Vul een API-sleutel van de MIVB in, of laat de beheerder MIVB_API_KEY zetten.");
+      const stop = str(c.config.stop).replace(/\D/g, ""); if (!stop) throw new Error("Vul het haltenummer in.");
+      const url = `https://data.stib-mivb.be/api/explore/v2.1/catalog/datasets/waiting-time-rt-production/records?where=${enc(`pointid="${stop}"`)}&limit=20&apikey=${enc(key)}`;
+      const j = JSON.parse(await fetchText(url)) as { results?: { lineid: string; passingtimes: string }[] };
+      const lang = asLang(getSettings(c.householdId).language);
+      const list: { line: string; to: string; at: string }[] = [];
+      for (const r of j.results ?? []) { try { for (const p of JSON.parse(r.passingtimes) as { destination?: { fr?: string; nl?: string }; expectedArrivalTime?: string; lineId?: string }[]) if (p.expectedArrivalTime) list.push({ line: p.lineId ?? r.lineid, to: (lang === "en" ? p.destination?.fr : p.destination?.nl) || p.destination?.fr || p.destination?.nl || "", at: p.expectedArrivalTime }); } catch { /* */ } }
+      list.sort((a, b) => a.at.localeCompare(b.at));
+      return { list: list.slice(0, 8), at: new Date().toISOString() };
+    },
+    briefing: (c, ctx) => {
+      if (ctx.kind !== "morning") return [];
+      const list = (c.state.list as { line: string; to: string; at: string }[] | undefined) ?? []; const first = list[0]; if (!first) return [];
+      const mins = Math.max(0, Math.round((Date.parse(first.at) - Date.now()) / 60_000)); const stop = str(c.config.name) || str(c.config.stop);
+      return [{ kind: "note", icon: "🚇", text: L(ctx.lang, { nl: `MIVB lijn ${first.line} naar ${first.to} aan ${stop} over ${mins} min.`, tr: `MIVB ${first.line} hattı ${first.to} yönüne, ${stop} durağından ${mins} dk sonra.`, en: `STIB line ${first.line} to ${first.to} at ${stop} in ${mins} min.` }) }];
+    },
+    widget: (c, lang) => {
+      const list = (c.state.list as { line: string; to: string; at: string }[] | undefined) ?? []; if (!list.length) return null;
+      const hm = (iso: string) => { const d = new Date(iso); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+      return { title: `🚇 ${str(c.config.name) || str(c.config.stop)}`, icon: "🚇", lines: list.slice(0, 4).map((x) => { const mins = Math.round((Date.parse(x.at) - Date.now()) / 60_000); return { icon: "🚇", text: `${x.line} → ${x.to}`, sub: `${hm(x.at)} · ${mins <= 0 ? L(lang, { nl: "nu", tr: "şimdi", en: "now" }) : `${mins} min`}` }; }) };
+    },
+  },
 
   {
     id: "inbox", name: "Gezinsinbox", description: "Een e-mailadres voor je gezin: stuur de schoolbrief, Smartschool of Gimme, de dokter, de keuringsbrief of een kassaticket door en {brand} maakt er afspraken, boodschappen en prijzen van. Jij kijkt na, één tik en het staat erin.", category: "school", icon: "📬",

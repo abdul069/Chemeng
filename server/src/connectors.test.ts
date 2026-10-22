@@ -31,7 +31,8 @@ test("koppelingen: versleuteling, feedlezer, catalogus, opslag zonder geheimen, 
     assert.ok(!("sync" in cat[0]));
 
     // "soon" kan niet aangezet worden; verplichte velden worden nagekeken
-    assert.throws(() => createConnection({ connector: "delijn", config: {}, onBoard: false, enabled: true }), /volgende ronde/);
+    assert.throws(() => createConnection({ connector: "teams_status", config: {}, onBoard: false, enabled: true }), /volgende ronde/);
+    assert.throws(() => createConnection({ connector: "delijn", config: {}, onBoard: false, enabled: true }), /Halte/);
     assert.throws(() => createConnection({ connector: "nmbs", memberId: dad.id, config: { from: "Hasselt" }, onBoard: false, enabled: true }), /Aankomststation/);
 
     // winkels (gezin) en rit (per persoon), UiT met geheime sleutel
