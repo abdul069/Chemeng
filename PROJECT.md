@@ -288,7 +288,8 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 5. **Gezinsinbox**: gebouwd; om de gedeelde inbox aan te zetten zijn een mailbox met IMAP en een domein nodig (`INBOX_IMAP_*` in Railway), anders vult elk gezin zijn eigen mailbox in.
 6. **Betalen in de app** is gebouwd maar staat uit tot de Stripe-sleutels in Railway staan: in Stripe twee producten (Gezin, Gezin+) met maand- en jaarprijs aanmaken, de `price_…`-id's en de geheime sleutel invullen, een webhook naar `https://<domein>/api/billing/stripe/webhook` zetten met de gebeurtenissen `checkout.session.completed` en `customer.subscription.*`, en `STRIPE_WEBHOOK_SECRET` invullen. Tot dan zet de operator de formule of gebruikt het gezin een ledencode.
 7. **Juridisch**: GDPR-documentatie, verwerkersovereenkomsten met partners, gezondheidsgegevens (bijzondere categorie) alleen per gezin en versleuteld in rust op de hosting.
-8. **Distributie** is het grootste risico: zonder partners (Gezinsbond, mutualiteit, retailer) is de hardware moeilijk te verkopen.
+8. **Stemmen** klinken nog te robotachtig (Android-stem in de app, Chrome-stem op het web). Later herzien: een natuurlijke stem via een cloud-dienst (bv. Google Cloud TTS WaveNet of ElevenLabs) met cache per zin, zodat kleuters een warme stem horen; kostenbeheersing door korte zinnen en hergebruik.
+9. **Distributie** is het grootste risico: zonder partners (Gezinsbond, mutualiteit, retailer) is de hardware moeilijk te verkopen.
 
 ---
 
