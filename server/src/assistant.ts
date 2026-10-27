@@ -323,15 +323,16 @@ function context(): string {
 
 export interface ChatTurn { role: "user" | "assistant"; content: string }
 
-export async function chat(history: ChatTurn[]): Promise<{ reply: string; changes: Change[] }> {
+export async function chat(history: ChatTurn[], forLang?: string): Promise<{ reply: string; changes: Change[] }> {
   const client = getClient();
   if (!client) {
     return { reply: "De assistent is nog niet ingesteld. Een beheerder vult de Claude API-sleutel in bij Instellingen → Assistent.", changes: [] };
   }
   const changes: Change[] = [];
-  const lang = asLang(getSettings().language);
+  // de taal van dit toestel (bv. Turks op de telefoon van mama), anders die van het gezin
+  const lang = asLang(forLang || getSettings().language);
   if (!aiAllowed("chat")) return { reply: BUDGET_MESSAGE[lang], changes };
-  const langNote = lang === "tr" ? "\n\nBELANGRIJK: dit gezin heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : lang === "en" ? "\n\nIMPORTANT: this family chose English. Always answer in natural, warm English. Keep recipe and dish names as they are." : "";
+  const langNote = lang === "tr" ? "\n\nBELANGRIJK: deze gebruiker heeft Turks als taal gekozen. Antwoord altijd in natuurlijk, warm Turks (Türkçe). Recepten en gerechtnamen laat je in het Turks; vertaal ze niet naar het Nederlands." : lang === "en" ? "\n\nIMPORTANT: this family chose English. Always answer in natural, warm English. Keep recipe and dish names as they are." : "";
   const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length) return { reply: "Waarmee kan ik helpen?", changes };

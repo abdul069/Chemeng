@@ -1,4 +1,10 @@
-// Spraak via de browser: herkenning (Chrome, Edge, Android) en voorlezen (alle moderne browsers).
+// Spraak via de browser: herkenning (Chrome, Edge, Android) en voorlezen (alle moderne browsers), in de taal van wie het toestel gebruikt.
+import { getLang } from "../i18n";
+import { Capacitor } from "@capacitor/core";
+import { say, stopSpeaking as stopNative } from "../speech";
+
+/** Taalcode voor spraak: Turks, Engels of Vlaams. */
+const tag = () => (getLang() === "tr" ? "tr-TR" : getLang() === "en" ? "en-GB" : "nl-BE");
 type Rec = {
   lang: string; interimResults: boolean; continuous: boolean;
   onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
@@ -15,7 +21,7 @@ export const canListen = () => !!Ctor;
 export function listen(handlers: { onPartial: (t: string) => void; onFinal: (t: string) => void; onEnd: () => void; onError: (msg: string) => void }) {
   if (!Ctor) { handlers.onError("Spraakherkenning werkt niet in deze browser. Typ je vraag of gebruik Chrome."); handlers.onEnd(); return () => {}; }
   const rec = new Ctor();
-  rec.lang = "nl-BE";
+  rec.lang = tag();
   rec.interimResults = true;
   rec.continuous = false;
   let finalSent = false;
@@ -35,23 +41,23 @@ export function listen(handlers: { onPartial: (t: string) => void; onFinal: (t: 
   return () => { try { rec.abort(); } catch { /* */ } };
 }
 
-let voice: SpeechSynthesisVoice | null = null;
-function pickVoice() {
-  const vs = speechSynthesis.getVoices();
-  voice = vs.find((v) => v.lang === "nl-BE") ?? vs.find((v) => v.lang.startsWith("nl")) ?? null;
-}
-if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+let voices: SpeechSynthesisVoice[] = [];
+const pickVoice = (): SpeechSynthesisVoice | null => { const want = tag(); return voices.find((v) => v.lang === want) ?? voices.find((v) => v.lang.startsWith(want.slice(0, 2))) ?? null; };
+if ("speechSynthesis" in window) { voices = speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => { voices = speechSynthesis.getVoices(); }; }
 
 export function speak(text: string, onEnd?: () => void) {
+  const clean = text.replace(/[*_#`>]/g, "").replace(/\n+/g, ". ");
+  // in de app: de Android-stem in de taal van dit toestel
+  if (Capacitor.isNativePlatform()) { void say(clean, 1).finally(() => onEnd?.()); return; }
   if (!("speechSynthesis" in window)) { onEnd?.(); return; }
   speechSynthesis.cancel();
-  const clean = text.replace(/[*_#`>]/g, "").replace(/\n+/g, ". ");
+  const voice = pickVoice();
   const u = new SpeechSynthesisUtterance(clean);
-  u.lang = voice?.lang ?? "nl-BE";
+  u.lang = voice?.lang ?? tag();
   if (voice) u.voice = voice;
   u.rate = 1.02;
   u.onend = () => onEnd?.();
   u.onerror = () => onEnd?.();
   speechSynthesis.speak(u);
 }
-export const stopSpeaking = () => { if ("speechSynthesis" in window) speechSynthesis.cancel(); };
+export const stopSpeaking = () => { stopNative(); if ("speechSynthesis" in window) speechSynthesis.cancel(); };

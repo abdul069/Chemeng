@@ -18,9 +18,10 @@ export function ChoreTracker({ date, grouped = true, compact = false }: { date: 
   const wd = weekday(date);
   const todays = data.chores.filter((c) => c.days.includes(wd));
   if (!todays.length) return <p className="empty">{t("Geen taken vandaag.")}</p>;
-  const toggle = async (c: { id: string; points: number; streak: number }) => {
+  const toggle = async (c: { id: string; points: number; streak: number; memberId: string }) => {
     const now = !set.has(`${date}|${c.id}`);
-    await act(() => api.put(`/chores/${c.id}/done`, { date, done: now }), now ? (c.streak >= 2 ? t("🔥 {n} dagen op rij!", { n: c.streak + 1 }) : t("Goed gedaan! ⭐")) : undefined);
+    const teen = data.members.find((m) => m.id === c.memberId)?.teen;
+    await act(() => api.put(`/chores/${c.id}/done`, { date, done: now }), now ? (c.streak >= 2 ? t("🔥 {n} dagen op rij!", { n: c.streak + 1 }) : teen ? t("Gedaan ✓") : t("Goed gedaan! ⭐")) : undefined);
     reload();
   };
   const cur = currentMoment();

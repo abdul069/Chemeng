@@ -71,7 +71,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                     <Avatar m={m} size={44} dot={false} />
                     <h2>{m.name}</h2>
                   </button>
-                  <span className="stars" title={t("Sterren om in te ruilen")}>⭐ {data.points[m.id]?.balance ?? 0}{data.points[m.id]?.today ? <small className="muted"> +{data.points[m.id].today}</small> : null}</span>
+                  {m.teen ? <span className="stars" title={t("Tienermodus: doelen in plaats van sterren")}>🎯</span> : <span className="stars" title={t("Sterren om in te ruilen")}>⭐ {data.points[m.id]?.balance ?? 0}{data.points[m.id]?.today ? <small className="muted"> +{data.points[m.id].today}</small> : null}</span>}
                 </header>
                 <div className="progress" role="progressbar" aria-valuenow={n} aria-valuemax={today.length} aria-label={`${n} van ${today.length} taken gedaan`}>
                   <i style={{ width: `${today.length ? (n / today.length) * 100 : 0}%` }} />
@@ -91,7 +91,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                         <span className="rtask-ic" aria-hidden>{c.icon}</span>
                         <button className="rtask-main" aria-label={`${c.title} bewerken`} onClick={() => setEdit({ chore: c, memberId: m.id })}>
                           <b>{c.title}</b>
-                          <small>{c.points}⭐{c.streak >= 2 && <span title={t("dagen op rij")}> · 🔥{c.streak}</span>}{mom === "alles" && c.moment !== "altijd" && <span> · {t(c.moment)}</span>}</small>
+                          <small>{m.teen ? "" : `${c.points}⭐`}{c.streak >= 2 && <span title={t("dagen op rij")}> · 🔥{c.streak}</span>}{mom === "alles" && c.moment !== "altijd" && <span> · {t(c.moment)}</span>}</small>
                         </button>
                         <button className={`rcheck${d ? " on" : ""}`} aria-pressed={d} aria-label={`${c.title} ${d ? t("terug open zetten") : "afvinken"}`} onClick={() => toggle(c)}>{d && "✓"}</button>
                       </div>
@@ -101,7 +101,7 @@ export function ChoresScreen({ header }: { header: React.ReactNode }) {
                   {!today.length && <p className="empty">{t("Niets te doen vandaag — geniet ervan! 🎈")}</p>}
                 </div>
                 <footer className="rfoot">
-                  <span>⭐ {t("{n} sterren vandaag verdiend", { n: earned })}</span>
+                  <span>{m.teen ? `🎯 ${t("Doelen in het profiel")}` : `⭐ ${t("{n} sterren vandaag verdiend", { n: earned })}`}</span>
                   <span className="muted">{n}/{today.length}</span>
                   <button className="btn ghost small" onClick={() => setRoutineFor(m)} title={t("Kant-en-klare dagelijkse routine kiezen")}>📋 {t("Routine")}</button>
                   <button className="btn ghost small" onClick={() => setEdit({ memberId: m.id })}><Icon.plus />{" "}{t("Taak")}</button>
@@ -173,7 +173,7 @@ function Rewards({ onClose }: { onClose: () => void }) {
     <Modal title={t("Beloningen")} onClose={onClose} wide>
       <p className="hint">{t("Elke afgevinkte taak levert sterren op. Kies wie een beloning inruilt.")}</p>
       <div className="picks">{data.members.map((m) => (
-        <button key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={who === m.id} onClick={() => setWho(m.id)}><Avatar m={m} size={22} dot={false} /> {m.name} · ⭐ {data.points[m.id]?.balance ?? 0}</button>
+        <button key={m.id} className="pick pick-person" style={cvar(m.color)} aria-pressed={who === m.id} onClick={() => setWho(m.id)}><Avatar m={m} size={22} dot={false} /> {m.name}{m.teen ? "" : ` · ⭐ ${data.points[m.id]?.balance ?? 0}`}</button>
       ))}</div>
       <div className="rewards">
         {data.rewards.map((r) => (

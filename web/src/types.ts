@@ -1,4 +1,17 @@
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null; diet?: string }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId?: string | null; shared?: boolean; level?: "details" | "bezet"; birthday?: string | null; diet?: string;
+  /** eigen taal ('' = die van het gezin) */ lang?: string; /** '' vanzelf vanaf 13, '1' aan, '0' uit */ teenMode?: string; teen?: boolean;
+  quietFrom?: string; quietUntil?: string; sleepHours?: number;
+  /** kind uit een verbonden gezin (co-ouderschap): naam van het thuisgezin */ guestOf?: string; homeId?: string }
+export interface ShiftWeek { name: string; icon: string; start: string | null; end: string | null; days: number[] }
+export interface Shift { id: string; memberId: string; startDate: string; weeks: ShiftWeek[]; until: string | null }
+export interface QuietWindow { memberId: string; from: string; until: string; reason: "manual" | "night" }
+export interface Goal { id: string; memberId: string; title: string; icon: string; kind: "money" | "count"; target: number; unit: string; due: string | null; doneAt: string | null; progress: number; entries: { id: string; amount: number; note: string; date: string }[] }
+export interface CustodyDay { linkId: string; otherId: string; otherName: string; kids: string[]; withUs: boolean; handover: { date: string; time: string; toUs: boolean } | null; handoverToday: boolean; until: string | null }
+export interface Custody { linkId: string; cycle: string; anchor: string; handoverTime: string; mySplit: number; meIsA: boolean }
+export interface HandoverKid { memberId: string; items: { id: string; text: string; icon: string; done: boolean }[] }
+export interface Handover { date: string; handoverToday: boolean; time: string | null; kids: HandoverKid[] }
+export interface Expense { id: string; title: string; amount: number; date: string; memberId: string | null; kind: "cost" | "settle"; note: string; paidByMe: boolean; payer: string }
+export interface CostPot { items: Expense[]; mySplit: number; balance: number; totalThisYear: number; otherName: string }
 export type Repeat = "none" | "daily" | "weekly" | "biweekly" | "monthly" | "yearly";
 export interface CalEvent {
   id: string; title: string; notes: string; location: string;

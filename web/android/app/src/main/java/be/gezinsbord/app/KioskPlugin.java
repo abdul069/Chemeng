@@ -10,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.provider.Settings;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -107,6 +109,29 @@ public class KioskPlugin extends Plugin {
             getContext().startActivity(i);
             r.put("ok", true);
         } catch (Exception e) { r.put("ok", false); }
+        call.resolve(r);
+    }
+
+    /** Een wifi-netwerk toevoegen (bv. bij de andere ouder). Lukt zonder vragen als Kinday device owner is; anders opent Android de wifi-instellingen. */
+    @PluginMethod
+    @SuppressWarnings("deprecation")
+    public void addWifi(PluginCall call) {
+        String ssid = call.getString("ssid", "");
+        String pass = call.getString("password", "");
+        JSObject r = new JSObject();
+        try {
+            WifiManager wm = (WifiManager) getContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null && !wm.isWifiEnabled()) wm.setWifiEnabled(true);
+            WifiConfiguration c = new WifiConfiguration();
+            c.SSID = "\"" + ssid + "\"";
+            if (pass == null || pass.isEmpty()) c.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
+            else c.preSharedKey = "\"" + pass + "\"";
+            int id = wm == null ? -1 : wm.addNetwork(c);
+            if (id >= 0) { wm.enableNetwork(id, true); r.put("ok", true); call.resolve(r); return; }
+        } catch (Exception ignored) {}
+        // geen rechten: de gebruiker voegt het zelf toe in de Android-instellingen
+        try { Intent i = new Intent(Settings.ACTION_WIFI_SETTINGS); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); getContext().startActivity(i); } catch (Exception ignored) {}
+        r.put("ok", false);
         call.resolve(r);
     }
 }

@@ -6,7 +6,8 @@ import type { InboxItem } from "../types";
 import { Modal } from "./ui";
 import { euro } from "./Prices";
 import { relDay, shortDate, fmtTime } from "../dates";
-import { t } from "../i18n";
+import { t, getLang, type Lang } from "../i18n";
+import { say, stopSpeaking } from "../speech";
 
 const KIND_ICON: Record<string, string> = { school: "🏫", receipt: "🧾", other: "✉️" };
 
@@ -62,11 +63,42 @@ function Review({ it, onClose }: { it: InboxItem; onClose: () => void }) {
         </section>
       )}
       {!it.data.events?.length && !it.data.listItems?.length && !it.data.scan && <p className="hint" style={{ whiteSpace: "pre-wrap" }}>{it.body.slice(0, 2000) || it.summary}</p>}
+      {it.kind !== "receipt" && <Translate it={it} />}
       <div className="actions">
         <button className="btn ghost" onClick={async () => { await act(() => api.post(`/inbox/${it.id}/dismiss`)); onClose(); }}>{t("Negeren")}</button>
         {(it.data.events?.length || it.data.listItems?.length || it.data.scan) ? <button className="btn" onClick={apply}>✓ {t("Toevoegen")}</button> : <button className="btn" onClick={async () => { await act(() => api.post(`/inbox/${it.id}/dismiss`)); onClose(); }}>{t("Gelezen")}</button>}
       </div>
     </Modal>
+  );
+}
+
+const LANG_NAME: Record<Lang, string> = { nl: "Nederlands", tr: "Türkçe", en: "English" };
+/** Een schoolbrief vertalen naar de taal van wie leest, en laten voorlezen. */
+function Translate({ it }: { it: InboxItem }) {
+  const [lang, setLang] = useState<Lang>(getLang());
+  const [tr, setTr] = useState<{ subject: string; summary: string; body: string } | null>(null);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const go = async (l: Lang) => {
+    setLang(l); setBusy(true); setErr("");
+    try { setTr(await api.post<{ subject: string; summary: string; body: string }>(`/inbox/${it.id}/translate`, { lang: l })); } catch (e) { setErr(e instanceof Error ? e.message : t("Vertalen mislukt")); } finally { setBusy(false); }
+  };
+  const text = tr ? [tr.subject, tr.body || tr.summary].filter(Boolean).join(". ") : "";
+  return (
+    <section className="translate">
+      <div className="addrow">
+        <span>🌐 {t("Vertalen naar")}</span>
+        {(["tr", "nl", "en"] as Lang[]).map((l) => <button key={l} type="button" className="pick" aria-pressed={!!tr && lang === l} disabled={busy} onClick={() => go(l)}>{LANG_NAME[l]}</button>)}
+      </div>
+      {busy && <p className="hint">{t("Even geduld…")}</p>}
+      {err && <p className="error">{err}</p>}
+      {tr && (
+        <div className="translated" lang={lang}>
+          {tr.subject && <b>{tr.subject}</b>}
+          <p style={{ whiteSpace: "pre-wrap" }}>{(tr.body || tr.summary).slice(0, 4000)}</p>
+          <div className="addrow"><button className="btn small" onClick={() => void say(text, 0.9, lang)}>🔊 {t("Voorlezen")}</button><button className="btn ghost small" onClick={stopSpeaking}>⏹</button></div>
+        </div>
+      )}
+    </section>
   );
 }
 

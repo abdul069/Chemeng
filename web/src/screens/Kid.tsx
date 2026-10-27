@@ -9,7 +9,8 @@ import { Avatar, cvar } from "../components/ui";
 import { addDays, cap, clock, greeting, longDate, todayIso, weekday } from "../dates";
 import { setDevice, useDevice } from "../device";
 import { Celebration } from "../components/Profile";
-import { kiosk, launchApp } from "../native";
+import { kiosk, launchApp, addWifi } from "../native";
+import { HandoverCard } from "../components/CoParent";
 import { t } from "../i18n";
 import { say } from "../speech";
 
@@ -97,7 +98,7 @@ export function KidShell({ onParent }: { onParent: () => void }) {
           </Suspense>
         </div>
       )}
-      {pin && <ParentGate onClose={() => setPin(false)} onOk={(what) => { setPin(false); if (what === "extra") setExtra((x) => x + 30); else if (what === "parent") onParent(); else if (what === "role") { void kiosk("stop"); setDevice({ role: null, memberId: null }); } }} hasPin={!!data.settings.has_pin} />}
+      {pin && <ParentGate memberId={me?.id ?? null} onClose={() => setPin(false)} onOk={(what) => { setPin(false); if (what === "extra") setExtra((x) => x + 30); else if (what === "parent") onParent(); else if (what === "role") { void kiosk("stop"); setDevice({ role: null, memberId: null }); } }} hasPin={!!data.settings.has_pin} />}
     </div>
   );
 }
@@ -134,6 +135,7 @@ function KidHome({ me, apps, islam, limit, used, extra, onView }: { me: Member |
   ];
   return (
     <div className="kid-home">
+      {me && <HandoverCard memberId={me.id} big />}
       <section className="kid-now">
         <div className="kid-now-h">
           <span className="kid-sticker" aria-hidden>{sticker}</span>
@@ -210,29 +212,45 @@ function KidDay({ me, onBack }: { me: Member | null; onBack: () => void }) {
 }
 
 /** Ouderpoort: pincode, dan kiezen: 30 minuten extra, oudermodus (de volledige app tot je terugkeert) of de toestelrol wijzigen. */
-function ParentGate({ onClose, onOk, hasPin }: { onClose: () => void; onOk: (what: "extra" | "parent" | "role") => void; hasPin: boolean }) {
-  const [pin, setPin] = useState(""); const [ok, setOk] = useState(!hasPin); const [err, setErr] = useState(false);
-  const check = async () => { const r = await api.post<{ ok: boolean }>("/settings/verify-pin", { pin }).catch(() => ({ ok: false })); if (r.ok) setOk(true); else { setErr(true); setPin(""); } };
+function ParentGate({ onClose, onOk, hasPin, memberId }: { onClose: () => void; onOk: (what: "extra" | "parent" | "role") => void; hasPin: boolean; memberId: string | null }) {
+  const [pin, setPin] = useState(""); const [who, setWho] = useState<"own" | "other" | null>(hasPin ? null : "own"); const [err, setErr] = useState(false);
+  const [wifi, setWifi] = useState(false);
+  // ook de pincode van de andere ouder (verbonden gezin) werkt, met minder rechten: extra tijd en wifi van dat huis
+  const check = async () => { const r = await api.post<{ ok: boolean; who?: "own" | "other" }>("/settings/verify-pin", { pin, memberId }).catch(() => ({ ok: false, who: undefined })); if (r.ok) setWho(r.who ?? "own"); else { setErr(true); setPin(""); } };
   return (
     <div className="kid-gate" onPointerDown={(e) => e.stopPropagation()}>
       <div className="card login">
         <h1>🔒 {t("Voor ouders")}</h1>
-        {!ok ? (
+        {!who ? (
           <>
             <input type="password" inputMode="numeric" autoFocus autoComplete="off" value={pin} onChange={(e) => { setPin(e.target.value); setErr(false); }} onKeyDown={(e) => e.key === "Enter" && check()} aria-label={t("Pincode")} />
             {err && <p className="error">{t("Die pincode klopt niet.")}</p>}
             <div className="actions"><button className="btn ghost" onClick={onClose}>{t("Annuleren")}</button><button className="btn" onClick={check} disabled={!pin}>{t("Openen")}</button></div>
           </>
-        ) : (
+        ) : wifi ? <WifiForm onDone={onClose} /> : (
           <div className="kid-gate-btns">
             {!hasPin && <p className="hint">{t("Er is nog geen ouder-pincode. Stel die in bij Instellingen → Pincode, anders kan het kind dit ook.")}</p>}
             <button className="btn" onClick={() => onOk("extra")}>⏳ {t("30 minuten extra")}</button>
-            <button className="btn" onClick={() => onOk("parent")}>👨‍👩‍👧 {t("Oudermodus (volledige app)")}</button>
-            <button className="btn ghost" onClick={() => onOk("role")}>🔁 {t("Toestelrol wijzigen")}</button>
+            <button className="btn" onClick={() => setWifi(true)}>📶 {t("Wifi van dit huis toevoegen")}</button>
+            {who === "own" && <button className="btn" onClick={() => onOk("parent")}>👨‍👩‍👧 {t("Oudermodus (volledige app)")}</button>}
+            {who === "own" && <button className="btn ghost" onClick={() => onOk("role")}>🔁 {t("Toestelrol wijzigen")}</button>}
             <button className="btn ghost" onClick={onClose}>{t("Sluiten")}</button>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+function WifiForm({ onDone }: { onDone: () => void }) {
+  const [ssid, setSsid] = useState(""); const [pw, setPw] = useState(""); const [msg, setMsg] = useState("");
+  const go = async () => { const r = await addWifi(ssid.trim(), pw); setMsg(r === "ok" ? t("Verbonden met {n} 👍", { n: ssid }) : r === "settings" ? t("Kies het netwerk in de wifi-instellingen die nu openen.") : t("Dit kan alleen in de app op de tablet.")); if (r === "ok") setTimeout(onDone, 1500); };
+  return (
+    <div className="kid-gate-btns">
+      <input placeholder={t("Naam van het wifi-netwerk")} value={ssid} onChange={(e) => setSsid(e.target.value)} aria-label={t("Naam van het wifi-netwerk")} />
+      <input type="password" placeholder={t("Wachtwoord")} value={pw} onChange={(e) => setPw(e.target.value)} aria-label={t("Wachtwoord")} />
+      {msg && <p className="hint">{msg}</p>}
+      <button className="btn" disabled={!ssid.trim()} onClick={go}>📶 {t("Verbinden")}</button>
+      <button className="btn ghost" onClick={onDone}>{t("Sluiten")}</button>
     </div>
   );
 }

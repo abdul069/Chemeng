@@ -5,7 +5,8 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { getLang } from "./i18n";
 
 const clean = (t: string) => t.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{20E3}]/gu, "").replace(/\s+/g, " ").trim();
-const langTag = () => (getLang() === "tr" ? "tr-TR" : getLang() === "en" ? "en-GB" : "nl-NL");
+let forced: string | null = null;
+const langTag = () => forced ?? (getLang() === "tr" ? "tr-TR" : getLang() === "en" ? "en-GB" : "nl-NL");
 let unlocked = false;
 let voices: SpeechSynthesisVoice[] = [];
 if (typeof speechSynthesis !== "undefined") {
@@ -17,8 +18,9 @@ if (typeof speechSynthesis !== "undefined") {
 }
 export function canSpeak(): boolean { return Capacitor.isNativePlatform() || typeof speechSynthesis !== "undefined"; }
 /** Lees een tekst voor. In de browser werkt dit pas na de eerste tik op de pagina. */
-export async function say(text: string, rate = 0.9): Promise<void> {
+export async function say(text: string, rate = 0.9, lang?: "nl" | "tr" | "en"): Promise<void> {
   const t = clean(text); if (!t) return;
+  forced = lang ? (lang === "tr" ? "tr-TR" : lang === "en" ? "en-GB" : "nl-NL") : null;
   if (Capacitor.isNativePlatform()) {
     try { await TextToSpeech.stop().catch(() => {}); await TextToSpeech.speak({ text: t, lang: langTag(), rate, pitch: 1.05, volume: 1, category: "ambient" }); return; } catch { /* valt terug op web */ }
   }

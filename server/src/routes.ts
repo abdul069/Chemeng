@@ -1339,7 +1339,7 @@ const ChatBody = z.object({ messages: z.array(z.object({ role: z.enum(["user", "
 api.post("/assistant", async (req, res) => {
   const { messages } = ChatBody.parse(req.body);
   try {
-    const out = await chat(messages);
+    const out = await chat(messages, typeof req.body?.lang === "string" ? req.body.lang : undefined);
     res.json(out);
     if (out.changes.some((c) => c.kind !== "options")) broadcast("events", "meals", "chores", "lists", "rewards", "recipes");
   } catch (e) {

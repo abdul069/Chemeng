@@ -11,7 +11,7 @@ import { getLang } from "./i18n";
 
 interface BatteryPlugin { status(): Promise<{ ignoring: boolean }>; requestIgnore(): Promise<{ ignoring: boolean }> }
 const Battery = registerPlugin<BatteryPlugin>("Battery");
-interface KioskPlugin { status(): Promise<{ deviceOwner: boolean; lockTask: boolean; launcher: boolean }>; start(): Promise<{ lockTask: boolean }>; stop(): Promise<void>; setLauncher(): Promise<void>; launch(o: { package: string }): Promise<{ ok: boolean }>; setAllowed(o: { packages: string[] }): Promise<void> }
+interface KioskPlugin { status(): Promise<{ deviceOwner: boolean; lockTask: boolean; launcher: boolean }>; start(): Promise<{ lockTask: boolean }>; stop(): Promise<void>; setLauncher(): Promise<void>; launch(o: { package: string }): Promise<{ ok: boolean }>; setAllowed(o: { packages: string[] }): Promise<void>; addWifi(o: { ssid: string; password: string }): Promise<{ ok: boolean }> }
 const Kiosk = registerPlugin<KioskPlugin>("Kiosk");
 
 export const isNative = () => Capacitor.isNativePlatform();
@@ -79,6 +79,11 @@ export async function kiosk(action: "start" | "stop" | "launcher", packages: str
     else if (action === "stop") await Kiosk.stop();
     else await Kiosk.setLauncher();
   } catch { /* geen plugin (oude APK) of geen rechten */ }
+}
+/** Wifi van een ander huis toevoegen aan de kindertablet. "settings" = Android opende de wifi-instellingen (geen rechten). */
+export async function addWifi(ssid: string, password: string): Promise<"ok" | "settings" | "none"> {
+  if (!isNative()) return "none";
+  try { return (await Kiosk.addWifi({ ssid, password })).ok ? "ok" : "settings"; } catch { return "none"; }
 }
 /** Een toegelaten app openen: op Android via de pakketnaam, in de browser via de link. */
 export async function launchApp(pkg: string, url?: string): Promise<"opened" | "store" | "web" | "none"> {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { photoUrl } from "../api";
+import { api, photoUrl } from "../api";
+import { getDevice } from "../device";
 import { useData, useRemote } from "../store";
-import type { EzanSound, Prayer, PrayerDay } from "../types";
+import type { EzanSound, Prayer, PrayerDay, QuietWindow } from "../types";
 import { EZAN_PRAYERS, PRAYER_ICON, PRAYER_NAME, PRAYER_TR, hm, ezanOnThisDevice } from "../islam";
 import { scheduleEzan } from "../native";
 import { t } from "../i18n";
@@ -37,6 +38,7 @@ export function useEzan() {
   const soundsRef = useRef(sounds); soundsRef.current = sounds;
   const settings = data?.settings;
   const settingsRef = useRef(settings); settingsRef.current = settings;
+  const meRef = useRef(data?.me.memberId ?? null); meRef.current = data?.me.memberId ?? null;
   // Android-app: exacte alarmen voor de komende week, ook als de app dicht is
   useEffect(() => { if (settings) void scheduleEzan(settings, day); }, [settings?.ezan_on, settings?.ezan_prayers, settings?.ezan_adjust, settings?.ezan_method, day?.date, day?.times?.fajr]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -57,12 +59,12 @@ export function useEzan() {
         if (now >= t && now - t < 2 * 60_000 && !played[key]) {
           played[key] = now;
           try { sessionStorage.setItem(PLAYED_KEY, JSON.stringify(played)); } catch { /* */ }
-          start(p, d.times[p]);
+          void start(p, d.times[p]);
           break;
         }
       }
     };
-    const start = (p: Prayer, at: string) => {
+    const start = async (p: Prayer, at: string) => {
       const s = settingsRef.current!;
       let soundOf: Record<string, string> = {};
       try { soundOf = JSON.parse(s.ezan_sounds); } catch { /* */ }
@@ -70,6 +72,9 @@ export function useEzan() {
       const choice = soundOf[p] ?? "";
       setActive({ prayer: p, at });
       if (choice === "silent") return;
+      // eigen telefoon van iemand die slaapt (na een nachtdienst) of stille uren heeft: alleen de kaart, geen geluid
+      const dev = getDevice(); const mid = dev.role === "hub" ? null : dev.memberId ?? meRef.current;
+      if (mid) { const q = await api.get<QuietWindow[]>("/quiet").catch(() => [] as QuietWindow[]); if (q.some((x) => x.memberId === mid)) return; }
       const snd = choice === "chime" ? null : (soundsRef.current.find((x) => x.id === choice) ?? soundsRef.current[0]);
       if (!snd) { chime(vol); return; }
       const a = new Audio(photoUrl(snd.filename)); a.volume = vol;

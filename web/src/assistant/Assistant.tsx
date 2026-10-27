@@ -8,7 +8,7 @@ import { RecipeThumb, openRecipe } from "../components/Recipes";
 import { useSuggestions } from "../screens/Today";
 import { canListen, listen, speak, stopSpeaking } from "./speech";
 import { cap, fmtRange, greeting, longDate, todayIso } from "../dates";
-import { t } from "../i18n";
+import { t, getLang } from "../i18n";
 
 export interface Msg { role: "user" | "assistant"; content: string; changes?: Change[]; error?: boolean; rated?: 1 | -1 }
 
@@ -110,7 +110,7 @@ export function Assistant({ convo, setConvo, initial, onClose }: {
     setConvo(() => history);
     setBusy(true);
     try {
-      const ask = () => api.post<{ reply: string; changes: Change[] }>("/assistant", { messages: history.map(({ role, content }) => ({ role, content })) });
+      const ask = () => api.post<{ reply: string; changes: Change[] }>("/assistant", { lang: getLang(), messages: history.map(({ role, content }) => ({ role, content })) });
       let r: Awaited<ReturnType<typeof ask>>;
       try { r = await ask(); } catch (e) {
         // netwerk even weg (bv. wifi zonder internet): één keer stil opnieuw proberen

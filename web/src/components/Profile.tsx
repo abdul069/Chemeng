@@ -1,3 +1,6 @@
+import { GoalsPanel } from "./Rhythm";
+import { HandoverEditor } from "./CoParent";
+import type { CustodyDay } from "../types";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAction, useData, useRemote } from "../store";
@@ -32,7 +35,11 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
   const [done, reload] = useRemote<string[]>(`/chores/done?from=${t}&to=${t}`, ["chores"], []);
   const [celebrate, setCelebrate] = useState(false);
   const [todo, setTodo] = useState("");
+  const [custody] = useRemote<CustodyDay[]>("/custody/today", ["family"], []);
   if (!data) return null;
+  // tieners: geen sterren en spaarpot, wel eigen doelen
+  const teen = !!member.teen;
+  const coParent = member.role === "kind" && (!!member.guestOf || custody.some((c) => c.kids.includes(member.id)));
   const set = new Set(done);
   const chores = data.chores.filter((c) => c.memberId === member.id && c.days.includes(weekday(t)));
   const n = chores.filter((c) => set.has(`${t}|${c.id}`)).length;
@@ -41,7 +48,7 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
   const mine = todoList?.items.filter((i) => i.memberId === member.id) ?? [];
   const toggle = async (c: { id: string; points: number }) => {
     const now = !set.has(`${t}|${c.id}`);
-    await act(() => api.put(`/chores/${c.id}/done`, { date: t, done: now }), now ? `+${c.points} ⭐` : undefined);
+    await act(() => api.put(`/chores/${c.id}/done`, { date: t, done: now }), now ? (teen ? "✓" : `+${c.points} ⭐`) : undefined);
     reload();
     // vers van de server kijken of alles van vandaag af is
     if (now) { const fresh = new Set(await api.get<string[]>(`/chores/done?from=${t}&to=${t}`).catch(() => [])); if (chores.length && chores.every((x) => fresh.has(`${t}|${x.id}`))) setCelebrate(true); }
@@ -54,10 +61,11 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
     <Modal title={`${member.name}`} onClose={onClose} wide>
       <div className="profile-head" style={cvar(member.color)}>
         <Avatar m={member} size={64} dot={false} />
+        {teen ? <div><b style={{ fontSize: 22 }}>{member.name}</b>{member.guestOf && <small className="muted"> · {tr("ook bij {h}", { h: member.guestOf })}</small>}</div> : (
         <div>
           <div className="num" style={{ fontSize: 28, fontWeight: 800 }}>⭐ {pts.balance}</div>
           <small className="muted">{pts.today ? `+${pts.today} vandaag · ` : ""}{pts.week} deze week · {pts.earned} ooit verdiend</small>
-        </div>
+        </div>)}
       </div>
       <div className="profile-cols">
         <section>
@@ -68,13 +76,13 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
             const d = set.has(`${t}|${c.id}`);
             return (
               <button key={c.id} className={`prof-chore${d ? tr(" done") : ""}`} onClick={() => toggle(c)} aria-pressed={d}>
-                <span>{c.icon} {c.title}</span><small>⭐ {c.points}</small><i>{d ? "✓" : ""}</i>
+                <span>{c.icon} {c.title}</span>{!teen && <small>⭐ {c.points}</small>}<i>{d ? "✓" : ""}</i>
               </button>
             );
           })}
           {chores.length > 0 && n === chores.length && <p className="hint">{tr("🏅 Alles van vandaag is af.")}</p>}
         </section>
-        <section>
+        {teen ? <GoalsPanel member={member} /> : <section>
           <div className="section-title"><h3>{tr("Spaarpot")}</h3><span className="hint">⭐ {pts.balance} om in te ruilen</span></div>
           <div className="prof-rewards">
             {data.rewards.map((r) => (
@@ -87,9 +95,10 @@ export function ProfileModal({ member, onClose }: { member: Member; onClose: () 
             ))}
             {!data.rewards.length && <p className="empty">{tr("Nog niets om voor te sparen. Een ouder voegt beloningen toe bij Taken → Beloningen.")}</p>}
           </div>
-        </section>
+        </section>}
       </div>
       <WeekOverview memberId={member.id} />
+      {coParent && <HandoverEditor memberId={member.id} />}
       {todoList && (
         <section>
           <div className="section-title"><h3>{tr("Mijn briefjes")}</h3><span className="hint">{tr("eigen geheugensteuntjes")}</span></div>

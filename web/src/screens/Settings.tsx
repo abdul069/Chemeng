@@ -14,6 +14,7 @@ import { FamilySection } from "../components/Family";
 import { ConnectorsSection } from "../components/Connectors";
 import { PricesSection } from "../components/Prices";
 import { t, getLang, setLang, asLang, type Lang } from "../i18n";
+import { RhythmFieldsEditor, rhythmOf } from "../components/Rhythm";
 
 const COLORS = ["#4a7bd8", "#d9576b", "#4f9e5b", "#8a62d1", "#e08a3c", "#2bb3a8", "#c9a227", "#d36fb3", "#5b6b7f", "#3d9bd1"];
 
@@ -107,8 +108,10 @@ function Family() {
   const save = useSetting();
   const [edit, setEdit] = useState<Member | "new" | null>(null);
   const [name, setName] = useState(data!.settings.family_name);
+  const own = data!.members.filter((m) => !m.guestOf);
+  const guests = data!.members.filter((m) => m.guestOf);
   const move = (i: number, d: number) => {
-    const ids = data!.members.map((m) => m.id);
+    const ids = own.map((m) => m.id);
     const j = i + d;
     if (j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j], ids[i]];
@@ -120,13 +123,19 @@ function Family() {
         <div className="addrow"><input id="fam-name" value={name} onChange={(e) => setName(e.target.value)} /><button className="btn ghost" disabled={name === data!.settings.family_name} onClick={() => save({ family_name: name })}>{t("Bewaren")}</button></div>
       </label>
       <div className="upnext">
-        {data!.members.map((m, i) => (
+        {own.map((m, i) => (
           <div className="item" key={m.id}>
             <Avatar m={m} size={40} dot={false} />
             <span style={{ flex: 1 }}><b>{m.name}</b><small>{m.role === "ouder" ? t("Ouder") : m.role === "huisdier" ? t("Huisdier") : t("Kind")}{m.userId ? t(" · heeft een account") : ""}</small></span>
             <button className="iconbtn" aria-label={`${m.name} omhoog`} disabled={i === 0} onClick={() => move(i, -1)}>↑</button>
-            <button className="iconbtn" aria-label={`${m.name} omlaag`} disabled={i === data!.members.length - 1} onClick={() => move(i, 1)}>↓</button>
+            <button className="iconbtn" aria-label={`${m.name} omlaag`} disabled={i === own.length - 1} onClick={() => move(i, 1)}>↓</button>
             <button className="btn ghost small" onClick={() => setEdit(m)}>{t("Bewerken")}</button>
+          </div>
+        ))}
+        {guests.map((m) => (
+          <div className="item" key={m.id}>
+            <Avatar m={m} size={40} dot={false} />
+            <span style={{ flex: 1 }}><b>{m.name}</b><small>{t("Ook lid van {h}", { h: m.guestOf! })}</small></span>
           </div>
         ))}
       </div>
@@ -140,7 +149,7 @@ function Family() {
 
 function MemberEditor({ member, onClose }: { member?: Member; onClose: () => void }) {
   const act = useAction();
-  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "", diet: member?.diet ?? "" });
+  const [f, setF] = useState({ name: member?.name ?? "", color: member?.color ?? COLORS[0], avatar: member?.avatar ?? "", photo: member?.photo ?? null as string | null, role: member?.role ?? "kind", birthday: member?.birthday ?? "", diet: member?.diet ?? "", ...rhythmOf(member) });
   const [confirm, setConfirm] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
@@ -188,6 +197,7 @@ function MemberEditor({ member, onClose }: { member?: Member; onClose: () => voi
           {(["ouder", "kind", "huisdier"] as const).map((r) => <button key={r} type="button" className="pick" aria-pressed={f.role === r} onClick={() => setF({ ...f, role: r })}>{r === "ouder" ? t("Ouder") : r === "kind" ? t("Kind") : t("Huisdier")}</button>)}
         </div>
       </div>
+      {f.role !== "huisdier" && <RhythmFieldsEditor f={f} set={(x) => setF({ ...f, ...x })} role={f.role} member={member} />}
       <div className="field"><span>{t("Kleur")}</span>
         <div className="picks">{COLORS.map((c) => <button key={c} type="button" className="pick" aria-label={c} aria-pressed={f.color === c} style={{ "--c": c, width: 40, height: 40, padding: 0 } as React.CSSProperties} onClick={() => setF({ ...f, color: c })} />)}</div>
       </div>

@@ -12,6 +12,8 @@ import { RecipeThumb, openRecipe, recipeTitle } from "../components/Recipes";
 import { PrikbordWidget } from "../components/Prikbord";
 import { BriefingCard } from "../components/Briefing";
 import { FamilyWidget } from "../components/Family";
+import { HandoverCard } from "../components/CoParent";
+import { GoalsPanel } from "../components/Rhythm";
 import { ConnectorWidgets } from "../components/Connectors";
 import { addDays, cap, greeting, longDate, todayIso, weekday } from "../dates";
 import { cast, setDevice, useDevice } from "../device";
@@ -88,6 +90,8 @@ export function MyDayScreen({ openEditor, openAssistant, goto, openSearch, onPic
       </div>
 
       <BriefingCard memberId={me?.id ?? null} compact />
+      <HandoverCard memberId={me?.role === "kind" ? me.id : undefined} />
+      {me?.teen && <GoalsPanel member={me} />}
 
       <section className="glass widget-sm">
         <div className="widget-h"><h2>{me ? tr("Mijn dag") : tr("Vandaag")}</h2><button className="linkbtn" onClick={() => goto("calendar")}>{tr("Agenda")}</button></div>

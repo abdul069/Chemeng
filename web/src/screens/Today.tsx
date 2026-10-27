@@ -17,6 +17,8 @@ import { HomeWidget } from "../components/Home";
 import { TraditionsWidget } from "../components/Traditions";
 import { parseWidgets } from "./Settings";
 import { t as tr } from "../i18n";
+import { QuietChips } from "../components/Rhythm";
+import { CustodyChips, HandoverCard } from "../components/CoParent";
 
 const SLOT_LABEL: Record<string, string> = { ontbijt: "Ontbijt", lunch: "Lunch", diner: "Avondeten", snack: "Tussendoor" };
 const SLOT_ICON: Record<string, string> = { ontbijt: "🥣", lunch: "🥪", diner: "🍽️", snack: "🍎" };
@@ -138,6 +140,8 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           <span className="bord-date">{cap(longDate(t))}{!online && <span className="offline" style={{ marginLeft: 8 }}>{tr("Offline")}</span>}</span>
           {weather && <span className="bord-wx num" title={`${weather.city}: ${weather.current.label}`}>{weather.current.icon} {weather.current.temp}° <small>↑{weather.days[0]?.max}° ↓{weather.days[0]?.min}°</small></span>}
           <button className="bord-wx bord-brief" onClick={() => setBriefOpen(true)}>{hour < 15 ? "☀️" : "🌙"} {tr("Briefing")}</button>
+          <CustodyChips />
+          <QuietChips />
           {nxt && <span className="bord-wx num" title={tr("Volgend gebed")}>{PRAYER_ICON[nxt.prayer]} {PRAYER_NAME[nxt.prayer]} <small>{hm(new Date(nxt.at).toISOString())}</small></span>}
           <button className="iconbtn glass" onClick={openSearch} aria-label={tr("Zoeken in alles")}><Icon.search /></button>
         </div>
@@ -149,6 +153,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
         <button className="bord-add" onClick={() => openEditor({ defaults: { date: t } })} aria-label={tr("Afspraak toevoegen")}>+</button>
       </section>
       <div className="bord-widgets">
+        <HandoverCard />
         {parseWidgets(data?.settings.board_widgets ?? "").filter((w) => w.on && w.id !== "briefing").map((w) => <Fragment key={w.id}>{widgets[w.id]}</Fragment>)}
       </div>
       {briefOpen && <BriefingModal onClose={() => setBriefOpen(false)} />}

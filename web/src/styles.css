@@ -1948,3 +1948,28 @@ body { background: var(--sky) fixed; background-color: #f7efe6; }
 /* briefing-kaart overal rustig: gewone letter, max. drie regels; het volledige verhaal staat achter "Alles bekijken" */
 .brief-text:not(.big) { font-family: var(--f-body); font-size: 15.5px; line-height: 1.5; color: #3b3430; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .myday { padding-top: 6px; }
+
+/* ---------- ritme per persoon en co-ouderschap ---------- */
+.goals .goal { display: grid; gap: 6px; padding: 8px 0; border-top: 1px solid var(--line, #eef0f3); }
+.goals .goal:first-of-type { border-top: 0; }
+.goal-h { display: flex; align-items: center; gap: 8px; }
+.goal-h b { flex: 1; }
+.goal-ic { font-size: 22px; }
+.coparent { display: grid; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line, #e4e6ea); }
+.coparent ul.plain { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.custody-preview { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 8px 0 2px; }
+.custody-preview span { text-align: center; padding: 6px 0; border-radius: 8px; font-size: 18px; }
+.custody-preview .us { background: #e6f6f4; } .custody-preview .them { background: #fdf0e3; }
+.pot-balance { display: grid; gap: 6px; padding: 14px; border-radius: 14px; background: #f3f5f7; font-weight: 600; font-size: 17px; margin-bottom: 12px; }
+.pot-balance.plus { background: #e6f6f4; } .pot-balance.min { background: #fdf0e3; }
+.pot-balance small { font-weight: 400; color: var(--muted, #6b7280); font-size: 13px; }
+.handover .handover-kid { display: grid; gap: 6px; margin-top: 6px; }
+.handover-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.handover-item { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line, #e4e6ea); background: #fff; font: inherit; cursor: pointer; }
+.handover-item.done { background: #e6f6f4; border-color: #9ad8d0; text-decoration: line-through; color: var(--muted, #6b7280); }
+.handover-item .iconbtn { width: 26px; height: 26px; }
+.handover.big .handover-item { font-size: 20px; padding: 14px 18px; }
+.handover.big .hi-ic { font-size: 32px; }
+.translate { display: grid; gap: 8px; padding: 10px 0; }
+.translated { padding: 12px 14px; border-radius: 12px; background: #f6f7fb; display: grid; gap: 6px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }

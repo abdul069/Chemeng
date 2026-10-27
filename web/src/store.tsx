@@ -2,6 +2,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, onChanged, ApiError } from "./api";
 import type { Bootstrap, Member, Topic } from "./types";
 import { t, setLang, asLang, setBrand } from "./i18n";
+import { getDevice } from "./device";
+
+/** Taal van dit toestel: het gezinsscherm volgt het gezin, een telefoon of kindertablet de taal van zijn gezinslid. */
+export function langFor(d: Bootstrap) {
+  const dev = getDevice();
+  const mid = dev.role === "hub" ? null : dev.memberId ?? d.me.memberId;
+  const own = mid ? d.members.find((m) => m.id === mid)?.lang : "";
+  return asLang(own || d.settings.language);
+}
 
 interface Ctx {
   data: Bootstrap | null;
@@ -35,7 +44,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const mine = document.querySelector<HTMLScriptElement>('script[src*="/assets/index-"]')?.src.match(/index-([A-Za-z0-9_-]+)\.js/)?.[1];
         if (d.build && mine && d.build !== mine && sessionStorage.getItem("gb.reloaded") !== d.build) { sessionStorage.setItem("gb.reloaded", d.build); location.reload(); return; }
         // eerst het woordenboek, dan tekenen: anders flitst Nederlands voor Turks
-        setBrand(d.brand?.name); void setLang(asLang(d.settings.language)).then(() => { setData(d); setError(null); setErrorCode(null); });
+        setBrand(d.brand?.name); void setLang(langFor(d)).then(() => { setData(d); setError(null); setErrorCode(null); });
       })
       .catch((e) => {
         setError(e.message);

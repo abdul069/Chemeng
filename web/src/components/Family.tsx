@@ -8,6 +8,7 @@ import { NOTE_COLORS } from "./Prikbord";
 import { relDay, fmtTime } from "../dates";
 import { getDevice } from "../device";
 import { t } from "../i18n";
+import { LinkCoParent } from "./CoParent";
 
 const SHARES: { id: ShareKind; icon: string; label: string }[] = [
   { id: "events", icon: "📅", label: "Agenda (titels en uren)" }, { id: "photos", icon: "🖼️", label: "Foto's" }, { id: "notes", icon: "📌", label: "Prikbord" }, { id: "birthdays", icon: "🎂", label: "Verjaardagen" },
@@ -81,6 +82,7 @@ export function FamilySection() {
             <div className="picks">{SHARES.map((s) => <button type="button" key={s.id} className="pick" aria-pressed={l.myShare.includes(s.id)} disabled={!admin} onClick={() => toggle(l, s.id)}>{s.icon} {t(s.label)}</button>)}</div>
           </div>
           <small className="muted">{t("Zij delen met ons")}: {l.theirShare.length ? l.theirShare.map((k) => t(SHARES.find((s) => s.id === k)!.label)).join(", ") : t("niets")}</small>
+          <LinkCoParent link={l} />
         </div>
       ))}
       {!links.length && <p className="empty">{t("Nog geen verbonden gezinnen.")}</p>}
