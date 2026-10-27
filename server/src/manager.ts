@@ -15,6 +15,8 @@ import * as H from "./home.js";
 import * as HA from "./smarthome.js";
 import { createEvent } from "./events.js";
 import { L, asLang, type Lang } from "./i18n.js";
+import { langOf, quietUsers } from "./rhythm.js";
+import * as CP from "./coparent.js";
 
 export type BriefingKind = "morning" | "evening";
 export interface Item { icon: string; text: string; memberId?: string | null; kind: "event" | "task" | "meal" | "weather" | "prayer" | "countdown" | "pantry" | "list" | "stars" | "note" | "upkeep" | "waste" | "health" | "home" }
@@ -120,12 +122,27 @@ function mealProposal(date: string, slot: "diner" | "lunch", lang: Lang): Propos
 
 // ---------- de briefing ----------
 export async function buildBriefing(kind: BriefingKind, date: string, memberId: string | null): Promise<Briefing> {
-  const s = getSettings(); const lang = asLang(s.language);
+  const s = getSettings();
   const members = S.listMembers();
   const me = memberId ? members.find((m) => m.id === memberId) ?? null : null;
+  // ieder in zijn eigen taal; het gezinsscherm in de taal van het gezin
+  const lang = me ? langOf(me.id) : asLang(s.language);
   const focus = kind === "morning" ? date : addDays(date, 1); // 's avonds kijken we naar morgen
   const items: Item[] = []; const proposals: Proposal[] = [];
-  const evs = eventsBetween(focus, focus);
+  const evs = [...eventsBetween(focus, focus), ...CP.layerEvents(focus, focus).filter((e) => e.source !== "verblijf")];
+  // co-ouderschap: overdracht vandaag of morgen, met de spullen die mee moeten
+  for (const c of CP.custodyToday(focus)) {
+    if (!c.handoverToday || !c.kids.length || (me && !c.kids.includes(me.id) && me.role !== "ouder")) continue;
+    const names = c.kids.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean).join(", ");
+    const time = CP.handoverTime(c.linkId);
+    const many = c.kids.length > 1; const when = kind === "evening" ? L(lang, { nl: "Morgen", tr: "Yarın", en: "Tomorrow" }) : L(lang, { nl: "Vandaag", tr: "Bugün", en: "Today" });
+    items.push({ kind: "note", icon: "🏠", text: c.withUs
+      ? L(lang, { nl: `${when} ${many ? "komen" : "komt"} ${names} terug van ${c.otherName}${time ? ` (${time})` : ""}.`, tr: `${when} ${names} ${c.otherName} evinden dönüyor${time ? ` (${time})` : ""}.`, en: `${when} ${names} ${many ? "come" : "comes"} back from ${c.otherName}${time ? ` (${time})` : ""}.` })
+      : L(lang, { nl: `${when} ${many ? "gaan" : "gaat"} ${names} naar ${c.otherName}${time ? ` om ${time}` : ""}.`, tr: `${when} ${names} ${c.otherName} evine gidiyor${time ? ` (${time})` : ""}.`, en: `${when} ${names} ${many ? "go" : "goes"} to ${c.otherName}${time ? ` at ${time}` : ""}.` }) });
+    const ho = CP.handoverFor(focus).kids.filter((k) => c.kids.includes(k.memberId) && (!me || me.role === "ouder" || k.memberId === me.id));
+    const stuff = ho.flatMap((k) => k.items.filter((i) => !i.done).map((i) => `${i.icon} ${i.text}`));
+    if (stuff.length) items.push({ kind: "task", icon: "🎒", text: `${L(lang, { nl: "Mee te nemen", tr: "Yanına alınacaklar", en: "To pack" })}: ${stuff.slice(0, 8).join(", ")}` });
+  }
   const forMe = (e: Occurrence) => !me || !e.members.length || e.members.includes(me.id);
   const mine = evs.filter(forMe).sort((a, b) => Number(b.allDay) - Number(a.allDay) || toMin(a.startTime) - toMin(b.startTime));
   const who = (e: Occurrence) => (me || !e.members.length ? "" : ` (${e.members.map((id) => members.find((m) => m.id === id)?.name ?? "?").join(", ")})`);
@@ -268,8 +285,7 @@ export const ProposalInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("ha_service"), domain: z.string(), service: z.string(), data: z.record(z.string(), z.unknown()) }),
   z.object({ kind: z.literal("link"), url: z.string() }),
 ]);
-export async function applyProposal(p: z.infer<typeof ProposalInput>): Promise<{ ok: true; message: string; topics: ("meals" | "events" | "lists" | "home")[] }> {
-  const lang = asLang(getSettings().language);
+export async function applyProposal(p: z.infer<typeof ProposalInput>, lang: Lang = asLang(getSettings().language)): Promise<{ ok: true; message: string; topics: ("meals" | "events" | "lists" | "home")[] }> {
   if (p.kind === "upkeep_event") {
     createEvent({ title: p.eventTitle, date: p.date, endDate: null, startTime: null, endTime: null, allDay: true, repeat: "none", repeatUntil: null, exdates: [], members: p.memberId ? [p.memberId] : [], location: "", notes: "", countdown: false } as never);
     return { ok: true, message: L(lang, { nl: `${p.eventTitle} staat in de agenda`, tr: `${p.eventTitle} takvimde`, en: `${p.eventTitle} is in the calendar` }), topics: ["events"] };
@@ -304,7 +320,7 @@ export function startManagerScheduler() {
         }
         for (const m of H.medicationOn(d, h.id)) for (const tm of m.timesList) {
           const key = `${h.id}|${d}|med|${m.id}|${tm}`;
-          if (tm === hhmm && !sent.has(key)) { sent.add(key); await pushToUsers(usersFor(h.id, [m.memberId]), { title: `💊 ${m.title}`, body: L(asLang(s.language), { nl: `${tm} — tijd voor je medicatie`, tr: `${tm} — ilaç zamanı`, en: `${tm} — time for your medication` }), tag: `med-${m.id}`, url: "/#today" }); }
+          if (tm === hhmm && !sent.has(key)) { sent.add(key); await pushToUsers(usersFor(h.id, [m.memberId]), { title: `💊 ${m.title}`, body: L(langOf(m.memberId, h.id), { nl: `${tm} — tijd voor je medicatie`, tr: `${tm} — ilaç zamanı`, en: `${tm} — time for your medication` }), tag: `med-${m.id}`, url: "/#today", urgent: true }); }
         }
         // routines: wie heeft nog ochtend- of avondtaken open? Melding naar het kind (eigen telefoon) of de ouders.
         for (const [slot, at] of [["ochtend", s.routine_remind_morning], ["avond", s.routine_remind_evening]] as const) {
@@ -322,6 +338,7 @@ export function startManagerScheduler() {
           const rows = all<{ user_id: string; member_id: string | null }>("SELECT user_id, member_id FROM household_users WHERE household_id=?", h.id);
           for (const r of rows) {
             try {
+              if (quietUsers([r.user_id]).size) continue; // slaapt na een nachtdienst
               const b = await buildBriefing(kind, d, r.member_id);
               const body = b.narration.length > 180 ? b.narration.slice(0, 177) + "…" : b.narration;
               await pushToUsers([r.user_id], { title: b.title, body, tag: `briefing-${kind}`, url: "/#today" });
@@ -336,10 +353,11 @@ export function startManagerScheduler() {
 }
 /** Per gezinslid de openstaande taken van dit moment van de dag (plus "altijd"), als korte melding in de gezinstaal. */
 export function routineReminders(slot: "ochtend" | "avond", date: string, h = hid()): { memberId: string; name: string; open: { icon: string; title: string }[]; title: string; body: string }[] {
-  const lang = asLang(getSettings(h).language);
   const done = new Set(S.doneBetween(date, date));
   const out: { memberId: string; name: string; open: { icon: string; title: string }[]; title: string; body: string }[] = [];
   for (const m of S.listMembers()) {
+    if (!CP.isPresent(m.id, date, h)) continue; // bij de andere ouder: die stuurt de herinnering
+    const lang = langOf(m.id, h);
     const open = S.choresOn(date).filter((c) => c.memberId === m.id && (c.moment === slot || c.moment === "altijd") && !done.has(`${date}|${c.id}`));
     if (!open.length) continue;
     const n = open.length; const list = open.slice(0, 4).map((c) => `${c.icon} ${c.title}`).join(", ") + (n > 4 ? "…" : "");

@@ -3,6 +3,7 @@ import webpush from "web-push";
 import { all, get, run, newId, db } from "./db.js";
 import { rowsBetween, toEvent, expand } from "./events.js";
 import { today, addDays } from "./dates.js";
+import { quietUsers } from "./rhythm.js";
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -43,10 +44,12 @@ export function subscribe(userId: string, sub: { endpoint: string; keys: { p256d
 export const unsubscribe = (userId: string, endpoint: string) => run("DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?", userId, endpoint);
 export const subscriptionsOf = (userId: string) => all<{ endpoint: string; label: string; created_at: string }>("SELECT endpoint, label, created_at FROM push_subscriptions WHERE user_id=?", userId);
 
-export interface PushMessage { title: string; body: string; url?: string; tag?: string }
+export interface PushMessage { title: string; body: string; url?: string; tag?: string; /** ook tijdens stille uren (bv. medicatie) */ urgent?: boolean }
 
 /** Stuurt een melding naar alle toestellen van deze gebruikers. */
 export async function pushToUsers(userIds: string[], msg: PushMessage) {
+  // wie slaapt (stille uren, na een nachtdienst) krijgt geen gewone meldingen
+  if (!msg.urgent) { const q = quietUsers(userIds); if (q.size) userIds = userIds.filter((u) => !q.has(u)); }
   if (!userIds.length) return;
   const rows = all<{ endpoint: string; subscription: string }>(
     `SELECT endpoint, subscription FROM push_subscriptions WHERE user_id IN (${userIds.map(() => "?").join(",")})`, ...userIds,

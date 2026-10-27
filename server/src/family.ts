@@ -36,7 +36,13 @@ export function setMyShare(linkId: string, share: ShareKind[], h = hid()) {
   run(`UPDATE household_links SET ${r.a === h ? "a_share" : "b_share"}=? WHERE id=?`, share.join(","), linkId);
   return true;
 }
-export const deleteLink = (linkId: string, h = hid()) => run("DELETE FROM household_links WHERE id=? AND (a=? OR b=?)", linkId, h, h);
+export function deleteLink(linkId: string, h = hid()) {
+  const l = get<{ a: string; b: string }>("SELECT a, b FROM household_links WHERE id=? AND (a=? OR b=?)", linkId, h, h);
+  if (!l) return;
+  // gedeelde kinderen gaan terug naar alleen hun eigen gezin
+  run("DELETE FROM member_shares WHERE (household_id=? AND member_id IN (SELECT id FROM members WHERE household_id=?)) OR (household_id=? AND member_id IN (SELECT id FROM members WHERE household_id=?))", l.b, l.a, l.a, l.b);
+  run("DELETE FROM household_links WHERE id=?", linkId);
+}
 
 export interface FamilyCard {
   linkId: string; household: string; name: string;

@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { all, get, run, newId, tx, hid } from "./db.js";
 import { weekday, today as todayStr, addDays as addDaysStr } from "./dates.js";
+import { isTeen } from "./rhythm.js";
 import { energyNeed, macroTargets, estimateRecipe, type Goal, type Sex, type Macros } from "./nutrition.js";
 
 // ---------- gezinsleden ----------
-export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string }
+export interface Member { id: string; name: string; color: string; avatar: string; photo: string | null; role: "ouder" | "kind" | "huisdier"; sort: number; userId: string | null; birthday: string | null; /** vermijden: allergieën en voorkeuren, komma-gescheiden */ diet: string;
+  /** eigen taal ('' = die van het gezin) */ lang: string; /** tienermodus: '' = vanzelf vanaf 13, '1' aan, '0' uit */ teenMode: string; teen: boolean;
+  quietFrom: string; quietUntil: string; sleepHours: number;
+  /** kind uit een verbonden gezin (co-ouderschap): naam van het thuisgezin */ guestOf?: string; homeId?: string }
 export const MemberInput = z.object({
   name: z.string().trim().min(1).max(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
@@ -13,21 +17,37 @@ export const MemberInput = z.object({
   role: z.enum(["ouder", "kind", "huisdier"]).default("kind"),
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   diet: z.string().max(200).default(""),
+  lang: z.enum(["", "nl", "tr", "en"]).optional(),
+  teenMode: z.enum(["", "1", "0"]).optional(),
+  quietFrom: z.string().regex(/^(([01]\d|2[0-3]):[0-5]\d)?$/).optional(),
+  quietUntil: z.string().regex(/^(([01]\d|2[0-3]):[0-5]\d)?$/).optional(),
+  sleepHours: z.number().int().min(4).max(12).optional(),
 });
-type MemberRow = Omit<Member, "userId"> & { user_id: string | null };
-const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, m.birthday, m.diet, hu.user_id
+type MemberRow = { id: string; name: string; color: string; avatar: string; photo: string | null; role: Member["role"]; sort: number; birthday: string | null; diet: string; lang: string; teen: string; quiet_from: string; quiet_until: string; sleep_hours: number; user_id: string | null };
+const MEMBER_SQL = `SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, m.sort, m.birthday, m.diet, m.lang, m.teen, m.quiet_from, m.quiet_until, m.sleep_hours, hu.user_id
   FROM members m LEFT JOIN household_users hu ON hu.member_id = m.id AND hu.household_id = m.household_id`;
-const toMember = ({ user_id, ...m }: MemberRow): Member => ({ ...m, userId: user_id });
-export const listMembers = (h = hid()) => all<MemberRow>(`${MEMBER_SQL} WHERE m.household_id=? ORDER BY m.sort, m.name`, h).map(toMember);
+const toMember = ({ user_id, teen, quiet_from, quiet_until, sleep_hours, ...m }: MemberRow): Member => ({ ...m, userId: user_id, teenMode: teen, teen: isTeen({ teen, birthday: m.birthday, role: m.role }), quietFrom: quiet_from, quietUntil: quiet_until, sleepHours: sleep_hours });
+/** Eigen gezinsleden, en daarna de kinderen die een verbonden gezin met ons deelt (co-ouderschap). */
+export const listMembers = (h = hid()): Member[] => [
+  ...all<MemberRow>(`${MEMBER_SQL} WHERE m.household_id=? ORDER BY m.sort, m.name`, h).map(toMember),
+  ...all<MemberRow & { home: string; home_name: string }>(`SELECT m.id, m.name, m.color, m.avatar, m.photo, m.role, 1000 + m.sort AS sort, m.birthday, m.diet, m.lang, m.teen, m.quiet_from, m.quiet_until, m.sleep_hours, NULL AS user_id, m.household_id AS home, h.name AS home_name
+    FROM member_shares s JOIN members m ON m.id = s.member_id JOIN households h ON h.id = m.household_id WHERE s.household_id=? ORDER BY m.sort, m.name`, h)
+    .map(({ home, home_name, ...r }) => ({ ...toMember(r), guestOf: home_name, homeId: home })),
+];
+/** Alleen de eigen leden (voor beheer: volgorde, verwijderen). */
+export const ownMembers = (h = hid()) => listMembers(h).filter((m) => !m.guestOf);
 export const getMember = (id: string) => listMembers().find((m) => m.id === id);
 export function createMember(i: z.input<typeof MemberInput>, h = hid()): Member {
   const id = newId();
   const sort = get<{ n: number }>("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM members WHERE household_id=?", h)?.n ?? 0;
-  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort, birthday, diet) VALUES (?,?,?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", sort, i.birthday ?? null, (i.diet ?? "").trim());
+  run("INSERT INTO members(id, household_id, name, color, avatar, photo, role, sort, birthday, diet, lang, teen, quiet_from, quiet_until, sleep_hours) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", id, h, i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", sort, i.birthday ?? null, (i.diet ?? "").trim(), i.lang ?? "", i.teenMode ?? "", i.quietFrom ?? "", i.quietUntil ?? "", i.sleepHours ?? 8);
   return listMembers(h).find((m) => m.id === id)!;
 }
 export function updateMember(id: string, i: z.input<typeof MemberInput>) {
-  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=?, birthday=?, diet=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", i.birthday ?? null, (i.diet ?? "").trim(), id, hid());
+  const h = hid();
+  run("UPDATE members SET name=?, color=?, avatar=?, photo=?, role=?, birthday=?, diet=? WHERE id=? AND household_id=?", i.name, i.color, i.avatar ?? "", i.photo ?? null, i.role ?? "kind", i.birthday ?? null, (i.diet ?? "").trim(), id, h);
+  // nieuwe velden alleen als ze meegestuurd worden (oudere schermen kennen ze niet)
+  for (const [col, v] of [["lang", i.lang], ["teen", i.teenMode], ["quiet_from", i.quietFrom], ["quiet_until", i.quietUntil], ["sleep_hours", i.sleepHours]] as const) if (v !== undefined) run(`UPDATE members SET ${col}=? WHERE id=? AND household_id=?`, v, id, h);
   return getMember(id);
 }
 export function deleteMember(id: string) {
@@ -50,6 +70,8 @@ export const memberByName = (name: string) =>
   listMembers().find((m) => m.name.toLocaleLowerCase("nl") === name.trim().toLocaleLowerCase("nl"));
 
 // ---------- taken ----------
+/** Taken horen bij een profiel; in een gezin zie je de taken van alle zichtbare profielen (ook gedeelde kinderen van een verbonden gezin). */
+const CHORE_SCOPE = "c.member_id IN (SELECT id FROM members WHERE household_id=? UNION SELECT member_id FROM member_shares WHERE household_id=?)";
 export const MOMENTS = ["ochtend", "middag", "avond", "altijd"] as const;
 export type Moment = (typeof MOMENTS)[number];
 export interface Chore { id: string; memberId: string; title: string; icon: string; days: number[]; points: number; moment: Moment; streak: number }
@@ -66,13 +88,13 @@ const toChore = (r: ChoreRow, streak = 0): Chore => ({ id: r.id, memberId: r.mem
 /** Hoeveel geplande dagen op rij is deze taak gedaan (vandaag telt mee als ze al gedaan is)? */
 function streaks(h: string): Map<string, number> {
   const done = new Map<string, Set<string>>();
-  for (const r of all<{ chore_id: string; date: string }>("SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date >= date('now','-120 days')", h)) {
+  for (const r of all<{ chore_id: string; date: string }>(`SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE ${CHORE_SCOPE} AND d.date >= date('now','-120 days')`, h, h)) {
     if (!done.has(r.chore_id)) done.set(r.chore_id, new Set());
     done.get(r.chore_id)!.add(r.date);
   }
   const out = new Map<string, number>();
   const t = todayStr();
-  for (const c of all<ChoreRow>("SELECT * FROM chores WHERE household_id=?", h)) {
+  for (const c of all<ChoreRow>(`SELECT * FROM chores c WHERE ${CHORE_SCOPE}`, h, h)) {
     const days: number[] = JSON.parse(c.days);
     const set = done.get(c.id) ?? new Set<string>();
     let n = 0;
@@ -89,10 +111,10 @@ function streaks(h: string): Map<string, number> {
 }
 export const listChores = () => {
   const st = streaks(hid());
-  return all<ChoreRow>("SELECT * FROM chores WHERE household_id=? ORDER BY sort, title", hid()).map((r) => toChore(r, st.get(r.id) ?? 0));
+  return all<ChoreRow>(`SELECT * FROM chores c WHERE ${CHORE_SCOPE} ORDER BY sort, title`, hid(), hid()).map((r) => toChore(r, st.get(r.id) ?? 0));
 };
-const ownsMember = (memberId: string) => !!get("SELECT 1 FROM members WHERE id=? AND household_id=?", memberId, hid());
-const ownsChore = (choreId: string) => !!get("SELECT 1 FROM chores WHERE id=? AND household_id=?", choreId, hid());
+const ownsMember = (memberId: string) => !!get("SELECT 1 FROM members WHERE id=? AND household_id=? UNION SELECT 1 FROM member_shares WHERE member_id=? AND household_id=?", memberId, hid(), memberId, hid());
+const ownsChore = (choreId: string) => !!get(`SELECT 1 FROM chores c WHERE c.id=? AND ${CHORE_SCOPE}`, choreId, hid(), hid());
 export function createChore(i: z.infer<typeof ChoreInput>) {
   if (!ownsMember(i.memberId)) throw new Error("Onbekend gezinslid");
   const id = newId();
@@ -101,13 +123,14 @@ export function createChore(i: z.infer<typeof ChoreInput>) {
 }
 export function updateChore(id: string, i: z.infer<typeof ChoreInput>) {
   if (!ownsMember(i.memberId)) throw new Error("Onbekend gezinslid");
-  run("UPDATE chores SET member_id=?, title=?, icon=?, days=?, points=?, moment=? WHERE id=? AND household_id=?", i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points, i.moment, id, hid());
+  if (!ownsChore(id)) return;
+  run("UPDATE chores SET member_id=?, title=?, icon=?, days=?, points=?, moment=? WHERE id=?", i.memberId, i.title, i.icon, JSON.stringify(i.days), i.points, i.moment, id);
 }
-export const deleteChore = (id: string) => run("DELETE FROM chores WHERE id=? AND household_id=?", id, hid());
+export const deleteChore = (id: string) => { if (ownsChore(id)) run("DELETE FROM chores WHERE id=?", id); };
 export const choresOn = (date: string) => listChores().filter((c) => c.days.includes(weekday(date)));
 export const doneBetween = (from: string, to: string) =>
   all<{ chore_id: string; date: string }>(
-    "SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date BETWEEN ? AND ?", hid(), from, to,
+    `SELECT d.chore_id, d.date FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE ${CHORE_SCOPE} AND d.date BETWEEN ? AND ?`, hid(), hid(), from, to,
   ).map((r) => `${r.date}|${r.chore_id}`);
 export function setChoreDone(choreId: string, date: string, done: boolean) {
   if (!ownsChore(choreId)) return;
@@ -125,9 +148,9 @@ export const deleteReward = (id: string) => run("DELETE FROM rewards WHERE id=? 
 /** Sterren verdiend in een periode, per gezinslid (voor "vandaag" en het weekklassement). */
 export function pointsBetween(from: string, to: string): Record<string, number> {
   const rows = all<{ member_id: string; n: number }>(
-    "SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? AND d.date BETWEEN ? AND ? GROUP BY c.member_id", hid(), from, to,
+    `SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE ${CHORE_SCOPE} AND d.date BETWEEN ? AND ? GROUP BY c.member_id`, hid(), hid(), from, to,
   );
-  const learned = all<{ member_id: string; n: number }>("SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE household_id=? AND date BETWEEN ? AND ? GROUP BY member_id", hid(), from, to);
+  const learned = all<{ member_id: string; n: number }>(`SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE member_id IN (SELECT id FROM members WHERE household_id=? UNION SELECT member_id FROM member_shares WHERE household_id=?) AND date BETWEEN ? AND ? GROUP BY member_id`, hid(), hid(), from, to);
   const out: Record<string, number> = Object.fromEntries(rows.map((r) => [r.member_id, r.n]));
   for (const l of learned) out[l.member_id] = (out[l.member_id] ?? 0) + l.n;
   return out;
@@ -160,11 +183,11 @@ export function learnProgress(): Record<string, { total: number; games: Record<s
 export function points(): Record<string, { earned: number; spent: number; balance: number }> {
   const h = hid();
   const earned = all<{ member_id: string; n: number }>(
-    "SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE c.household_id=? GROUP BY c.member_id", h,
+    `SELECT c.member_id, SUM(c.points) AS n FROM chore_done d JOIN chores c ON c.id = d.chore_id WHERE ${CHORE_SCOPE} GROUP BY c.member_id`, h, h,
   );
-  const learned = all<{ member_id: string; n: number }>("SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE household_id=? GROUP BY member_id", h);
+  const learned = all<{ member_id: string; n: number }>(`SELECT member_id, SUM(stars) AS n FROM learn_stars WHERE member_id IN (SELECT id FROM members WHERE household_id=? UNION SELECT member_id FROM member_shares WHERE household_id=?) GROUP BY member_id`, h, h);
   const spent = all<{ member_id: string; n: number }>(
-    "SELECT rc.member_id, SUM(rc.cost) AS n FROM reward_claims rc JOIN members m ON m.id = rc.member_id WHERE m.household_id=? GROUP BY rc.member_id", h,
+    `SELECT rc.member_id, SUM(rc.cost) AS n FROM reward_claims rc WHERE rc.member_id IN (SELECT id FROM members WHERE household_id=? UNION SELECT member_id FROM member_shares WHERE household_id=?) GROUP BY rc.member_id`, h, h,
   );
   const out: Record<string, { earned: number; spent: number; balance: number }> = {};
   for (const m of listMembers()) {

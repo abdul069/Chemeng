@@ -37,6 +37,9 @@ import * as P from "./prices.js";
 import * as W from "./weekbox.js";
 import * as Inbox from "./inbox.js";
 import * as R from "./routines.js";
+import * as RH from "./rhythm.js";
+import * as CP from "./coparent.js";
+import { translate, TranslateError } from "./translate.js";
 import { BRAND, UA as USER_AGENT, asLang, L as LT } from "./i18n.js";
 import * as H from "./home.js";
 import * as HA from "./smarthome.js";
@@ -592,7 +595,8 @@ api.get("/events", (req, res) => {
   const { userId, householdId } = ctx();
   const kinds = getSettings().holidays.split(",").filter(isHolidayKind);
   const connItems = C.connectorCalendar(from, to).map((e) => ({ id: `conn:${e.id}`, title: e.title, notes: e.url ?? "", location: e.location ?? "", date: e.date, endDate: e.endDate ?? null, startTime: e.startTime ?? null, endTime: e.endTime ?? null, allDay: e.allDay, repeat: "none" as const, repeatUntil: null, exdates: [], members: [], source: "koppeling", readOnly: true, countdown: false, on: e.date, until: e.endDate ?? e.date, key: `conn:${e.id}@${e.date}` }));
-  const list = [...eventsBetween(from, to, members), ...A.sharedEvents(userId, householdId, from, to), ...connItems, ...(kinds.length ? holidayOccurrences(from, to, kinds, getSettings().country || "BE").map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
+  const layers = CP.layerEvents(from, to).filter((o) => !members?.length || o.members.some((m) => members.includes(m)));
+  const list = [...eventsBetween(from, to, members), ...layers, ...A.sharedEvents(userId, householdId, from, to), ...connItems, ...(kinds.length ? holidayOccurrences(from, to, kinds, getSettings().country || "BE").map((o) => (getSettings().language === "tr" ? { ...o, title: o.title.replace(/^(\S+\s)(.*)$/, (_m, ic: string, tt: string) => ic + (localizeHoliday({ date: o.date, title: tt, icon: "", kind: "be" }, "tr").title)) } : o)) : [])];
   res.json(list.sort((x, y) => x.on.localeCompare(y.on) || Number(y.allDay) - Number(x.allDay) || (x.startTime ?? "").localeCompare(y.startTime ?? "")));
 });
 api.post("/events", (req, res) => { res.json(createEvent(EventInput.parse(req.body))); broadcast("events"); });
@@ -1093,8 +1097,11 @@ api.put("/settings", (req, res) => {
   broadcast("settings");
 });
 api.post("/settings/verify-pin", (req, res) => {
-  const pin = getSettings().settings_pin;
-  res.json({ ok: !pin || String(req.body?.pin ?? "") === pin });
+  const pin = getSettings().settings_pin; const given = String(req.body?.pin ?? "");
+  if (!pin || given === pin) return void res.json({ ok: true, who: "own" });
+  // op de kindertablet telt ook de pincode van de andere ouder (verbonden gezin waarmee het kind gedeeld is), met beperkte rechten
+  const memberId = typeof req.body?.memberId === "string" ? req.body.memberId : "";
+  res.json(memberId && CP.otherParentPinOk(memberId, given) ? { ok: true, who: "other" } : { ok: false });
 });
 
 // ---------- weer ----------
@@ -1340,6 +1347,60 @@ api.post("/assistant", async (req, res) => {
     res.status(502).json({ error: "De assistent is even niet bereikbaar. Probeer het zo opnieuw." });
   }
 });
+
+
+// ---------- ritme per persoon: ploegen, stille uren, tienerdoelen ----------
+const bad = (res: Response, e: unknown) => { if (e instanceof ZodError) throw e; res.status(400).json({ error: e instanceof Error ? e.message : "Mislukt" }); };
+api.get("/shifts", (_req, res) => { res.json({ shifts: RH.listShifts(), presets: RH.SHIFT_PRESETS }); });
+api.post("/shifts", (req, res) => { try { res.json(RH.saveShift(RH.ShiftInput.parse(req.body))); broadcast("events", "members"); } catch (e) { bad(res, e); } });
+api.put("/shifts/:id", (req, res) => { try { res.json(RH.saveShift(RH.ShiftInput.parse(req.body), p(req))); broadcast("events", "members"); } catch (e) { bad(res, e); } });
+api.delete("/shifts/:id", (req, res) => { RH.deleteShift(p(req)); res.json({ ok: true }); broadcast("events", "members"); });
+api.get("/quiet", (_req, res) => { res.json(RH.quietMembers()); });
+api.get("/goals", (req, res) => { const q = z.object({ memberId: z.string().optional() }).parse(req.query); res.json({ goals: RH.listGoals(q.memberId), templates: RH.GOAL_TEMPLATES }); });
+api.post("/goals", (req, res) => { try { res.json(RH.createGoal(RH.GoalInput.parse(req.body))); broadcast("rewards"); } catch (e) { bad(res, e); } });
+api.delete("/goals/:id", (req, res) => { RH.deleteGoal(p(req)); res.json({ ok: true }); broadcast("rewards"); });
+api.post("/goals/:id/entries", (req, res) => { try { res.json(RH.addGoalEntry(p(req), RH.GoalEntryInput.parse(req.body))); broadcast("rewards"); } catch (e) { bad(res, e); } });
+api.delete("/goals/entries/:id", (req, res) => { RH.deleteGoalEntry(p(req)); res.json({ ok: true }); broadcast("rewards"); });
+
+// ---------- vertalen (schoolbrieven, briefjes) in de taal van wie leest ----------
+const readerLang = (req: Request) => { const q = typeof req.body?.lang === "string" ? req.body.lang : ""; return q ? asLang(q) : RH.langOfUser(ctx().userId, hid()); };
+api.post("/translate", async (req, res) => {
+  const b = z.object({ text: z.string().min(1).max(12000), lang: z.enum(["nl", "tr", "en"]).optional() }).parse(req.body);
+  try { res.json({ text: await translate(b.text, b.lang ?? readerLang(req)) }); } catch (e) { res.status(e instanceof TranslateError ? 400 : 502).json({ error: e instanceof Error ? e.message : "Vertalen mislukt" }); }
+});
+api.post("/inbox/:id/translate", async (req, res) => {
+  const it = Inbox.getItem(p(req)); if (!it) return void res.status(404).json({ error: "Niet gevonden" });
+  const lang = readerLang(req);
+  try { res.json({ lang, subject: it.subject ? await translate(it.subject, lang) : "", summary: it.summary ? await translate(it.summary, lang) : "", body: it.body ? await translate(it.body, lang) : "" }); }
+  catch (e) { res.status(e instanceof TranslateError ? 400 : 502).json({ error: e instanceof Error ? e.message : "Vertalen mislukt" }); }
+});
+
+// ---------- co-ouderschap: twee huizen ----------
+const both = (ids: string[], topics: Parameters<typeof broadcastTo>[1]) => ids.forEach((id) => broadcastTo(id, topics));
+api.get("/family/links/:id/kids", (req, res) => {
+  try { const shared = CP.sharedKids(p(req)); res.json({ own: S.ownMembers().filter((m) => m.role === "kind").map((m) => ({ id: m.id, name: m.name, shared: shared.some((k) => k.memberId === m.id) })), guests: shared.filter((k) => k.guestIn === hid()).map((k) => k.memberId) }); } catch (e) { bad(res, e); }
+});
+api.post("/family/links/:id/kids", requireAdmin, (req, res) => {
+  const b = z.object({ memberId: z.string(), on: z.boolean() }).parse(req.body);
+  try { const other = CP.setMemberShared(p(req), b.memberId, b.on); res.json({ ok: true }); both([hid(), other], ["members", "chores", "events", "family", "rewards"]); } catch (e) { bad(res, e); }
+});
+api.get("/custody/today", (req, res) => { const d = isDate(req.query.date) ? req.query.date : today(); res.json(CP.custodyToday(d)); });
+api.get("/custody/:id", (req, res) => { try { res.json({ custody: CP.getCustody(p(req)), presets: CP.CUSTODY_PRESETS, overrides: CP.listOverrides(p(req)) }); } catch (e) { bad(res, e); } });
+api.put("/custody/:id", requireAdmin, (req, res) => { try { both(CP.setCustody(p(req), CP.CustodyInput.parse(req.body)), ["events", "family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
+api.delete("/custody/:id", requireAdmin, (req, res) => { try { both(CP.deleteCustody(p(req)), ["events", "family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
+api.post("/custody/:id/overrides", (req, res) => { try { both(CP.addOverride(p(req), CP.OverrideInput.parse(req.body)), ["events", "family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
+api.delete("/custody/overrides/:id", (req, res) => { try { both(CP.deleteOverride(p(req)), ["events", "family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
+api.get("/handover", (req, res) => { const d = isDate(req.query.date) ? req.query.date : today(); res.json(CP.handoverFor(d)); });
+api.post("/handover/items", (req, res) => { try { const i = CP.HandoverItemInput.parse(req.body); res.json({ id: CP.addHandoverItem(i) }); both(CP.householdsOfMember(i.memberId), ["family"]); } catch (e) { bad(res, e); } });
+api.delete("/handover/items/:id", (req, res) => { CP.deleteHandoverItem(p(req)); res.json({ ok: true }); broadcast("family"); });
+api.post("/handover/items/:id/check", (req, res) => {
+  const b = z.object({ date: day, done: z.boolean() }).parse(req.body);
+  CP.checkHandoverItem(p(req), b.date, b.done); res.json({ ok: true });
+  const m = get<{ member_id: string }>("SELECT member_id FROM handover_items WHERE id=?", p(req)); both(m ? CP.householdsOfMember(m.member_id) : [hid()], ["family"]);
+});
+api.get("/costs/:id", (req, res) => { try { res.json(CP.costPot(p(req))); } catch (e) { bad(res, e); } });
+api.post("/costs/:id", (req, res) => { try { both(CP.addExpense(p(req), CP.ExpenseInput.parse(req.body)), ["family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
+api.delete("/costs/item/:id", (req, res) => { try { both(CP.deleteExpense(p(req)), ["family"]); res.json({ ok: true }); } catch (e) { bad(res, e); } });
 
 // ---------- fouten ----------
 api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
