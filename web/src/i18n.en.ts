@@ -1520,4 +1520,6 @@ export const EN: Record<string, string> = {
   "vandaag!": "today!",
   "{a} staat nog niet op deze tablet. Een ouder installeert ze via de Play Store.": "{a} is not on this tablet yet. A parent installs it from the Play Store.",
   "{n} van {m} taken gedaan": "{n} of {m} tasks done",
+  "Hoe kan ik helpen?": "How can I help?",
+  "Briefing": "Briefing",
 };

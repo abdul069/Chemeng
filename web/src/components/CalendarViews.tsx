@@ -69,7 +69,7 @@ export function DayView({ date, events, onOpen, onSlot, compact }: {
         <div className="colhead corner" />
         {cols.map((m) => (
           <div className="colhead" key={m.id}>
-            <Avatar m={m} size={compact ? 34 : 40} dot={false} />
+            <Avatar m={m} size={compact ? 46 : 40} dot={false} />
             <span>{m.name}</span>
           </div>
         ))}

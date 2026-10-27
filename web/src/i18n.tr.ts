@@ -1527,4 +1527,6 @@ export const TR: Record<string, string> = {
   "vandaag!": "bugün!",
   "{a} staat nog niet op deze tablet. Een ouder installeert ze via de Play Store.": "{a} bu tablette henüz yüklü değil. Ebeveyn Play Store'dan yükler.",
   "{n} van {m} taken gedaan": "{m} görevden {n} tanesi yapıldı",
+  "Hoe kan ik helpen?": "Nasıl yardımcı olabilirim?",
+  "Briefing": "Özet",
 };

@@ -90,9 +90,10 @@ export function PrikbordApp() {
 }
 
 /** Kleine versie voor het Bord en Mijn dag */
-export function PrikbordWidget({ max = 4, onMore }: { max?: number; onMore?: () => void }) {
+export function PrikbordWidget({ max = 4, onMore, hideEmpty = false }: { max?: number; onMore?: () => void; hideEmpty?: boolean }) {
   const [notes] = useNotes();
   const [edit, setEdit] = useState<{ note?: Note } | null>(null);
+  if (hideEmpty && !notes.length) return null;
   return (
     <section className="glass widget-sm">
       <div className="widget-h"><h2>{t("Prikbord")}</h2><span style={{ display: "flex", gap: 8 }}>{onMore && notes.length > max && <button className="linkbtn" onClick={onMore}>{t("Alles")} ({notes.length})</button>}<button className="linkbtn" onClick={() => setEdit({})}>{t("+ Briefje")}</button></span></div>

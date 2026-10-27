@@ -50,7 +50,6 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
   const { data, hidden } = useData();
   const t = todayIso();
   const time = useClock();
-  const suggestions = useSuggestions();
   const [events] = useRemote<Occurrence[]>(`/events?from=${t}&to=${addDays(t, 1)}`, ["events", "members"], []);
   const [meals] = useRemote<Meal[]>(`/meals?from=${t}&to=${t}`, ["meals"], []);
   const [weather] = useRemote<Weather | null>("/weather", ["settings"], null);
@@ -75,7 +74,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
               const r = m?.recipeId ? data?.recipes.find((x) => x.id === m.recipeId) : undefined;
               const open = () => (r ? openRecipe(r.id) : goto("meals"));
               return (
-                <button className={`mealtile${i === 0 ? tr(" main") : ""}${m ? "" : tr(" empty")}`} key={slot} onClick={open}>
+                <button className={`mealtile${i === 0 ? " main" : ""}${m ? "" : " empty"}`} data-slot={slot} key={slot} onClick={open}>
                   {m?.image || r ? <RecipeThumb r={{ image: m!.image, title: m!.title }} size={i === 0 ? 64 : 48} /> : <span className="mealtile-ic" aria-hidden>{SLOT_ICON[slot]}</span>}
                   <span className="mealtile-txt"><small>{tr(SLOT_LABEL[slot])}</small><b>{(r ? recipeTitle(r) : m?.title) ?? tr("Nog niets")}</b></span>
                 </button>
@@ -91,7 +90,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
         </section>
     ),
     notes: (
-        <PrikbordWidget max={3} />
+        <PrikbordWidget max={3} hideEmpty />
     ),
     home: (
         <HomeWidget onOpen={() => { try { sessionStorage.setItem("gb.app", "home"); } catch { /* */ } goto("apps"); }} />
@@ -109,7 +108,7 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
           <section className="glass widget-sm">
             <div className="widget-h"><h2>{tr("Aftellen")}</h2></div>
             <div className="cdstrip">
-              {data.countdowns.slice(0, 4).map((c) => {
+              {data.countdowns.slice(0, 3).map((c) => {
                 const m = c.memberId ? data.members.find((x) => x.id === c.memberId) : null;
                 return (
                   <div className="cd-sm" key={c.kind + c.title + c.date} style={{ "--c": m?.color ?? "var(--accent)" } as React.CSSProperties}>
@@ -131,26 +130,26 @@ export function TodayScreen({ openEditor, openAssistant, goto, openSearch, onlin
         <div className="bord-greet">
           <button className="drop-btn" onClick={() => openAssistant()} aria-label={tr("Assistent openen")}><span className="drop" aria-hidden /></button>
           <button className="bubble glass bord-bubble" onClick={() => openAssistant()}>
-            {greeting()}{data?.settings.family_name ? `, ${data.settings.family_name}` : ""}! {tr("Waarmee kan ik vandaag helpen?")}
+            {greeting()}! {tr("Hoe kan ik helpen?")}
           </button>
         </div>
         <div className="bord-meta">
           <span className="bord-time num">{time}</span>
           <span className="bord-date">{cap(longDate(t))}{!online && <span className="offline" style={{ marginLeft: 8 }}>{tr("Offline")}</span>}</span>
           {weather && <span className="bord-wx num" title={`${weather.city}: ${weather.current.label}`}>{weather.current.icon} {weather.current.temp}° <small>↑{weather.days[0]?.max}° ↓{weather.days[0]?.min}°</small></span>}
+          <button className="bord-wx bord-brief" onClick={() => setBriefOpen(true)}>{hour < 15 ? "☀️" : "🌙"} {tr("Briefing")}</button>
           {nxt && <span className="bord-wx num" title={tr("Volgend gebed")}>{PRAYER_ICON[nxt.prayer]} {PRAYER_NAME[nxt.prayer]} <small>{hm(new Date(nxt.at).toISOString())}</small></span>}
           <button className="iconbtn glass" onClick={openSearch} aria-label={tr("Zoeken in alles")}><Icon.search /></button>
         </div>
       </div>
-      <div className="suggest bord-suggest">
-        {suggestions.slice(0, 4).map((s) => <button key={s} className="glass" onClick={() => openAssistant(s)}>{s}</button>)}
-      </div>
       <section className="glass bord-cal board">
+        <div className="bord-cal-h"><h2>{tr("Vandaag")}</h2><span className="muted" /><button className="linkbtn" onClick={() => goto("calendar")}>{tr("Kalender")} ›</button></div>
         <DayView date={t} events={visible} compact onOpen={(o) => openEditor({ occ: o })}
           onSlot={(date, startTime, m) => openEditor({ defaults: { date, startTime, members: m ? [m] : [] } })} />
+        <button className="bord-add" onClick={() => openEditor({ defaults: { date: t } })} aria-label={tr("Afspraak toevoegen")}>+</button>
       </section>
       <div className="bord-widgets">
-        {parseWidgets(data?.settings.board_widgets ?? "").filter((w) => w.on).map((w) => <Fragment key={w.id}>{widgets[w.id]}</Fragment>)}
+        {parseWidgets(data?.settings.board_widgets ?? "").filter((w) => w.on && w.id !== "briefing").map((w) => <Fragment key={w.id}>{widgets[w.id]}</Fragment>)}
       </div>
       {briefOpen && <BriefingModal onClose={() => setBriefOpen(false)} />}
     </div>

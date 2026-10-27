@@ -1820,3 +1820,131 @@ body.gb-kid .mascot-float, body.gb-kid .fab { display: none; }
 .kid-say { width: 44px; height: 44px; font-size: 20px; flex: none; }
 .learn-opt.pic .opt-txt { font-size: 14px; color: var(--muted); }
 .learn-opt.pic.right .opt-txt { color: #1e2632; }
+
+/* =====================================================================
+   Kinday-look: warme kleurwereld (perzik → mint), witte kaarten, schreefkoppen,
+   een dock met kleurrijke app-iconen en een Bord met de agenda als hart.
+   ===================================================================== */
+:root {
+  --glass: rgba(255, 255, 255, 0.86);
+  --glass-strong: rgba(255, 255, 255, 0.94);
+  --glass-line: rgba(255, 255, 255, 0.95);
+  --card-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 10px 30px rgba(92, 54, 30, 0.10), 0 2px 6px rgba(92, 54, 30, 0.05);
+  --sky: linear-gradient(168deg, #ffa982 0%, #ffc49f 16%, #fbe2cd 34%, #eef3ec 52%, #c8ece4 72%, #86d3c6 100%);
+}
+body { background: var(--sky) fixed; background-color: #f7efe6; }
+.glass, .card { background: var(--glass); border: 1px solid var(--glass-line); border-radius: 24px; box-shadow: var(--card-shadow); }
+.widget-h h2, .bord-cal-h h2, .brief-h h2, .section-title h2 { font-family: var(--f-display); font-weight: 400; font-size: 20px; letter-spacing: -0.01em; color: #2a2420; }
+.linkbtn { color: #c4602f; }
+
+/* ---------- navigatie: kleurige app-iconen ---------- */
+.navbtn[data-nav="today"] { --nc: #f07f52; } .navbtn[data-nav="calendar"] { --nc: #3f9fe0; } .navbtn[data-nav="chores"] { --nc: #f2b13a; }
+.navbtn[data-nav="meals"] { --nc: #e2604a; } .navbtn[data-nav="lists"] { --nc: #43b07e; } .navbtn[data-nav="apps"] { --nc: #8a68dc; }
+.navbtn[data-nav="search"] { --nc: #5b7088; } .navbtn[data-nav="settings"] { --nc: #8b95a5; }
+.navbtn svg { box-sizing: content-box; padding: 7px; border-radius: 13px; color: var(--nc, var(--accent)); background: color-mix(in srgb, var(--nc, var(--accent)) 14%, #fff); transition: transform .15s ease, background .15s ease; }
+.navbtn[aria-current="page"] { background: none !important; box-shadow: none !important; color: var(--fg); font-weight: 700; }
+.navbtn[aria-current="page"] svg { color: #fff !important; background: var(--nc, var(--accent)); box-shadow: 0 6px 14px color-mix(in srgb, var(--nc, var(--accent)) 40%, transparent); }
+.rail { background: rgba(255,255,255,.62); border-right: 1px solid rgba(255,255,255,.85); }
+
+/* Op het keukenscherm (hub) wordt de zijbalk een dock onderaan, zoals een tablet. */
+@media (min-width: 821px) {
+  body.gb-hub .shell { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  body.gb-hub .rail { order: 2; flex-direction: row; align-items: flex-end; justify-content: center; gap: 4px; justify-self: center; width: auto; margin: 0 0 calc(env(safe-area-inset-bottom, 0px) + 12px); padding: 8px 14px 6px; border: 1px solid rgba(255,255,255,.9); border-radius: 30px; background: rgba(255,255,255,.55); backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 14px 40px rgba(92,54,30,.16); }
+  body.gb-hub .rail .brand, body.gb-hub .rail .spacer { display: none; }
+  body.gb-hub .navbtn { width: 82px; padding: 2px 2px 4px; gap: 5px; font-size: 12.5px; color: #3b3430; }
+  body.gb-hub .navbtn svg { width: 28px; height: 28px; padding: 14px; border-radius: 18px; color: #fff; background: linear-gradient(160deg, color-mix(in srgb, var(--nc) 78%, #fff), var(--nc)); box-shadow: 0 6px 16px color-mix(in srgb, var(--nc) 35%, transparent), inset 0 1px 0 rgba(255,255,255,.35); }
+  body.gb-hub .navbtn[aria-current="page"] svg { transform: translateY(-4px); box-shadow: 0 0 0 3px #fff, 0 10px 22px color-mix(in srgb, var(--nc) 45%, transparent); }
+  body.gb-hub .navbtn.nav-search { order: 9; } body.gb-hub .navbtn[data-nav="settings"] { order: 10; }
+  body.gb-hub .page { padding-left: 22px; padding-right: max(22px, env(safe-area-inset-right, 0px)); padding-bottom: 8px; }
+  body.gb-hub .fab { bottom: calc(env(safe-area-inset-bottom, 0px) + 118px); }
+  body.gb-hub .mascot-float { display: none; }
+}
+
+/* ---------- het Bord ---------- */
+.bord { gap: 14px; }
+.bord-greet .drop { width: 54px; height: 54px; }
+.bord-bubble { background: rgba(255,255,255,.9); border: 0; border-radius: 22px 22px 22px 8px; padding: 12px 18px; font-size: 16px; font-weight: 500; box-shadow: var(--card-shadow); color: #2a2420; }
+.bord-time { font-size: 54px; font-weight: 300; letter-spacing: -0.04em; color: #fff; text-shadow: 0 2px 14px rgba(150, 70, 30, .25); }
+.bord-date { color: #fff; font-weight: 600; font-size: 15px; text-shadow: 0 1px 8px rgba(150, 70, 30, .25); }
+.bord-wx { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.8); border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+.bord-meta .iconbtn.glass { background: rgba(255,255,255,.7); }
+.bord-suggest button.glass { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.85); box-shadow: none; font-weight: 600; color: #3b3430; }
+
+.bord-cal { display: flex; flex-direction: column; background: rgba(255,255,255,.93); }
+.bord-cal-h { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px 4px; }
+.bord-cal-h .muted { font-size: 13.5px; flex: 1; }
+.bord-cal .colhead, .bord-cal .hours, .bord-cal .allday-lbl, .bord-cal .colhead.corner { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.bord-cal .colhead { border-bottom: 0; padding: 8px 6px 10px; font-size: 13.5px; font-weight: 600; color: #3b3430; }
+.bord-cal .colhead .avatar { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--c), 0 6px 14px rgba(30,38,50,.12); }
+.bord-cal .allday-cell, .bord-cal .allday-lbl { border-bottom: 1px solid rgba(60,40,30,.06); }
+.bord-cal .col { border-left: 1px solid rgba(60,40,30,.06); background-image: repeating-linear-gradient(to bottom, rgba(60,40,30,.06) 0 1px, transparent 1px var(--hour)); }
+.bord-cal .ev { border-radius: 12px; padding: 7px 10px; background: linear-gradient(170deg, color-mix(in srgb, var(--c) 82%, #fff), var(--c)); box-shadow: 0 4px 12px color-mix(in srgb, var(--c) 30%, transparent); }
+.bord-cal .ev b { font-size: 13.5px; }
+.bord-cal .chip { border-radius: 8px; }
+
+.bord-widgets { gap: 14px; }
+.widget-sm { padding: 16px 16px 14px; gap: 10px; }
+
+/* eten: een lijstje met gekleurde bolletjes */
+.bord .mealstrip { flex-direction: column; gap: 6px; }
+.bord .mealtile, .bord .mealtile.main, .bord .mealtile:not(.main) { flex: none; width: 100%; background: transparent; border: 0; padding: 6px 4px; border-radius: 14px; }
+.bord .mealtile:hover { background: rgba(255, 196, 160, .14); }
+.bord .mealtile-ic, .bord .mealtile.main .mealtile-ic { width: 44px; height: 44px; border-radius: 50%; font-size: 21px; }
+.bord .mealtile .rthumb, .bord .mealtile.main .rthumb { width: 44px !important; height: 44px !important; border-radius: 50%; }
+.bord .mealtile[data-slot="ontbijt"] .mealtile-ic { background: #fff1c9; } .bord .mealtile[data-slot="lunch"] .mealtile-ic { background: #dcefff; } .bord .mealtile[data-slot="diner"] .mealtile-ic { background: #ffe0d6; }
+.bord .mealtile-txt b, .bord .mealtile.main .mealtile-txt b { font-size: 15px; font-weight: 600; white-space: nowrap; -webkit-line-clamp: 1; }
+
+/* taken: een gekleurde rij per gezinslid met emoji-tegels */
+.bord .routines.compact .trow { background: color-mix(in srgb, var(--c) 12%, #fff); border-radius: 16px; padding: 8px 10px; margin-bottom: 6px; align-items: center; }
+.bord .routines.compact .who { flex-direction: row; gap: 8px; align-items: center; min-width: 74px; }
+.bord .routines.compact .who small { font-weight: 700; color: color-mix(in srgb, var(--c) 80%, #000); }
+.bord .tico { background: color-mix(in srgb, var(--c) 22%, #fff); border: 0; border-radius: 12px; width: 40px; height: 40px; font-size: 20px; box-shadow: none; }
+.bord .tico[aria-pressed="true"] { background: var(--c); box-shadow: 0 4px 10px color-mix(in srgb, var(--c) 35%, transparent); }
+
+/* de briefing: compact, in gewone letters */
+.bord .brief { border-left: 0; }
+.bord .brief-text { font-family: var(--f-body); font-size: 15px; line-height: 1.5; color: #3b3430; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.bord .brief-h h2 { font-size: 18px; }
+
+/* liggend scherm: agenda links op volle hoogte, widgets rechts */
+@media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
+  .bord { grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr); grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: "top top" "sug sug" "cal side"; }
+  .bord-top { grid-area: top; } .bord-suggest { grid-area: sug; } .bord-cal { grid-area: cal; min-height: 0; }
+  .bord-widgets { grid-area: side; display: flex; flex-direction: column; overflow-y: auto; min-height: 0; padding: 0 2px 4px; scrollbar-width: none; }
+  .bord-widgets::-webkit-scrollbar { display: none; }
+  .bord-widgets > * { flex: none; }
+}
+/* staand scherm: agenda boven, widgets in twee kolommen eronder */
+@media (min-width: 821px) and (max-aspect-ratio: 5/4) {
+  .bord-widgets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---------- telefoon: onderbalk met dezelfde kleurige iconen ---------- */
+@media (max-width: 820px) {
+  .rail { background: rgba(255,255,255,.88); border-top: 1px solid rgba(255,255,255,.95); }
+  .navbtn { font-size: 10.5px; gap: 2px; }
+  .navbtn svg { width: 20px; height: 20px; padding: 6px; border-radius: 11px; }
+}
+.bord .routines.compact .trow { grid-template-columns: auto minmax(0, 1fr); }
+.bord-widgets .brief:not(:has(.props)) { display: flex; flex-direction: column; gap: 8px; }
+.bord-widgets .brief .brief-h { width: 100%; }
+.bord-cal { position: relative; }
+.bord-add { position: absolute; right: 16px; bottom: 16px; z-index: 8; width: 56px; height: 56px; border-radius: 50%; border: 0; font-size: 30px; font-weight: 300; line-height: 1; color: #fff; background: linear-gradient(160deg, #3a3330, #1f1a18); box-shadow: 0 10px 24px rgba(40,25,15,.3); }
+.bord-add:active { transform: scale(.94); }
+.page-bord ~ .fab { display: none; }
+/* rustiger Bord: meer lucht, minder tekst */
+.bord { grid-template-rows: auto minmax(0, 1fr) auto; gap: 18px; }
+.bord-widgets { gap: 18px; }
+.bord-bubble { white-space: nowrap; }
+.bord-brief { cursor: pointer; font: inherit; font-weight: 600; color: #3b3430; }
+.bord .mealtile-txt small { display: none; }
+.bord .mealtile { padding: 8px 4px; }
+.bord .cdstrip { flex-direction: column; gap: 6px; }
+.bord .cd-sm { background: transparent; border: 0; padding: 4px 2px; }
+.widget-sm { padding: 18px 18px 16px; gap: 12px; }
+@media (min-width: 1000px) and (min-aspect-ratio: 5/4) {
+  .bord { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top top" "cal side"; }
+}
+/* briefing-kaart overal rustig: gewone letter, max. drie regels; het volledige verhaal staat achter "Alles bekijken" */
+.brief-text:not(.big) { font-family: var(--f-body); font-size: 15.5px; line-height: 1.5; color: #3b3430; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.myday { padding-top: 6px; }

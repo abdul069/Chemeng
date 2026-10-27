@@ -158,11 +158,11 @@ export function App() {
         {NAV.map((n) => {
           const I = Icon[n.icon];
           const label = n.id === "today" && device.role === "phone" ? "Mijn dag" : n.label;
-          return <button key={n.id} className="navbtn" aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{tr(label)}</button>;
+          return <button key={n.id} className="navbtn" data-nav={n.id} aria-current={screen === n.id ? "page" : undefined} onClick={() => setScreen(n.id)}><I />{tr(label)}</button>;
         })}
         <span className="spacer" />
-        <button className="navbtn nav-search" onClick={() => setSearch(true)} aria-label={tr("Zoeken in alles")}><Icon.search />{tr("Zoeken")}</button>
-        {!phoneLayout && <button className="navbtn" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>}
+        <button className="navbtn nav-search" data-nav="search" onClick={() => setSearch(true)} aria-label={tr("Zoeken in alles")}><Icon.search />{tr("Zoeken")}</button>
+        {!phoneLayout && <button className="navbtn" data-nav="settings" aria-current={screen === "settings" ? "page" : undefined} onClick={() => setScreen("settings")}><Icon.settings />{tr("Instellingen")}</button>}
       </nav>
       <main className={`page${screen === "today" ? tr(" page-bord") : ""}`}>
         <ScreenBoundary><Suspense fallback={<div className="center"><div className="mascot thinking" aria-label={tr("Laden")} /></div>}>
