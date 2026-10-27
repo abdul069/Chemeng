@@ -1989,14 +1989,20 @@ label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 1
   .lib-search > .btn { flex: 1 1 auto; }
   /* weekmenu: dagnavigatie bovenaan, de acties ombreken als kleine pillen */
   .weeknav { flex-wrap: wrap; row-gap: 8px; }
-  .weeknav .range { flex: 1; text-align: center; white-space: nowrap; }
-  .weeknav .pill { padding: 6px 11px; font-size: 13px; }
+  .weeknav .range { flex: 1 1 auto; text-align: center; white-space: nowrap; }
+  /* acties op een eigen rij die zijwaarts scrolt, zodat niets over de datum valt */
+  .weeknav-acts { flex: 1 1 100%; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .weeknav-acts::-webkit-scrollbar { display: none; }
+  .weeknav-acts > * { flex: none; }
+  .weeknav .pill { padding: 6px 11px; font-size: 13px; white-space: nowrap; }
+  /* niets in de pagina mag samengeperst worden (dagknoppen werden platgedrukt) */
+  .page-scroll > * { flex-shrink: 0; }
   /* één dag op de telefoon: compacte vakken in plaats van een volledig scherm per maaltijd */
   .mealgrid.one { grid-template-rows: none; height: auto; }
   .mealgrid.one .mg-row { grid-auto-rows: auto; }
   .mealgrid-wrap:has(.mealgrid.one) { flex: none; height: auto; }
-  .mealgrid.one .mtile { height: auto; min-height: 92px; aspect-ratio: auto; }
-  .mealgrid.one .mtile.filled { min-height: 120px; }
+  .mealgrid.one .mtile { height: auto; min-height: 64px; aspect-ratio: auto; }
+  .mealgrid.one .mtile.filled { min-height: 104px; }
   /* de assistent-druppel mag niets bedekken: ruimte onderaan en een kleinere druppel */
   .page-scroll { padding-bottom: 84px; }
   .mascot-float .mascot { width: 52px !important; height: 52px !important; }

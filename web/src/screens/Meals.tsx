@@ -58,6 +58,7 @@ function WeekMenu() {
         <button className="iconbtn" onClick={() => setStart(addDays(start, -7))} aria-label={tr("Vorige week")}><Icon.left /></button>
         <span className="range">{Number(start.slice(8))} {MSHORT[Number(start.slice(5, 7)) - 1]} – {Number(end.slice(8))} {MSHORT[Number(end.slice(5, 7)) - 1]}</span>
         <button className="iconbtn" onClick={() => setStart(addDays(start, 7))} aria-label={tr("Volgende week")}><Icon.right /></button>
+        <div className="weeknav-acts">
         <button className="pill accent" title={tr("De manager stelt het avondeten van de week voor, op maat van agenda, dieet en voorraad")} onClick={() => setWeekbox(true)}>{tr("✨ Weekbox")}</button>
         <button className="pill" title={tr("Lege avonden krijgen een recept uit je bibliotheek")} onClick={async () => {
           const r = await act(() => api.post<{ planned: { date: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
@@ -75,6 +76,7 @@ function WeekMenu() {
           const text = `${tr("Weekmenu")} ${Number(start.slice(8))} ${MSHORT[Number(start.slice(5, 7)) - 1]} – ${Number(end.slice(8))} ${MSHORT[Number(end.slice(5, 7)) - 1]}\n${lines.join("\n")}`;
           try { if (navigator.share) await navigator.share({ title: "Weekmenu", text }); else { await navigator.clipboard.writeText(text); toast(tr("Weekmenu gekopieerd")); } } catch { /* geannuleerd */ }
         }}>↗</button>
+        </div>
       </div>
       {phone && <div className="picks day-picks">{weekDays.map((d) => <button type="button" key={d} className={`pick${d === t ? " today" : ""}`} aria-pressed={d === shownDay} onClick={() => setDayPick(d)}>{DSHORT[weekday(d)]} {Number(d.slice(8))}</button>)}</div>}
       <div className="mealgrid-wrap">
