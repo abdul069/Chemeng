@@ -60,7 +60,7 @@ export function LibraryBrowser() {
       {!ov.total && !ov.crawl.running && (
         <p className="empty">De gedeelde bibliotheek is nog leeg. {admin ? <button className="linkbtn" onClick={() => act(() => api.post("/library/crawl"), t("Opbouwen gestart")).then(loadOverview)}>{t("Nu opbouwen")}</button> : t("De beheerder kan ze laten opbouwen.")}</p>
       )}
-      <div className="addrow">
+      <div className="addrow lib-search">
         <input id="lb-q" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={t("Zoek in {n} Turkse recepten (Nederlands of Turks)", { n: ov.total })} aria-label={t("Zoek in alle Turkse recepten")} />
         {ov.total > 0 && <button className="btn ghost small" aria-pressed={tr} title={t("Namen in het Turks tonen")} onClick={toggleTr}>{tr ? "🇹🇷" : "🇳🇱"}</button>}
         {ov.total > 0 && <button className="btn ghost small" title={t("Een willekeurig recept uit deze selectie")} onClick={async () => {

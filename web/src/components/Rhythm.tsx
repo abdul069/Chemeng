@@ -76,7 +76,7 @@ export function ShiftEditor({ member, onClose }: { member: Member; onClose: () =
             <div className="linkrow" key={i}>
               <div className="link-h"><b>{t("Week {n}", { n: i + 1 })}</b>{weeks.length > 1 && <button className="iconbtn" aria-label={t("Week weghalen")} onClick={() => setWeeks(weeks.filter((_, j) => j !== i))}>✕</button>}</div>
               <div className="addrow">
-                <input value={w.icon} onChange={(e) => upd(i, { icon: e.target.value })} style={{ width: 52 }} aria-label={t("Icoon")} />
+                <input value={w.icon} onChange={(e) => upd(i, { icon: e.target.value })} style={{ width: 56, flex: "none", textAlign: "center" }} aria-label={t("Icoon")} />
                 <input value={w.name} onChange={(e) => upd(i, { name: e.target.value })} aria-label={t("Naam")} />
               </div>
               <div className="addrow">

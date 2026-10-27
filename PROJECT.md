@@ -224,6 +224,14 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 
 ---
 
+### 5.13 Ritme per persoon (uit de simulatie met een Turks gezin)
+
+`server/src/rhythm.ts`, `web/src/components/Rhythm.tsx`. **Taal per gezinslid** (`members.lang`): de telefoon en kindertablet van dat lid tonen de app in die taal, briefing, routineherinneringen en medicatiemeldingen komen in die taal, de assistent antwoordt in de taal van het toestel en spreekt/luistert in tr-TR, en-GB of nl-BE; het gezinsscherm blijft in de gezinstaal. **Ploegenrooster** (`shifts`): een cyclus van weken (kant-en-klaar: 3 ploegen, 2 ploegen, dag + vrije week), één keer ingesteld vanaf een maandag; diensten verschijnen als alleen-lezen laag in agenda en briefing, een nachtdienst als twee blokken. **Stille uren**: per lid zelf in te stellen, en vanzelf na een nachtdienst (einde dienst + slaapuren, standaard 8); geen pushmeldingen behalve medicatie (`urgent`), geen briefing-push, geen ezan-geluid op dat toestel, en op het Bord "😴 Mehmet slaapt tot 14:00". **Tienermodus** (`members.teen`, vanzelf vanaf 13): geen sterren of spaarpot maar **doelen** (`goals`, `goal_entries`: tellen zoals rijlessen of stage-uren, of sparen in euro). **Vertalen** (`server/src/translate.ts`, licht AI-model met cache): schoolbrieven in de inbox naar Turks/Nederlands/Engels, met voorlezen in die taal.
+
+### 5.14 Co-ouderschap: twee huizen (uit de simulatie met een gescheiden gezin)
+
+`server/src/coparent.ts`, `web/src/components/CoParent.tsx`, via het gezinsnetwerk. **Kinderen in twee gezinnen** (`member_shares`): het thuisgezin zet een kind ook in het verbonden gezin; daar verschijnt het als lid (`guestOf`), taken, sterren, doelen en routines lopen door (taken horen bij het profiel, niet bij het gezin), afspraken die het andere huis voor het kind maakt staan alleen-lezen in onze agenda en omgekeerd. **Verblijfsregeling** (`custody`, `custody_overrides`): week om week, 2-2-3, om het weekend, week/weekend, met ankerdag, overdrachtsuur en vakantie-uitzonderingen; agendablokken "🏠 Bij Papa", chip op het Bord, overdracht in de briefing, routineherinneringen alleen in het huis waar het kind die dag is. **Overdrachtslijst** (`handover_items`, `handover_checks`): vaste spullen per kind, op overdrachtsdag op het Bord, in de briefing, op Mijn dag en groot met plaatjes en voorlezen op de kindertablet. **Kostenpot** (`expenses`): kosten en terugbetalingen per verbinding, verdeelsleutel bij de regeling, saldo voor beide huizen. **Andere ouder op de kindertablet**: de pincode van het verbonden gezin werkt ook (extra tijd en wifi toevoegen, geen oudermodus); `KioskPlugin.addWifi` voegt een netwerk toe (zonder vragen als device owner, anders opent Android de wifi-instellingen).
+
 ## 6. API (185 routes, gegroepeerd)
 
 | Groep | Voorbeelden |
@@ -298,7 +306,7 @@ Gebedstijden (astronomisch berekend, elf methodes, asr-school, bijstellen per ge
 ```bash
 # server
 cd server && npm install
-rm -rf /tmp/gezinsbord-test && npm test          # 49 tests
+rm -rf /tmp/gezinsbord-test && npm test          # 51 tests
 npx tsc --noEmit -p .                            # typecheck
 DATA_DIR=/tmp/gb PORT=8100 LIBRARY_AUTOCRAWL=0 npx tsx src/index.ts
 

@@ -1973,3 +1973,31 @@ body { background: var(--sky) fixed; background-color: #f7efe6; }
 .translate { display: grid; gap: 8px; padding: 10px 0; }
 .translated { padding: 12px 14px; border-radius: 12px; background: #f6f7fb; display: grid; gap: 6px; }
 label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+
+/* ---------- telefoon: Maaltijden rustiger en compact ---------- */
+@media (max-width: 820px) {
+  /* categorieën: een rij kleine chips, niet uitgerekt tot de hoogte van de pagina */
+  .libbox { grid-template-rows: auto auto; align-content: start; flex: none; }
+  .libnav { align-items: center; }
+  .libnav button { align-self: center; height: auto; }
+  /* knoppen naast elkaar in plaats van vier volle rijen */
+  .lib-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lib-actions .btn { flex: 1 1 auto; width: auto; min-width: 0; }
+  /* bibliotheek: zoekveld over de volle breedte, de kleine knoppen samen op de rij eronder */
+  .lib-search { flex-wrap: wrap; }
+  .lib-search > input { flex: 1 1 100%; min-width: 0; }
+  .lib-search > .btn { flex: 1 1 auto; }
+  /* weekmenu: dagnavigatie bovenaan, de acties ombreken als kleine pillen */
+  .weeknav { flex-wrap: wrap; row-gap: 8px; }
+  .weeknav .range { flex: 1; text-align: center; white-space: nowrap; }
+  .weeknav .pill { padding: 6px 11px; font-size: 13px; }
+  /* één dag op de telefoon: compacte vakken in plaats van een volledig scherm per maaltijd */
+  .mealgrid.one { grid-template-rows: none; height: auto; }
+  .mealgrid.one .mg-row { grid-auto-rows: auto; }
+  .mealgrid-wrap:has(.mealgrid.one) { flex: none; height: auto; }
+  .mealgrid.one .mtile { height: auto; min-height: 92px; aspect-ratio: auto; }
+  .mealgrid.one .mtile.filled { min-height: 120px; }
+  /* de assistent-druppel mag niets bedekken: ruimte onderaan en een kleinere druppel */
+  .page-scroll { padding-bottom: 84px; }
+  .mascot-float .mascot { width: 52px !important; height: 52px !important; }
+}
