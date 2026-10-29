@@ -1653,4 +1653,11 @@ export const EN: Record<string, string> = {
   "2-2-3 (om de beurt het weekend)": "2-2-3 (alternate weekends)",
   "Om het weekend bij de andere ouder": "Every other weekend with the other parent",
   "Week bij de ene, weekend bij de andere": "Weekdays with one, weekends with the other",
+  "De avonden van deze week die nog leeg zijn, krijgen een recept. Wat al gepland staat, blijft staan.": "Empty evenings this week get a recipe. What is already planned stays.",
+  "Alleen onze recepten": "Only our recipes",
+  "Ook nieuwe uit de Turkse bibliotheek": "Also new ones from the Turkish library",
+  "Invullen": "Fill in",
+  "Ongedaan maken": "Undo",
+  "Ongedaan gemaakt": "Undone",
+  "Geen recepten om in te plannen. Voeg recepten toe, of kies ook de Turkse bibliotheek.": "No recipes to plan. Add recipes, or also choose the Turkish library.",
 };

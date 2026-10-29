@@ -717,7 +717,7 @@ api.put("/meals", (req, res) => {
 /** Week vullen: lege avondmaal-vakjes krijgen een recept uit de eigen bibliotheek (gevarieerd, niet wat vorige week al stond),
  *  aangevuld uit de gedeelde bibliotheek als er te weinig eigen recepten zijn. */
 api.post("/meals/autoplan", async (req, res) => {
-  const b = z.object({ from: day, days: z.number().int().min(1).max(14).default(7), slot: z.enum(S.SLOTS).default("diner"), overwrite: z.boolean().default(false) }).parse(req.body ?? {});
+  const b = z.object({ from: day, days: z.number().int().min(1).max(14).default(7), slot: z.enum(S.SLOTS).default("diner"), overwrite: z.boolean().default(false), library: z.boolean().default(false) }).parse(req.body ?? {});
   const to = addDays(b.from, b.days - 1);
   const current = S.mealsBetween(b.from, to);
   const recent = new Set(S.mealsBetween(addDays(b.from, -14), addDays(b.from, -1)).map((m) => m.recipeId).filter(Boolean));
@@ -726,8 +726,8 @@ api.post("/meals/autoplan", async (req, res) => {
   const ok = (r: S.Recipe) => !inWeek.has(r.id) && !S.dietHits(r.ingredients, avoid).length;
   let pool = S.listRecipes().filter((r) => !recent.has(r.id) && ok(r));
   const needed = Array.from({ length: b.days }, (_, i) => addDays(b.from, i)).filter((d) => b.overwrite || !current.some((m) => m.date === d && m.slot === b.slot && m.title));
-  // te weinig eigen recepten: hoofdgerechten uit de gedeelde bibliotheek erbij halen
-  if (pool.length < needed.length) {
+  // te weinig eigen recepten: alleen als de gebruiker het vraagt hoofdgerechten uit de gedeelde bibliotheek erbij halen
+  if (b.library && pool.length < needed.length) {
     const cats = ["kip", "vlees", "groente", "peulvruchten", "vis", "rijst", "kebap", "borek", "aardappel"];
     for (const c of cats) {
       if (pool.length >= needed.length + 3) break;

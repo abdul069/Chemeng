@@ -48,6 +48,7 @@ function WeekMenu() {
   const phone = useIsPhone();
   const [dayPick, setDayPick] = useState<string | null>(null);
   const [weekbox, setWeekbox] = useState(false);
+  const [fill, setFill] = useState(false);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const shownDay = weekDays.includes(dayPick ?? "") ? dayPick! : weekDays.includes(t) ? t : weekDays[0];
   const recipe = (id: string | null) => (id ? data?.recipes.find((r) => r.id === id) : undefined);
@@ -60,10 +61,7 @@ function WeekMenu() {
         <button className="iconbtn" onClick={() => setStart(addDays(start, 7))} aria-label={tr("Volgende week")}><Icon.right /></button>
         <div className="weeknav-acts">
         <button className="pill accent" title={tr("De manager stelt het avondeten van de week voor, op maat van agenda, dieet en voorraad")} onClick={() => setWeekbox(true)}>{tr("✨ Weekbox")}</button>
-        <button className="pill" title={tr("Lege avonden krijgen een recept uit je bibliotheek")} onClick={async () => {
-          const r = await act(() => api.post<{ planned: { date: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner" }));
-          if (r) toast(r.planned.length ? `${tr("{n} avondmalen ingepland", { n: r.planned.length })}${r.left ? ` · ${tr("{n} nog leeg: voeg recepten toe aan je bibliotheek", { n: r.left })}` : ""}` : r.left ? tr("Geen recepten in je bibliotheek om in te plannen") : tr("Alle avonden waren al ingevuld"));
-        }}>{tr("✨ Week vullen")}</button>
+        <button className="pill" title={tr("Lege avonden krijgen een recept uit je bibliotheek")} onClick={() => setFill(true)}>{tr("✨ Week vullen")}</button>
         <button className="pill" title={tr("Alle ingrediënten van de ingeplande recepten op de boodschappenlijst")} onClick={async () => {
           const r = await act(() => api.post<{ added: number; recipes: number; list: string }>("/meals/week-to-list", { from: start, to: end }));
           if (r) toast(r.recipes ? (r.added ? tr("{a} ingrediënten van {r} recepten op {l}", { a: r.added, r: r.recipes, l: r.list }) : tr("Alles stond al op de lijst")) : tr("Geen recepten ingepland deze week"));
@@ -104,6 +102,7 @@ function WeekMenu() {
       </div>
       <p className="hint">{tr("Tik op een gerecht met recept om het te openen. Lang indrukken om het te wijzigen.")}</p>
       {weekbox && <WeekboxWizard start={start} onClose={() => setWeekbox(false)} />}
+      {fill && <WeekFill start={start} onClose={() => setFill(false)} />}
       {slot && <SlotEditor {...slot} current={meals.find((m) => m.date === slot.date && m.slot === slot.slot)} onClose={() => setSlot(null)} />}
     </div>
   );
@@ -218,5 +217,35 @@ function Library() {
       {modal === "import" && <RecipeImport onClose={() => setModal(null)} />}
       {modal === "new" && <RecipeEditor onClose={() => setModal(null)} />}
     </div>
+  );
+}
+
+/** Week vullen: eerst vragen, standaard alleen eigen recepten, en achteraf ongedaan te maken. */
+function WeekFill({ start, onClose }: { start: string; onClose: () => void }) {
+  const act = useAction();
+  const [library, setLibrary] = useState(false);
+  const [done, setDone] = useState<{ planned: { date: string; title: string }[]; left: number } | null>(null);
+  const run = async () => { const r = await act(() => api.post<{ planned: { date: string; title: string }[]; left: number }>("/meals/autoplan", { from: start, days: 7, slot: "diner", library })); if (r) setDone(r); };
+  const undo = async () => { if (!done) return; if (await act(async () => { for (const p of done.planned) await api.put("/meals", { date: p.date, slot: "diner", title: "" }); }, tr("Ongedaan gemaakt"))) onClose(); };
+  return (
+    <Modal title={tr("✨ Week vullen")} onClose={onClose}>
+      {!done ? (
+        <>
+          <p className="hint">{tr("De avonden van deze week die nog leeg zijn, krijgen een recept. Wat al gepland staat, blijft staan.")}</p>
+          <div className="picks">
+            <button type="button" className="pick" aria-pressed={!library} onClick={() => setLibrary(false)}>{tr("Alleen onze recepten")}</button>
+            <button type="button" className="pick" aria-pressed={library} onClick={() => setLibrary(true)}>{tr("Ook nieuwe uit de Turkse bibliotheek")}</button>
+          </div>
+          <div className="actions"><button className="btn ghost" onClick={onClose}>{tr("Annuleren")}</button><button className="btn" onClick={run}>{tr("Invullen")}</button></div>
+        </>
+      ) : (
+        <>
+          {done.planned.length ? <ul className="plain">{done.planned.map((p) => <li key={p.date}><b>{DSHORT[weekday(p.date)]} {Number(p.date.slice(8))}</b> · {p.title}</li>)}</ul>
+            : <p className="hint">{done.left ? tr("Geen recepten om in te plannen. Voeg recepten toe, of kies ook de Turkse bibliotheek.") : tr("Alle avonden waren al ingevuld")}</p>}
+          {!!done.planned.length && !!done.left && <p className="hint">{tr("{n} nog leeg: voeg recepten toe aan je bibliotheek", { n: done.left })}</p>}
+          <div className="actions">{!!done.planned.length && <button className="btn ghost" onClick={undo}>↩ {tr("Ongedaan maken")}</button>}<button className="btn" onClick={onClose}>{tr("Klaar")}</button></div>
+        </>
+      )}
+    </Modal>
   );
 }

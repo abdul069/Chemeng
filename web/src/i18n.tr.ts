@@ -1660,4 +1660,11 @@ export const TR: Record<string, string> = {
   "2-2-3 (om de beurt het weekend)": "2-2-3 (hafta sonları sırayla)",
   "Om het weekend bij de andere ouder": "İki haftada bir hafta sonu diğer ebeveynde",
   "Week bij de ene, weekend bij de andere": "Hafta içi birinde, hafta sonu diğerinde",
+  "De avonden van deze week die nog leeg zijn, krijgen een recept. Wat al gepland staat, blijft staan.": "Bu haftanın boş akşamlarına bir tarif eklenir. Planlanmış olanlar kalır.",
+  "Alleen onze recepten": "Sadece bizim tariflerimiz",
+  "Ook nieuwe uit de Turkse bibliotheek": "Türk kütüphanesinden yenileri de",
+  "Invullen": "Doldur",
+  "Ongedaan maken": "Geri al",
+  "Ongedaan gemaakt": "Geri alındı",
+  "Geen recepten om in te plannen. Voeg recepten toe, of kies ook de Turkse bibliotheek.": "Planlanacak tarif yok. Tarif ekle veya Türk kütüphanesini de seç.",
 };
